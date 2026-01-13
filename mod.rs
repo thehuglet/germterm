@@ -60,6 +60,7 @@ impl Size {
 
 pub struct Engine {
     pub delta_time: f32,
+    pub game_time: f32,
     title: &'static str,
     stdout: io::Stdout,
     screen: Screen,
@@ -72,6 +73,7 @@ impl Engine {
     pub fn new(cols: u16, rows: u16) -> Self {
         Self {
             delta_time: 0.01667,
+            game_time: 0.0,
             title: "my-game",
             stdout: io::stdout(),
             screen: Screen::new(cols, rows),
@@ -159,6 +161,8 @@ pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
         .0
         .copy_from_slice(&engine.screen.current_buffer.0);
     engine.draw_queue.clear();
+
+    engine.game_time += engine.delta_time;
 
     Ok(())
 }

@@ -68,85 +68,6 @@ impl Screen {
 }
 
 pub fn compose_buffer(buffer: &mut ScreenBuffer, draw_queue: &[DrawCall], cols: u16, rows: u16) {
-    #[inline]
-    fn compose_ch(old_ch: char, ch: char, fg: Color, bg: Color) -> char {
-        if bg.a() == 255 {
-            // Opaque bg => Override char
-            return ch;
-        }
-
-        // old_ch == ' ' || fg.a() == 255
-        if old_ch != ' ' && fg.a() < 255 {
-            return old_ch;
-        }
-
-        ch
-    }
-
-    #[inline]
-    fn compose_fg(
-        old_fg: Color,
-        fg: Color,
-        old_bg: Color,
-        bg: Color,
-        old_ch: char,
-        ch: char,
-    ) -> Color {
-        let old_ch_is_invisible: bool = old_ch == ' ' || old_fg.a() == 0;
-        let new_ch_is_invisible: bool = ch == ' ' || fg.a() == 0;
-
-        if new_ch_is_invisible {
-            // can't blend old_fg with fg => blend old_fg with bg instead
-            return blend_over(old_fg, bg);
-        }
-
-        if fg.a() == 255 {
-            // fg is opaque => no need to blend, can skip
-            return fg;
-        }
-
-        if old_ch_is_invisible {
-            // can't blend old_fg with fg => blend fg with old_bg instead
-            return blend_over(old_bg, fg);
-        }
-
-        blend_over(old_fg, fg)
-    }
-
-    #[inline]
-    fn compose_bg(old_bg: Color, bg: Color) -> Color {
-        if bg.a() == 0 {
-            return old_bg;
-        }
-
-        let blend_bg_to_bg: bool = !matches!(bg.a(), 0 | 255);
-        if blend_bg_to_bg {
-            return blend_over(old_bg, bg);
-        }
-
-        bg
-    }
-
-    #[inline]
-    fn compose_attributes(
-        old_attributes: Attributes,
-        attributes: Attributes,
-        old_ch: char,
-        fg: Color,
-        bg: Color,
-    ) -> Attributes {
-        if bg.a() == 255 {
-            // Opaque bg => Override attributes
-            return attributes;
-        }
-
-        if old_ch != ' ' && fg.a() < 255 {
-            return old_attributes;
-        }
-
-        attributes
-    }
-
     let (cols, rows) = (cols as i16, rows as i16);
 
     for draw_call in draw_queue {
@@ -187,32 +108,6 @@ pub fn compose_buffer(buffer: &mut ScreenBuffer, draw_queue: &[DrawCall], cols: 
             };
 
             buffer.0[cell_index] = compose_cell(old_cell, new_cell);
-
-            // let old_ch: char = buffer_cell.ch;
-            // let old_fg: Color = buffer_cell.fg;
-            // let old_bg: Color = buffer_cell.bg;
-            // let old_attrs: Attributes = buffer_cell.attributes;
-
-            // let new_fg: Color = draw_call.rich_text.fg;
-            // let new_bg: Color = draw_call.rich_text.bg;
-            // let new_attrs: Attributes = draw_call.rich_text.attributes;
-
-            // buffer.0[cell_index] = compose_cell();
-
-            // let new_buffer_cell: TerminalCell = TerminalCell {
-            //     ch: compose_ch(buffer_cell.ch, ch, fg, bg),
-            //     fg: compose_fg(buffer_cell.fg, fg, buffer_cell.bg, bg, buffer_cell.ch, ch),
-            //     bg: compose_bg(buffer_cell.bg, bg),
-            //     attributes: compose_attributes(
-            //         buffer_cell.attributes,
-            //         attributes,
-            //         buffer_cell.ch,
-            //         fg,
-            //         bg,
-            //     ),
-            // };
-
-            // buffer.0[cell_index] = new_buffer_cell
         }
     }
 }
@@ -221,20 +116,24 @@ pub fn compose_buffer(buffer: &mut ScreenBuffer, draw_queue: &[DrawCall], cols: 
 fn compose_cell(old: TerminalCell, new: TerminalCell) -> TerminalCell {
     let old_ch_invisible: bool = old.ch == ' ' || old.fg.a() == 0;
     let new_ch_invisible: bool = new.ch == ' ' || new.fg.a() == 0;
-    let new_bg_opaque: bool = new.bg.a() == 255;
 
     let out_bg: Color = if new.bg.a() == 0 {
+        // new.bg invisible => Keep old.bg
         old.bg
-    // } else if old.bg.a() == 255 {
-    //     new.bgw
+    } else if new.bg.a() == 255 {
+        // Opaque new.bg can't be blended with old.bg => Draw new.bg
+        new.bg
     } else {
+        // Default
         blend_over(old.bg, new.bg)
     };
 
-    let (out_ch, out_attributes) = if new_bg_opaque || !new_ch_invisible {
-        (new.ch, new.attributes)
-    } else {
+    let (out_ch, out_attributes) = if new_ch_invisible {
+        // Invisible new.ch => Keep old.ch
         (old.ch, old.attributes)
+    } else {
+        // Default
+        (new.ch, new.attributes)
     };
 
     let out_fg: Color = if new_ch_invisible {
@@ -244,6 +143,7 @@ fn compose_cell(old: TerminalCell, new: TerminalCell) -> TerminalCell {
         // Can't blend old.fg with new.fg => Blend old.bg with new.fg instead
         blend_over(old.bg, new.fg)
     } else {
+        // default
         blend_over(old.fg, new.fg)
     };
 
