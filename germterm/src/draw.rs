@@ -38,34 +38,6 @@ pub fn fill_screen(engine: &mut Engine, color: Color) {
     draw_rect(engine, Pos::new(0, 0), Size::new(cols, rows), color);
 }
 
-/// Draws a single braille dot at the sub-cell position (0..1) inside the 2x3 cell.
-/// dot_x: 0 or 1 (left/right)
-/// dot_y: 0..2 (top/middle/bottom)
-// pub fn draw_braille_dot(engine: &mut Engine, pos: Pos, dot_x: u8, dot_y: usize, alpha: f32) {
-//     // Braille unicode pattern: 0x2800 is empty, dots are bits 0..5 in 2x3 grid:
-//     // Bit positions:
-//     // 0 3
-//     // 1 4
-//     // 2 5
-//     let bit = match dot_y {
-//         0 => 0, // top row
-//         1 => 1, // middle row
-//         2 => 2, // bottom row
-//         _ => 0,
-//     } + if dot_x == 1 { 3 } else { 0 }; // right column offset
-
-//     let braille_char: char = std::char::from_u32(0x2800 + (1 << bit)).unwrap();
-//     let rich_text: RichText = RichText::new(braille_char.to_string()).fg(Color::new(
-//         255,
-//         255,
-//         255,
-//         (alpha.clamp(0.0, 1.0) * 255.0) as u8,
-//     ));
-
-//     draw_text(engine, pos, rich_text);
-// }
-
-/// Unlike other draw functions, this one doesn't use `Pos` due to the sub-cell nature of it.
 pub fn draw_braille_dot(engine: &mut Engine, x: f32, y: f32, color: Color) {
     let cell_x: i16 = x.floor() as i16;
     let cell_y: i16 = y.floor() as i16;
@@ -86,9 +58,9 @@ pub fn draw_braille_dot(engine: &mut Engine, x: f32, y: f32, color: Color) {
         (1, 3) => 7,
         _ => 0,
     };
-    let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
 
-    let rich_text = RichText::new(braille_char.to_string()).fg(color);
+    let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
+    let rich_text: RichText = RichText::new(braille_char.to_string()).fg(color);
 
     draw_text(engine, cell_pos, rich_text);
 }

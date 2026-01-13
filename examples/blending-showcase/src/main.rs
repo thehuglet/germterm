@@ -2,7 +2,7 @@ use germterm::{
     Engine, Pos, Size,
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{draw_braille_dot, draw_fps_counter, draw_rect, draw_text, fill_screen},
+    draw::{draw_fps_counter, draw_rect, draw_text, fill_screen},
     end_frame, exit_cleanup, init,
     input::poll_input,
     rich_text::{Attributes, RichText},

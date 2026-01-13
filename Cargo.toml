@@ -1,5 +1,7 @@
 [workspace]
+resolver = "3"
 members = [
     "germterm",
     "examples/blending-showcase",
+    "examples/braille-merging",
 ]

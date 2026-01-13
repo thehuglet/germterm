@@ -131,6 +131,8 @@ fn compose_cell(old: TerminalCell, new: TerminalCell) -> TerminalCell {
     let (out_ch, out_attributes) = if new_ch_invisible {
         // Invisible new.ch => Keep old.ch
         (old.ch, old.attributes)
+    } else if old.ch != new.ch && is_braille(old.ch) && is_braille(new.ch) {
+        (merge_braille(old.ch, new.ch), new.attributes)
     } else {
         // Default
         (new.ch, new.attributes)
@@ -153,6 +155,18 @@ fn compose_cell(old: TerminalCell, new: TerminalCell) -> TerminalCell {
         bg: out_bg,
         attributes: out_attributes,
     }
+}
+
+#[inline]
+fn is_braille(c: char) -> bool {
+    ('\u{2800}'..='\u{28FF}').contains(&c)
+}
+
+#[inline]
+fn merge_braille(a: char, b: char) -> char {
+    let ma = (a as u32) - 0x2800;
+    let mb = (b as u32) - 0x2800;
+    std::char::from_u32(0x2800 + (ma | mb)).unwrap()
 }
 
 pub fn diff_buffers(
