@@ -1,3 +1,3 @@
 # germ term
 
-> A high performance terminal renderer
+> A high performance terminal rendering engine
