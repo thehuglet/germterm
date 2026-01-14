@@ -3,6 +3,7 @@ pub mod draw;
 pub mod fps_counter;
 pub mod fps_limiter;
 pub mod input;
+pub mod particle;
 pub mod rich_text;
 pub mod screen;
 
@@ -16,6 +17,7 @@ use crate::{
     draw::DrawCall,
     fps_counter::{FpsCounter, update_fps_counter},
     fps_limiter::{FpsLimiter, limit_fps, wait_for_next_frame},
+    particle::ParticleState,
     screen::{Screen, TerminalCell, build_crossterm_content_style, compose_buffer, diff_buffers},
 };
 
@@ -69,6 +71,7 @@ pub struct Engine {
     draw_queue: Vec<DrawCall>,
     fps_limiter: FpsLimiter,
     fps_counter: FpsCounter,
+    particle_state: Vec<ParticleState>,
 }
 
 impl Engine {
@@ -82,6 +85,7 @@ impl Engine {
             draw_queue: Vec::with_capacity((cols * rows) as usize),
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
             fps_counter: FpsCounter::new(0.08),
+            particle_state: Vec::with_capacity(512),
         }
     }
 
