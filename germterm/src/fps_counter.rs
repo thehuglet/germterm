@@ -1,3 +1,5 @@
+use crate::{Engine, Pos, draw::draw_text};
+
 pub struct FpsCounter {
     pub fps_ema: f32,
     smoothing_factor: f32,
@@ -25,4 +27,12 @@ pub fn update_fps_counter(fps_counter: &mut FpsCounter, delta_time: f32) {
         fps_counter.fps_ema = fps_counter.fps_ema * (1.0 - fps_counter.smoothing_factor)
             + current_fps * fps_counter.smoothing_factor;
     }
+}
+
+pub fn draw_fps_counter(engine: &mut Engine, pos: Pos) {
+    draw_text(
+        engine,
+        pos,
+        format!("FPS: {:2.0}", engine.fps_counter.fps_ema),
+    );
 }
