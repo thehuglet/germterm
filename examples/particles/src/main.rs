@@ -13,8 +13,8 @@ use rand::Rng;
 
 use std::{f32::consts::PI, io};
 
-pub const TERM_COLS: u16 = 60;
-pub const TERM_ROWS: u16 = 30;
+pub const TERM_COLS: u16 = 80;
+pub const TERM_ROWS: u16 = 24;
 
 // struct ParticleState {
 //     pos: (f32, f32),
@@ -50,9 +50,17 @@ fn main() -> io::Result<()> {
                 ..
             }) = event
             {
-                let spec: ParticleSpec = ParticleSpec::new(Color::LIME);
-                let emitter: ParticleEmitter = ParticleEmitter::new();
-                spawn_particles(&mut engine, 10.0, 10.0, &spec, &emitter);
+                let spec: ParticleSpec = ParticleSpec::new(Color::LIME)
+                    .with_lifetime_sec(10.0)
+                    .with_speed(60.0);
+                let emitter: ParticleEmitter = ParticleEmitter::new().with_count(1000);
+                spawn_particles(
+                    &mut engine,
+                    TERM_COLS as f32 / 2.0,
+                    TERM_ROWS as f32 / 2.0,
+                    &spec,
+                    &emitter,
+                );
             }
         }
 

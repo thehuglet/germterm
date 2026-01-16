@@ -80,6 +80,7 @@ pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
         &mut engine.particle_state,
         &mut engine.frame.draw_queue,
         engine.delta_time,
+        engine.game_time,
     );
 
     compose_frame_buffer(
