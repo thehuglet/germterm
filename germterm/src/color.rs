@@ -119,7 +119,7 @@ impl ColorGradient {
 }
 
 #[inline]
-pub fn blend_over(bottom: Color, top: Color) -> Color {
+pub fn blend_source_over(bottom: Color, top: Color) -> Color {
     let (br, bg, bb, ba) = bottom.rgba_f32();
     let (tr, tg, tb, ta) = top.rgba_f32();
 
@@ -157,15 +157,20 @@ pub fn sample_gradient(gradient: &ColorGradient, t: f32) -> Color {
     gradient.stops.last().unwrap().color
 }
 
-pub fn lerp(a: Color, b: Color, t: f32) -> Color {
+pub fn lerp(color_a: Color, color_b: Color, t: f32) -> Color {
     let t: f32 = t.clamp(0.0, 1.0);
-    let (r1, g1, b1, a1) = a.rgba_f32();
-    let (r2, g2, b2, a2) = b.rgba_f32();
+    let t_u32: u32 = (t * 255.0).round() as u32;
+    let inv_t: u32 = 255 - t_u32;
 
-    Color::from_f32(
-        r1 + (r2 - r1) * t,
-        g1 + (g2 - g1) * t,
-        b1 + (b2 - b1) * t,
-        a1 + (a2 - a1) * t,
-    )
+    let blend = |a: u32, b: u32| -> u8 {
+        let x: u32 = a * inv_t + b * t_u32;
+        ((x + 128 + (x >> 8)) >> 8) as u8
+    };
+
+    let r: u8 = blend(color_a.r() as u32, color_b.r() as u32);
+    let g: u8 = blend(color_a.g() as u32, color_b.g() as u32);
+    let b: u8 = blend(color_a.b() as u32, color_b.b() as u32);
+    let a: u8 = blend(color_a.a() as u32, color_b.a() as u32);
+
+    Color::new(r, g, b, a)
 }
