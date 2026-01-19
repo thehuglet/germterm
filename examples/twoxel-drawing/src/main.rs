@@ -33,32 +33,8 @@ fn main() -> io::Result<()> {
             }
         }
 
-        // // TODO: add actual twoxel drawing XD
-        // draw_rect(&mut engine, Pos::new(18, 9), Size::new(6, 3), Color::BLUE);
-        // draw_text(
-        //     &mut engine,
-        //     Pos::new(20, 9),
-        //     RichText::new("▄").fg(Color::BLACK).bg(Color::WHITE),
-        // );
-        // draw_text(
-        //     &mut engine,
-        //     Pos::new(20, 10),
-        //     RichText::new("▄").fg(Color::WHITE).bg(Color::BLACK),
-        // );
-        // draw_twoxel(&mut engine, 10.0, 5.0, Color::LIME);
-        // draw_twoxel(&mut engine, 11.0, 5.0, Color::BLACK);
-
-        for y_offset in 0..15 {
-            draw_twoxel(&mut engine, 9.0 + y_offset as f32, 8.0, Color::CYAN);
-            draw_twoxel(&mut engine, 9.0 + y_offset as f32, 8.5, Color::PINK);
-            // draw_twoxel(&mut engine, 9.0 + y_offset as f32, 9.5, Color::WHITE);
-        }
-
-        draw_text(
-            &mut engine,
-            Pos::new(5, 3),
-            RichText::new("AAAAAAAAAAAAAAAAAAAAAAA").fg(Color::BLACK),
-        );
+        draw_twoxel(&mut engine, 10.0, 5.0, Color::LIME);
+        draw_twoxel(&mut engine, 13.0, 5.0, Color::BLACK);
 
         draw_fps_counter(&mut engine, Pos::new(0, 0));
 

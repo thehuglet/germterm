@@ -44,7 +44,7 @@ fn main() -> io::Result<()> {
                 let mut rng: ThreadRng = rand::rng();
 
                 let spec: ParticleSpec = ParticleSpec {
-                    gravity_scale: 0.05,
+                    gravity_scale: rng.random_range(0.04..0.07),
                     speed: 5.0..=rng.random_range(30.0..120.0),
                     lifetime_sec: 2.0,
                     // color: ParticleColor::Solid(Color::ORANGE.with_alpha(127)),
@@ -61,13 +61,13 @@ fn main() -> io::Result<()> {
                     //     width_deg: 75.0,
                     // },
                     shape: ParticleEmitterShape::Circle,
-                    count: rng.random_range(50..200),
+                    count: rng.random_range(25..200),
                     ..Default::default()
                 };
 
                 let x_a: f32 = TERM_COLS as f32 * 0.3;
-                let x_b: f32 = TERM_COLS as f32 * 0.7;
                 let y_a: f32 = TERM_ROWS as f32 * 0.3;
+                let x_b: f32 = TERM_COLS as f32 * 0.7;
                 let y_b: f32 = TERM_ROWS as f32 * 0.7;
 
                 spawn_particles(

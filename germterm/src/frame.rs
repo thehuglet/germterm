@@ -242,11 +242,25 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
     let new_bg_invisible: bool = new.bg.a() == 0;
     let new_bg_translucent: bool = !new_bg_opaque && !new_bg_invisible;
     let new_ch_blank: bool = new.ch == ' ';
+    let old_twoxel: bool = old.attributes.contains(Attributes::TWOXEL);
     let old_octad: bool = old.attributes.contains(Attributes::OCTAD);
     let both_fg_equal: bool = old.fg == new.fg;
 
     match cell_format(new.attributes) {
-        CellFormat::Twoxel => todo!(),
+        CellFormat::Twoxel => {
+            let (ch, attributes): (char, Attributes) = (new.ch, new.attributes);
+
+            let fg: Color = if old_twoxel { old.fg } else { new.fg };
+
+            let bg: Color = if old_twoxel { old.bg } else { old.bg };
+
+            Cell {
+                ch,
+                fg,
+                bg,
+                attributes,
+            }
+        }
         CellFormat::Octad => {
             let (ch, attributes): (char, Attributes) = if old_octad {
                 (merge_octad(old.ch, new.ch), new.attributes)
@@ -262,7 +276,7 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
                 blend_source_over(old.bg, new.fg)
             };
 
-            // bg is always `Color::CLEAR` for octads
+            // TODO: Add background blending here
             let bg: Color = Color::CLEAR;
 
             Cell {
