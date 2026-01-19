@@ -7,7 +7,7 @@ use std::{
 use crossterm::{cursor as ctcursor, queue, style as ctstyle};
 
 use crate::{
-    color::{Color, blend_over, lerp},
+    color::{Color, blend_source_over, lerp},
     rich_text::{Attributes, RichText},
 };
 
@@ -69,8 +69,8 @@ impl Frame {
         let empty_buffer: FrameBuffer = FrameBuffer(vec![
             Cell {
                 ch: ' ',
-                fg: Color::WHITE,
-                bg: Color::BLACK,
+                fg: Color::CLEAR,
+                bg: Color::CLEAR,
                 attributes: Attributes::empty(),
             };
             vec_capacity
@@ -255,10 +255,11 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
             };
 
             let fg: Color = if old_octad {
-                // lerp(old.fg, new.fg, 0.5)
-                blend_over(old.fg, new.fg)
+                // let blended_fg: Color = lerp(old.fg, new.fg, 0.5);
+                // blend_source_over(old.fg, new.fg)
+                lerp(old.fg, blend_source_over(old.fg, new.fg), 0.5)
             } else {
-                blend_over(old.bg, new.fg)
+                blend_source_over(old.bg, new.fg)
             };
 
             // bg is always `Color::CLEAR` for octads
@@ -283,11 +284,11 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
 
             let fg: Color = if new_bg_translucent {
                 // Translucent bg should blend the fg underneath
-                blend_over(old.fg, new.bg)
+                blend_source_over(old.fg, new.bg)
             } else if new_ch_blank {
                 old.fg
             } else {
-                blend_over(old.fg, new.fg)
+                blend_source_over(old.fg, new.fg)
             };
 
             let bg: Color = if new_bg_opaque {
@@ -295,7 +296,7 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
             } else if new_bg_invisible {
                 old.bg
             } else {
-                blend_over(old.bg, new.bg)
+                blend_source_over(old.bg, new.bg)
             };
 
             Cell {
