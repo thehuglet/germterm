@@ -103,7 +103,7 @@ fn main() -> io::Result<()> {
             Color::BLACK.with_alpha(155),
         );
 
-        // --- Opaque background covering text (letters `yz` here) ---
+        // --- Opaque background covering text (letters "yz" here) ---
         draw_rect(
             &mut engine,
             Pos::square(13, 4),
@@ -122,6 +122,15 @@ fn main() -> io::Result<()> {
             Pos::square(14, 3),
             Size::square(2, 2),
             Color::BLUE,
+        );
+
+        // --- "a" fg should blend with the `bg` here as there's no `fg` to blend with ---
+        draw_text(
+            &mut engine,
+            Pos::square(17, 4),
+            RichText::new("a")
+                .fg(Color::RED.with_alpha(127))
+                .attributes(Attributes::BOLD),
         );
 
         end_frame(&mut engine)?;

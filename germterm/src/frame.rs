@@ -238,21 +238,46 @@ pub(crate) fn copy_frame_buffer(to: &mut FrameBuffer, from: &FrameBuffer) {
 
 #[inline]
 fn compose_cell(old: Cell, new: Cell) -> Cell {
+    let old_fg_invisible: bool = old.fg.a() == 0;
+    let new_fg_opaque: bool = new.fg.a() == 255;
     let new_bg_opaque: bool = new.bg.a() == 255;
     let new_bg_invisible: bool = new.bg.a() == 0;
     let new_bg_translucent: bool = !new_bg_opaque && !new_bg_invisible;
+    let old_ch_blank: bool = old.ch == ' ';
     let new_ch_blank: bool = new.ch == ' ';
     let old_twoxel: bool = old.attributes.contains(Attributes::TWOXEL);
     let old_octad: bool = old.attributes.contains(Attributes::OCTAD);
-    let both_fg_equal: bool = old.fg == new.fg;
+    let both_ch_equal: bool = old.ch == new.ch;
+    // let both_fg_equal: bool = old.fg == new.fg;
 
     match cell_format(new.attributes) {
         CellFormat::Twoxel => {
-            let (ch, attributes): (char, Attributes) = (new.ch, new.attributes);
+            let (ch, attributes): (char, Attributes) = if old_twoxel {
+                // Skip and let bg draw the twoxel instead
+                (old.ch, old.attributes)
+            } else {
+                (new.ch, new.attributes)
+            };
 
-            let fg: Color = if old_twoxel { old.fg } else { new.fg };
+            let fg: Color = if old_twoxel && both_ch_equal {
+                blend_source_over(old.fg, new.fg)
+            } else if old_twoxel {
+                old.fg
+            } else if new_fg_opaque {
+                new.fg
+            } else if old_fg_invisible || old_ch_blank {
+                blend_source_over(old.bg, new.fg)
+            } else {
+                blend_source_over(old.fg, new.fg)
+            };
 
-            let bg: Color = if old_twoxel { old.bg } else { old.bg };
+            let bg: Color = if old_twoxel && both_ch_equal {
+                old.bg
+            } else if old_twoxel {
+                blend_source_over(old.bg, new.fg)
+            } else {
+                old.bg
+            };
 
             Cell {
                 ch,
@@ -269,8 +294,6 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
             };
 
             let fg: Color = if old_octad {
-                // let blended_fg: Color = lerp(old.fg, new.fg, 0.5);
-                // blend_source_over(old.fg, new.fg)
                 lerp(old.fg, blend_source_over(old.fg, new.fg), 0.5)
             } else {
                 blend_source_over(old.bg, new.fg)
@@ -301,6 +324,8 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
                 blend_source_over(old.fg, new.bg)
             } else if new_ch_blank {
                 old.fg
+            } else if old_fg_invisible || old_ch_blank {
+                blend_source_over(old.bg, new.fg)
             } else {
                 blend_source_over(old.fg, new.fg)
             };
@@ -321,73 +346,7 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
             }
         }
     }
-
-    // let old_ch_invisible: bool = old.ch == ' ' || old.fg.a() == 0;
-    // let new_ch_invisible: bool = new.ch == ' ' || new.fg.a() == 0;
-    // let both_octad: bool =
-    //     old.attributes.contains(Attributes::OCTAD) && new.attributes.contains(Attributes::OCTAD);
-    // let both_twoxel: bool =
-    //     old.attributes.contains(Attributes::TWOXEL) && new.attributes.contains(Attributes::TWOXEL);
-
-    // let out_bg: Color = if both_twoxel {
-    //     new.fg
-    // } else if new.bg.a() == 0 {
-    //     // new.bg invisible => Keep old.bg
-    //     old.bg
-    // } else if new.bg.a() == 255 {
-    //     // Opaque new.bg can't be blended with old.bg => Draw new.bg
-    //     new.bg
-    // } else {
-    //     // Default
-    //     blend_over(old.bg, new.bg)
-    // };
-
-    // let (out_ch, out_attributes) = if both_twoxel {
-    //     (new.ch, new.attributes)
-    // } else if new.bg.a() == 255 {
-    //     // Opaque new.bg drawn on top => Set char to new.ch
-    //     (new.ch, new.attributes)
-    // } else if new_ch_invisible {
-    //     // Invisible new.ch => Keep old.ch
-    //     (old.ch, old.attributes)
-    // } else if old.ch != new.ch && both_octad {
-    //     (merge_octad(old.ch, new.ch), new.attributes)
-    // } else {
-    //     // Default
-    //     (new.ch, new.attributes)
-    // };
-
-    // let out_fg: Color = if both_twoxel {
-    //     old.fg
-    // } else if new.fg.a() == 255 {
-    //     // Opaque new.fg => Draw new.fg directly
-    //     new.fg
-    // } else if new_ch_invisible {
-    //     // Can't blend old.fg with new.fg => Blend old.fg with new.bg instead
-    //     blend_over(old.fg, new.bg)
-    // } else if old_ch_invisible {
-    //     // Can't blend old.fg with new.fg => Blend old.bg with new.fg instead
-    //     blend_over(old.bg, new.fg)
-    // } else if old.ch != new.ch && both_octad {
-    //     // Both old.ch and new.ch braille => Blend old.ch with new.ch
-    //     blend_over(old.fg, new.fg)
-    // } else {
-    //     // default
-    //     blend_over(old.fg, new.fg)
-    // };
-
-    // Cell {
-    //     ch: out_ch,
-    //     fg: out_fg,
-    //     bg: out_bg,
-    //     attributes: out_attributes,
-    // }
 }
-
-// #[inline]
-// fn is_braille(c: char) -> bool {
-//     ('\u{2800}'..='\u{28FF}').contains(&c)
-// }
 
 #[inline]
 fn merge_octad(a: char, b: char) -> char {
