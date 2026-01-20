@@ -1,4 +1,4 @@
-[![Rust Badge](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=orange)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=orange)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-orange)](https://mit-license.org/)
 
 # `germ-term`
