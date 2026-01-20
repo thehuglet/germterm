@@ -4,7 +4,7 @@ description = "A lightweight high-performance terminal graphics framework!"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-readme = "README.md"
+readme.workspace = true
 
 [dependencies]
 bitflags = "2.10.0"
