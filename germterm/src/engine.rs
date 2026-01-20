@@ -23,7 +23,7 @@ impl Engine {
         Self {
             delta_time: 0.01667,
             game_time: 0.0,
-            title: "my-game",
+            title: "my-awesome-terminal",
             stdout: io::stdout(),
             frame: Frame::new(cols, rows),
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
