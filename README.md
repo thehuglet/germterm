@@ -10,8 +10,6 @@
 
 </div>
 
-# `germterm`
-
 A lightweight, high-performance terminal graphics framework in Rust. It renders in real time and supports drawing with transparency through alpha blending, all through a simple to use API.
 
 ## Features
