@@ -8,4 +8,5 @@ members = [
     "examples/octad-particles",
     "examples/twoxel-tester",
     "examples/twoxel-snake",
+    "examples/particle-benchmark",
 ]
