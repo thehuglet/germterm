@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build all examples (Linux)
+        shell: bash
+        run: |
+          for example in $(ls examples); do
+            echo "Building $example..."
+            cargo build --release --manifest-path examples/$example/Cargo.toml
+          done
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build all examples (Windows)
+        shell: powershell
+        run: |
+          Get-ChildItem examples | ForEach-Object {
+            Write-Host "Building $($_.Name)..."
+            cargo build --release --manifest-path "examples/$($_.Name)/Cargo.toml"
+          }
+
+  create-release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ""
