@@ -1,4 +1,4 @@
-use crate::{Engine, Pos, draw::draw_text};
+use crate::{draw::draw_text, engine::Engine};
 
 pub struct FpsCounter {
     pub fps_ema: f32,
@@ -29,10 +29,11 @@ pub fn update_fps_counter(fps_counter: &mut FpsCounter, delta_time: f32) {
     }
 }
 
-pub fn draw_fps_counter(engine: &mut Engine, pos: Pos) {
+pub fn draw_fps_counter(engine: &mut Engine, x: i16, y: i16) {
     draw_text(
         engine,
-        pos,
+        x,
+        y,
         format!("FPS: {:2.0}", engine.fps_counter.fps_ema),
     );
 }

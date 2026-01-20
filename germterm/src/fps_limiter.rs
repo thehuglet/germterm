@@ -14,7 +14,9 @@ impl FpsLimiter {
 
         Self {
             target_frametime,
-            next_frame_timestamp: Instant::now() + target_frametime,
+            next_frame_timestamp: Instant::now()
+                .checked_add(target_frametime)
+                .unwrap_or_else(Instant::now),
             poll_interval_sec: Duration::from_secs_f32(poll_interval_sec),
             spin_reserve_sec: Duration::from_secs_f32(spin_reserve_sec),
         }
@@ -25,7 +27,9 @@ pub fn limit_fps(fps_limiter: &mut FpsLimiter, value: u32) {
     let target_frametime: Duration = calc_target_frametime(value as f32);
 
     fps_limiter.target_frametime = target_frametime;
-    fps_limiter.next_frame_timestamp = Instant::now() + target_frametime;
+    fps_limiter.next_frame_timestamp = Instant::now()
+        .checked_add(target_frametime)
+        .unwrap_or_else(Instant::now);
 }
 
 pub fn wait_for_next_frame(fps_limiter: &mut FpsLimiter) -> f32 {
@@ -36,7 +40,11 @@ pub fn wait_for_next_frame(fps_limiter: &mut FpsLimiter) -> f32 {
     }
 
     // Sleep until close to target
-    while Instant::now() + fps_limiter.spin_reserve_sec < fps_limiter.next_frame_timestamp {
+    while Instant::now()
+        .checked_add(fps_limiter.spin_reserve_sec)
+        .unwrap_or_else(Instant::now)
+        < fps_limiter.next_frame_timestamp
+    {
         let remaining: Duration =
             fps_limiter.next_frame_timestamp - Instant::now() - fps_limiter.spin_reserve_sec;
         sleep(fps_limiter.poll_interval_sec.min(remaining));
@@ -56,7 +64,10 @@ pub fn wait_for_next_frame(fps_limiter: &mut FpsLimiter) -> f32 {
     fps_limiter.next_frame_timestamp = if frame_is_late {
         Instant::now() + fps_limiter.target_frametime
     } else {
-        fps_limiter.next_frame_timestamp + fps_limiter.target_frametime
+        fps_limiter
+            .next_frame_timestamp
+            .checked_add(fps_limiter.target_frametime)
+            .unwrap_or(Instant::now())
     };
 
     delta_time

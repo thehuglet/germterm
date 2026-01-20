@@ -2,7 +2,9 @@
 resolver = "3"
 members = [
     "germterm",
-    "examples/blending-showcase",
-    "examples/braille-merging",
-    "examples/particles",
+    "examples/standard-blending",
+    "examples/octad-merging",
+    "examples/octad-particles",
+    "examples/twoxel-tester",
+    "examples/twoxel-snake",
 ]

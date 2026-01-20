@@ -9,20 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 
 [[package]]
-name = "blending-showcase"
-version = "0.1.0"
-dependencies = [
- "germterm",
-]
-
-[[package]]
-name = "braille-merging"
-version = "0.1.0"
-dependencies = [
- "germterm",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -111,6 +97,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "crossterm",
+ "rand",
 ]
 
 [[package]]
@@ -171,6 +158,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "octad-merging"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+]
+
+[[package]]
+name = "octad-particles"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+ "rand",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -191,14 +193,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-link",
-]
-
-[[package]]
-name = "particles"
-version = "0.1.0"
-dependencies = [
- "germterm",
- "rand",
 ]
 
 [[package]]
@@ -344,6 +338,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
+name = "standard-blending"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.114"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -352,6 +353,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "twoxel-snake"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+ "rand",
+]
+
+[[package]]
+name = "twoxel-tester"
+version = "0.1.0"
+dependencies = [
+ "germterm",
 ]
 
 [[package]]

@@ -1,9 +1,8 @@
 [package]
-name = "germterm"
+name = "twoxel-snake"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bitflags = "2.10.0"
-crossterm = "0.29.0"
+germterm = { path = "../../germterm" }
 rand = "0.9.2"
