@@ -1,4 +1,4 @@
-<h1 align="center"><img width="440" src="assets/header-banner.png" /></h1>
+![Header banner](assets/header-banner.png)
 
 [![Rust](https://img.shields.io/badge/Rust-gray?logo=rust&logoColor=orange)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-orange)](https://mit-license.org/)
