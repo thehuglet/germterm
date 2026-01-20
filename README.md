@@ -61,7 +61,7 @@ fn main() -> io::Result<()> {
         start_frame(&mut engine);
 
         fill_screen(&mut engine, Color::BLACK);
-        draw_text(&mut engine, 5, 5, "Hello world!");
+        draw_text(&mut engine, 14, 9, "Hello world!");
         draw_fps_counter(&mut engine, 0, 0);
 
         end_frame(&mut engine)?;
