@@ -39,14 +39,15 @@ pub fn wait_for_next_frame(fps_limiter: &mut FpsLimiter) -> f32 {
         return delta_time;
     }
 
-    // Sleep until close to target
     while Instant::now()
         .checked_add(fps_limiter.spin_reserve_sec)
         .unwrap_or_else(Instant::now)
         < fps_limiter.next_frame_timestamp
     {
-        let remaining: Duration =
-            fps_limiter.next_frame_timestamp - Instant::now() - fps_limiter.spin_reserve_sec;
+        let remaining = fps_limiter
+            .next_frame_timestamp
+            .saturating_duration_since(Instant::now())
+            .saturating_sub(fps_limiter.spin_reserve_sec);
         sleep(fps_limiter.poll_interval_sec.min(remaining));
     }
 

@@ -1,7 +1,7 @@
 [package]
 name = "germterm"
 description = "A lightweight high-performance terminal graphics framework!"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 license = "MIT"
 readme.workspace = true
