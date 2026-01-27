@@ -1,9 +1,8 @@
 use germterm::{
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{draw_rect, draw_text, fill_screen},
-    engine::Engine,
-    engine::{end_frame, exit_cleanup, init, start_frame},
+    draw::{Layer, draw_rect, draw_text, fill_screen},
+    engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     fps_counter::draw_fps_counter,
     input::poll_input,
     rich_text::{Attributes, RichText},
@@ -18,6 +17,8 @@ fn main() -> io::Result<()> {
     let mut engine: Engine = Engine::new(TERM_COLS, TERM_ROWS)
         .title("standard-blending")
         .limit_fps(240);
+
+    let mut layer = Layer::new(&mut engine, 0);
 
     init(&mut engine)?;
 
@@ -34,13 +35,13 @@ fn main() -> io::Result<()> {
             }
         }
 
-        fill_screen(&mut engine, Color::new(60, 60, 70, 255));
+        fill_screen(&mut layer, Color::new(60, 60, 70, 255));
 
         // --- Opaque drawing ---
         // Black square
-        draw_rect(&mut engine, 2, 4, 4, 2, Color::BLACK);
+        draw_rect(&mut layer, 2, 4, 4, 2, Color::BLACK);
         draw_text(
-            &mut engine,
+            &mut layer,
             2,
             5,
             RichText::new("ab")
@@ -49,10 +50,10 @@ fn main() -> io::Result<()> {
         );
 
         // White square
-        draw_rect(&mut engine, 4, 3, 4, 2, Color::WHITE);
+        draw_rect(&mut layer, 4, 3, 4, 2, Color::WHITE);
 
         draw_text(
-            &mut engine,
+            &mut layer,
             4,
             4,
             RichText::new("ab")
@@ -61,30 +62,30 @@ fn main() -> io::Result<()> {
         );
 
         // --- Background to background blending ---
-        draw_rect(&mut engine, 10, 4, 4, 2, Color::CYAN.with_alpha(127));
-        draw_rect(&mut engine, 12, 3, 4, 2, Color::RED.with_alpha(127));
+        draw_rect(&mut layer, 10, 4, 4, 2, Color::CYAN.with_alpha(127));
+        draw_rect(&mut layer, 12, 3, 4, 2, Color::RED.with_alpha(127));
 
         // --- Background over text blending ---
-        draw_rect(&mut engine, 18, 4, 4, 2, Color::WHITE);
-        draw_text(&mut engine, 18, 4, RichText::new("1234").fg(Color::RED));
-        draw_rect(&mut engine, 20, 3, 4, 2, Color::BLACK.with_alpha(155));
+        draw_rect(&mut layer, 18, 4, 4, 2, Color::WHITE);
+        draw_text(&mut layer, 18, 4, RichText::new("1234").fg(Color::RED));
+        draw_rect(&mut layer, 20, 3, 4, 2, Color::BLACK.with_alpha(155));
 
         // --- Opaque background covering text (letters "yz" here) ---
-        draw_rect(&mut engine, 26, 4, 4, 2, Color::RED);
+        draw_rect(&mut layer, 26, 4, 4, 2, Color::RED);
         draw_text(
-            &mut engine,
+            &mut layer,
             26,
             4,
             RichText::new("wxyz")
                 .fg(Color::YELLOW)
                 .attributes(Attributes::BOLD),
         );
-        draw_rect(&mut engine, 28, 3, 4, 2, Color::BLUE);
+        draw_rect(&mut layer, 28, 3, 4, 2, Color::BLUE);
 
         // --- bottom red "abcd" fg should blend with the `bg` to form purple here as there's no `fg` to blend with ---
-        draw_rect(&mut engine, 34, 4, 4, 2, Color::BLUE);
+        draw_rect(&mut layer, 34, 4, 4, 2, Color::BLUE);
         draw_text(
-            &mut engine,
+            &mut layer,
             34,
             4,
             RichText::new("abcd")
@@ -92,7 +93,7 @@ fn main() -> io::Result<()> {
                 .attributes(Attributes::BOLD),
         );
         draw_text(
-            &mut engine,
+            &mut layer,
             34,
             5,
             RichText::new("abcd")
@@ -100,7 +101,7 @@ fn main() -> io::Result<()> {
                 .attributes(Attributes::BOLD),
         );
 
-        draw_fps_counter(&mut engine, 0, 0);
+        draw_fps_counter(&mut layer, 0, 0);
         end_frame(&mut engine)?;
     }
 

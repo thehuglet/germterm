@@ -1,6 +1,6 @@
-use std::io::Write;
-use std::{fs::File, io};
+use std::io;
 
+use germterm::draw::Layer;
 use germterm::{
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
@@ -20,13 +20,13 @@ fn main() -> io::Result<()> {
         .title("particle-benchmark")
         .limit_fps(240);
 
-    init(&mut engine)?;
+    let mut layer = Layer::new(&mut engine, 0);
 
-    let mut frametimes: Vec<f32> = Vec::with_capacity(200_000);
+    init(&mut engine)?;
 
     'update_loop: loop {
         start_frame(&mut engine);
-        fill_screen(&mut engine, Color::BLACK);
+        fill_screen(&mut layer, Color::BLACK);
 
         for event in poll_input() {
             match event {
@@ -40,7 +40,7 @@ fn main() -> io::Result<()> {
                     ..
                 }) => {
                     spawn_particles(
-                        &mut engine,
+                        &mut layer,
                         TERM_COLS as f32 * 0.5,
                         TERM_ROWS as f32 * 0.5,
                         &ParticleSpec {
@@ -59,16 +59,9 @@ fn main() -> io::Result<()> {
             }
         }
 
-        frametimes.push(engine.delta_time);
-        draw_fps_counter(&mut engine, 0, 1);
+        draw_fps_counter(&mut layer, 0, 1);
 
         end_frame(&mut engine)?;
-    }
-
-    let mut file = File::create("examples/particle-benchmark/frametimes.csv")?;
-    writeln!(file, "frametime_ms")?;
-    for ft in frametimes {
-        writeln!(file, "{:.4}", ft * 1000.0)?;
     }
 
     exit_cleanup(&mut engine)?;

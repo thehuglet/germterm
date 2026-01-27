@@ -1,7 +1,7 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop, sample_gradient},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{draw_twoxel, fill_screen},
+    draw::{Layer, draw_twoxel, fill_screen},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
     particle::{ParticleColor, ParticleEmitter, ParticleSpec, spawn_particles},
@@ -23,6 +23,9 @@ fn main() -> io::Result<()> {
         .title("twoxel-snake")
         .limit_fps(240);
 
+    let mut background_layer = Layer::new(&mut engine, 0);
+    let mut main_layer = Layer::new(&mut engine, 1);
+
     let movement_speed: f32 = 15.0;
     let mut segments: Vec<(i16, i16)> = vec![(20, 22), (20, 21), (20, 20), (20, 19)];
     let mut apple_pos: (i16, i16) = random_pos();
@@ -35,6 +38,7 @@ fn main() -> io::Result<()> {
     ]);
 
     init(&mut engine)?;
+
     'game_loop: loop {
         for event in poll_input() {
             match event {
@@ -83,7 +87,7 @@ fn main() -> io::Result<()> {
         }
 
         start_frame(&mut engine);
-        fill_screen(&mut engine, Color::BLACK);
+        fill_screen(&mut background_layer, Color::BLACK);
 
         move_timer += engine.delta_time;
         let step_time: f32 = 1.0 / movement_speed;
@@ -104,7 +108,11 @@ fn main() -> io::Result<()> {
             segments.insert(0, new_head);
 
             if new_head == apple_pos {
-                spawn_explosion(&mut engine, apple_pos.0 as f32, apple_pos.1 as f32 * 0.5);
+                spawn_explosion(
+                    &mut background_layer,
+                    apple_pos.0 as f32,
+                    apple_pos.1 as f32 * 0.5,
+                );
                 apple_pos = random_pos();
             } else {
                 segments.pop();
@@ -113,7 +121,7 @@ fn main() -> io::Result<()> {
 
         // --- Draw apple ---
         draw_twoxel(
-            &mut engine,
+            &mut main_layer,
             apple_pos.0 as f32,
             apple_pos.1 as f32 * 0.5,
             Color::RED,
@@ -124,7 +132,7 @@ fn main() -> io::Result<()> {
             let t: f32 = i as f32 / segments.len() as f32;
             // Multiplying the y axis by 0.5 here, as terminal cells usually have a 1:2 width to height ratio
             draw_twoxel(
-                &mut engine,
+                &mut main_layer,
                 segment.0 as f32,
                 segment.1 as f32 * 0.5,
                 sample_gradient(&snake_color_gradient, t),
@@ -146,9 +154,9 @@ fn random_pos() -> (i16, i16) {
     )
 }
 
-fn spawn_explosion(engine: &mut Engine, x: f32, y: f32) {
+fn spawn_explosion(layer: &mut Layer, x: f32, y: f32) {
     spawn_particles(
-        engine,
+        layer,
         x,
         y,
         &ParticleSpec {

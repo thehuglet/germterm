@@ -12,6 +12,7 @@ pub struct Engine {
     pub game_time: f32,
     title: &'static str,
     pub stdout: io::Stdout,
+    pub(crate) max_layer_index: usize,
     pub(crate) frame: Frame,
     pub(crate) fps_limiter: FpsLimiter,
     pub(crate) fps_counter: FpsCounter,
@@ -25,6 +26,7 @@ impl Engine {
             game_time: 0.0,
             title: "my-awesome-terminal",
             stdout: io::stdout(),
+            max_layer_index: 0,
             frame: Frame::new(cols, rows),
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
             fps_counter: FpsCounter::new(0.08),
@@ -72,20 +74,26 @@ pub fn exit_cleanup(engine: &mut Engine) -> io::Result<()> {
 pub fn start_frame(engine: &mut Engine) {
     engine.delta_time = wait_for_next_frame(&mut engine.fps_limiter);
     update_fps_counter(&mut engine.fps_counter, engine.delta_time);
+
+    // Ensure layers exist at the start of the frame
+    let layer_count = engine.max_layer_index + 1;
+    if engine.frame.draw_queue.len() < layer_count {
+        engine.frame.draw_queue.resize_with(layer_count, Vec::new);
+    }
+
+    engine.frame.flat_draw_queue.clear();
 }
 
 pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
-    // Particles are always drawn on top due to engine limitations
-    update_and_draw_particles(
-        &mut engine.particle_state,
-        &mut engine.frame.draw_queue,
-        engine.delta_time,
-        engine.game_time,
-    );
+    update_and_draw_particles(engine);
+
+    for layer in engine.frame.draw_queue.iter_mut() {
+        engine.frame.flat_draw_queue.append(layer);
+    }
 
     compose_frame_buffer(
         &mut engine.frame.current_frame_buffer,
-        &engine.frame.draw_queue,
+        &engine.frame.flat_draw_queue,
         engine.frame.cols,
         engine.frame.rows,
     );
@@ -101,8 +109,6 @@ pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
         &engine.frame.current_frame_buffer,
     );
 
-    engine.frame.draw_queue.clear();
     engine.game_time += engine.delta_time;
-
     Ok(())
 }

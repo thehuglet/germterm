@@ -57,7 +57,10 @@ impl DerefMut for FrameBuffer {
 pub struct Frame {
     pub cols: u16,
     pub rows: u16,
-    pub draw_queue: Vec<DrawCall>,
+    /// Inner Vecs represent layers
+    pub draw_queue: Vec<Vec<DrawCall>>,
+    /// Used to store post layer flattened `DrawCall`s
+    pub flat_draw_queue: Vec<DrawCall>,
     pub current_frame_buffer: FrameBuffer,
     pub old_frame_buffer: FrameBuffer,
     pub diff_products: Vec<DiffProduct>,
@@ -82,7 +85,9 @@ impl Frame {
             current_frame_buffer: empty_buffer.clone(),
             old_frame_buffer: empty_buffer.clone(),
             diff_products: Vec::with_capacity(vec_capacity),
-            draw_queue: Vec::with_capacity(vec_capacity),
+            // It's safer to make it at least have 1 layer at inception
+            draw_queue: vec![vec![]],
+            flat_draw_queue: Vec::with_capacity(vec_capacity),
         }
     }
 }

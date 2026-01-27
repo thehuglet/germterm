@@ -1,7 +1,7 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{draw_text, fill_screen},
+    draw::{Layer, draw_text, fill_screen},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     fps_counter::draw_fps_counter,
     input::poll_input,
@@ -21,10 +21,13 @@ fn main() -> io::Result<()> {
         .title("octad-particles")
         .limit_fps(240);
 
+    let mut main_layer = Layer::new(&mut engine, 0);
+    let mut text_top_layer = Layer::new(&mut engine, 1);
+
     init(&mut engine)?;
     'game_loop: loop {
         start_frame(&mut engine);
-        fill_screen(&mut engine, Color::BLACK);
+        fill_screen(&mut main_layer, Color::BLACK);
 
         for event in poll_input() {
             if let Event::Key(KeyEvent {
@@ -64,7 +67,7 @@ fn main() -> io::Result<()> {
                 let y_b: f32 = TERM_ROWS as f32 * 0.7;
 
                 spawn_particles(
-                    &mut engine,
+                    &mut main_layer,
                     rng.random_range(x_a..=x_b),
                     rng.random_range(y_a..=y_b),
                     &spec,
@@ -74,13 +77,13 @@ fn main() -> io::Result<()> {
         }
 
         draw_text(
-            &mut engine,
+            &mut text_top_layer,
             26,
             (TERM_ROWS / 2) as i16,
             "Press W to spawn particles!",
         );
 
-        draw_fps_counter(&mut engine, 0, 0);
+        draw_fps_counter(&mut text_top_layer, 0, 0);
 
         end_frame(&mut engine)?;
     }

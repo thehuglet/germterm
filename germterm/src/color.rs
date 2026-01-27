@@ -42,6 +42,8 @@ pub static LERP_LUT_B: [[u8; 256]; 256] = {
 /// # Examples
 ///
 /// ```
+/// use germterm::color::Color;
+///
 /// let color = Color::new(255, 0, 0, 255);
 /// assert_eq!(color, Color::RED);
 /// ```

@@ -1,9 +1,8 @@
 use germterm::{
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{draw_octad, fill_screen},
-    engine::Engine,
-    engine::{end_frame, exit_cleanup, init, start_frame},
+    draw::{Layer, draw_octad, fill_screen},
+    engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
 };
 
@@ -16,6 +15,8 @@ fn main() -> io::Result<()> {
     let mut engine: Engine = Engine::new(TERM_COLS, TERM_ROWS)
         .title("octad-merging")
         .limit_fps(240);
+
+    let mut layer = Layer::new(&mut engine, 0);
 
     init(&mut engine)?;
 
@@ -32,12 +33,12 @@ fn main() -> io::Result<()> {
             }
         }
 
-        fill_screen(&mut engine, Color::BLACK);
+        fill_screen(&mut layer, Color::BLACK);
 
         // Those 3 should all merge into a single braille char in the cell
-        draw_octad(&mut engine, 0.1, 0.0, Color::GREEN);
-        draw_octad(&mut engine, 0.9, 0.0, Color::GREEN);
-        draw_octad(&mut engine, 0.9, 0.25, Color::GREEN);
+        draw_octad(&mut layer, 0.1, 0.0, Color::GREEN);
+        draw_octad(&mut layer, 0.9, 0.0, Color::GREEN);
+        draw_octad(&mut layer, 0.9, 0.25, Color::GREEN);
 
         end_frame(&mut engine)?;
     }
