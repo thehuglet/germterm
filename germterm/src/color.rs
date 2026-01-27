@@ -1,20 +1,5 @@
 use std::sync::Arc;
 
-pub static SOURCE_OVER_BLENDING_LUT: [[u8; 256]; 256] = {
-    let mut lut = [[0u8; 256]; 256];
-    let mut bottom_channel = 0;
-    while bottom_channel < 256 {
-        let mut top_alpha = 0;
-        while top_alpha < 256 {
-            lut[bottom_channel][top_alpha] =
-                ((bottom_channel * (255 - top_alpha) + 127) / 255) as u8;
-            top_alpha += 1;
-        }
-        bottom_channel += 1;
-    }
-    lut
-};
-
 pub static LERP_LUT_A: [[u8; 256]; 256] = {
     let mut lut: [[u8; 256]; 256] = [[0u8; 256]; 256];
     let mut channel_value: usize = 0;
@@ -174,15 +159,19 @@ impl ColorGradient {
 
 #[inline]
 pub fn blend_source_over(bottom: Color, top: Color) -> Color {
-    let (b_r, b_g, b_b, b_a) = bottom.rgba();
-    let (t_r, t_g, t_b, t_a) = top.rgba();
+    let (br, bg, bb, ba) = bottom.rgba_f32();
+    let (tr, tg, tb, ta) = top.rgba_f32();
 
-    let out_r: u8 = t_r.wrapping_add(SOURCE_OVER_BLENDING_LUT[b_r as usize][t_a as usize]);
-    let out_g: u8 = t_g.wrapping_add(SOURCE_OVER_BLENDING_LUT[b_g as usize][t_a as usize]);
-    let out_b: u8 = t_b.wrapping_add(SOURCE_OVER_BLENDING_LUT[b_b as usize][t_a as usize]);
-    let out_a: u8 = t_a.wrapping_add(SOURCE_OVER_BLENDING_LUT[b_a as usize][t_a as usize]);
+    let out_a = ta + ba * (1.0 - ta);
+    if out_a <= 0.0 {
+        return Color::CLEAR;
+    }
 
-    Color::new(out_r, out_g, out_b, out_a)
+    let out_r = (tr * ta + br * ba * (1.0 - ta)) / out_a;
+    let out_g = (tg * ta + bg * ba * (1.0 - ta)) / out_a;
+    let out_b = (tb * ta + bb * ba * (1.0 - ta)) / out_a;
+
+    Color::from_f32(out_r, out_g, out_b, out_a)
 }
 
 pub fn sample_gradient(gradient: &ColorGradient, t: f32) -> Color {
