@@ -21,23 +21,6 @@ impl Layer {
     }
 }
 
-// /// Get mutable reference to the layer in the draw queue, auto-creating layers if needed
-// ///
-// /// # Safety
-// /// The unsafe shenanigans here are a result of wanting a clean, ergonomic API,
-// /// and a direct result of multiple immutable references existing when creating multiple layers.
-// /// We only ever access the `draw_queue` here by pushing to it, this is entirely safe.
-// pub unsafe fn layer_mut(layer: &mut Layer) -> &mut Vec<DrawCall> {
-//     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-//     if engine.frame.draw_queue.len() <= layer.index {
-//         engine
-//             .frame
-//             .draw_queue
-//             .resize_with(layer.index + 1, Vec::new);
-//     }
-//     &mut engine.frame.draw_queue[layer.index]
-// }
-
 pub fn fill_screen(layer: &mut Layer, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
     let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
