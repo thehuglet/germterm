@@ -254,6 +254,15 @@ fn compose_cell(old: Cell, new: Cell) -> Cell {
     let old_octad: bool = old.attributes.contains(Attributes::OCTAD);
     let both_ch_equal: bool = old.ch == new.ch;
 
+    if new.attributes.contains(Attributes::FORCED_OVERRIDE) {
+        return Cell {
+            ch: new.ch,
+            fg: new.fg,
+            bg: new.bg,
+            attributes: new.attributes,
+        };
+    }
+
     match cell_format(new.attributes) {
         CellFormat::Twoxel => {
             let (ch, attributes): (char, Attributes) = if old_twoxel {

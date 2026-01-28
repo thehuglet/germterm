@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
         }
 
         // Draw contents
-        fill_screen(&mut layer, Color::CLEAR);
+        // fill_screen(&mut layer, Color::CLEAR);
         // fill_screen(&mut layer, Color::RED.with_alpha(30));
         draw_text(&mut layer, engine.game_time as i16, 9, "Hello world!");
 

@@ -7,18 +7,18 @@ use crate::color::Color;
 bitflags! {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub struct Attributes: u8 {
-        // Crossterm specific flags
-        const BOLD       = 0b_0000_0001;
-        const ITALIC     = 0b_0000_0010;
-        const UNDERLINED = 0b_0000_0100;
-        const HIDDEN     = 0b_0000_1000;
-        // Renderer specific metadata
-        //
-        // Used internally to help the compositor identify drawing formats
+        // Standard crossterm & terminal flags
+        const BOLD              = 0b_0000_0001;
+        const ITALIC            = 0b_0000_0010;
+        const UNDERLINED        = 0b_0000_0100;
+        const HIDDEN            = 0b_0000_1000;
+        // Special renderer flags
         /// Incompatible with OCTAD
-        const TWOXEL     = 0b_0001_0000;
+        const TWOXEL            = 0b_0001_0000;
         /// Incompatible with TWOXEL
-        const OCTAD      = 0b_0010_0000;
+        const OCTAD             = 0b_0010_0000;
+        /// Forces the compositor to override the contents of a cell
+        const FORCED_OVERRIDE   = 0b_0100_0000;
     }
 }
 
