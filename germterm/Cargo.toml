@@ -12,3 +12,4 @@ authors.workspace = true
 bitflags = "2.10.0"
 crossterm = "0.29.0"
 rand = "0.9.2"
+termbg = "0.6.2"

@@ -1,8 +1,8 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{Layer, draw_text},
-    engine::{Engine, end_frame, exit_cleanup, init, start_frame},
+    draw::{Layer, draw_text, fill_screen},
+    engine::{Engine, end_frame, exit_cleanup, init, override_default_blending_color, start_frame},
     fps_counter::draw_fps_counter,
     input::poll_input,
     particle::{
@@ -19,8 +19,7 @@ pub const TERM_ROWS: u16 = 24;
 fn main() -> io::Result<()> {
     let mut engine: Engine = Engine::new(TERM_COLS, TERM_ROWS)
         .title("octad-particles")
-        .limit_fps(240)
-        .default_blending_color(Color::new(40, 40, 40, 255));
+        .limit_fps(0);
 
     let mut main_layer = Layer::new(&mut engine, 0);
     let mut text_top_layer = Layer::new(&mut engine, 1);
@@ -28,7 +27,6 @@ fn main() -> io::Result<()> {
     init(&mut engine)?;
     'game_loop: loop {
         start_frame(&mut engine);
-        // fill_screen(&mut main_layer, Color::BLACK);
 
         for event in poll_input() {
             if let Event::Key(KeyEvent {
@@ -53,8 +51,8 @@ fn main() -> io::Result<()> {
                     lifetime_sec: 2.0,
                     color: ParticleColor::Gradient(ColorGradient::new(vec![
                         GradientStop::new(0.0, Color::WHITE),
-                        GradientStop::new(0.13, Color(rng.random()).with_alpha(255)),
-                        GradientStop::new(1.0, Color(rng.random()).with_alpha(0)),
+                        GradientStop::new(0.13, random_bright_color(&mut rng).with_alpha(255)),
+                        GradientStop::new(1.0, random_bright_color(&mut rng).with_alpha(0)),
                     ])),
                 };
                 let emitter: ParticleEmitter = ParticleEmitter {
@@ -91,4 +89,14 @@ fn main() -> io::Result<()> {
 
     exit_cleanup(&mut engine)?;
     Ok(())
+}
+
+fn random_bright_color(rng: &mut impl rand::Rng) -> Color {
+    let h = rng.random::<f32>() * std::f32::consts::TAU;
+
+    let r = ((h + 0.0).sin() * 0.5 + 0.5) * 255.0;
+    let g = ((h + 2.094).sin() * 0.5 + 0.5) * 255.0;
+    let b = ((h + 4.188).sin() * 0.5 + 0.5) * 255.0;
+
+    Color::new(r as u8, g as u8, b as u8, 255)
 }

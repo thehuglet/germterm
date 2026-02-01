@@ -23,7 +23,7 @@ impl Layer {
 
 pub fn fill_screen(layer: &mut Layer, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     let cols: i16 = engine.frame.cols as i16;
     let rows: i16 = engine.frame.rows as i16;
     internal::fill_screen(draw_queue, cols, rows, color);
@@ -31,31 +31,31 @@ pub fn fill_screen(layer: &mut Layer, color: Color) {
 
 pub fn draw_text(layer: &mut Layer, x: i16, y: i16, text: impl Into<RichText>) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     internal::draw_text(draw_queue, x, y, text);
 }
 
 pub fn erase_rect(layer: &mut Layer, x: i16, y: i16, width: i16, height: i16) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     internal::erase_rect(draw_queue, x, y, width, height)
 }
 
 pub fn draw_rect(layer: &mut Layer, x: i16, y: i16, width: i16, height: i16, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     internal::draw_rect(draw_queue, x, y, width, height, color);
 }
 
 pub fn draw_octad(layer: &mut Layer, x: f32, y: f32, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     internal::draw_octad(draw_queue, x, y, color);
 }
 
 pub fn draw_twoxel(layer: &mut Layer, x: f32, y: f32, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[layer.index];
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
     internal::draw_twoxel(draw_queue, x, y, color);
 }
 
@@ -97,9 +97,9 @@ pub(crate) mod internal {
         let row_text: String = " ".repeat(width as usize);
         let row_rich_text: RichText = RichText {
             text: Arc::new(row_text),
-            fg: Color::BLACK,
-            bg: Color::BLACK,
-            attributes: Attributes::NO_FG_COLOR & Attributes::NO_BG_COLOR,
+            fg: Color::NO_COLOR,
+            bg: Color::NO_COLOR,
+            attributes: Attributes::empty(),
         };
 
         for row in 0..height {

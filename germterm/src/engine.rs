@@ -1,24 +1,32 @@
 use crate::{
-    color::Color,
-    draw::{Layer, erase_rect},
+    color::{Color, ColorRgb},
+    draw::{Layer, draw_rect, erase_rect, fill_screen},
     fps_counter::{FpsCounter, update_fps_counter},
     fps_limiter::{self, FpsLimiter, wait_for_next_frame},
-    frame::{Frame, compose_frame_buffer, copy_frame_buffer, diff_frame_buffers, draw_to_terminal},
+    frame::{
+        DrawCall, Frame, compose_frame_buffer, copy_frame_buffer, diff_frame_buffers,
+        draw_to_terminal,
+    },
     particle::{ParticleState, update_and_draw_particles},
+    rich_text::RichText,
 };
 use crossterm::{cursor, event, execute, terminal};
-use std::io::{self};
+use std::{
+    io::{self},
+    time::Duration,
+};
 
 pub struct Engine {
     pub delta_time: f32,
     pub game_time: f32,
     pub stdout: io::Stdout,
     pub fps_counter: FpsCounter,
+    pub default_blending_color: Color,
+    pub base_bg_color: Color,
     pub(crate) max_layer_index: usize,
     pub(crate) frame: Frame,
     pub(crate) fps_limiter: FpsLimiter,
     pub(crate) particle_state: Vec<ParticleState>,
-    pub(crate) default_blending_color: Color,
     title: &'static str,
 }
 
@@ -34,7 +42,13 @@ impl Engine {
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
             fps_counter: FpsCounter::new(0.3),
             particle_state: Vec::with_capacity(512),
-            default_blending_color: Color::BLACK,
+            default_blending_color: {
+                match termbg::rgb(Duration::from_millis(100)) {
+                    Ok(rgb) => Color::new(rgb.r as u8, rgb.g as u8, rgb.b as u8, 255),
+                    Err(_) => Color::BLACK,
+                }
+            },
+            base_bg_color: Color::NO_COLOR,
         }
     }
 
@@ -48,23 +62,23 @@ impl Engine {
         fps_limiter::limit_fps(&mut self.fps_limiter, value);
         self
     }
+}
 
-    /// Sets a default blending color to be used in non-opaque
-    /// drawing blending when no color is present underneath.
-    ///
-    /// Only the RGB channels are taken into account, A is overriden with 255.
-    ///
-    /// For the best results, this should match the default color of the terminal background.
-    pub fn default_blending_color(mut self, color: Color) -> Self {
-        self.default_blending_color = color.with_alpha(255);
-        self
-    }
+/// Overrides the default blending color.
+///
+/// Only use this if you need to support terminals where the background color cannot
+/// be reliably auto-detected by `termbg`. Otherwise, it's best to leave this alone.
+pub fn override_default_blending_color(engine: &mut Engine, color: ColorRgb) {
+    engine.default_blending_color = color.into();
 }
 
 pub fn init(engine: &mut Engine) -> io::Result<()> {
     let layer_count = engine.max_layer_index + 1;
-    if engine.frame.draw_queue.len() < layer_count {
-        engine.frame.draw_queue.resize_with(layer_count, Vec::new);
+    if engine.frame.layered_draw_queue.len() < layer_count {
+        engine
+            .frame
+            .layered_draw_queue
+            .resize_with(layer_count, Vec::new);
     }
 
     terminal::enable_raw_mode()?;
@@ -97,19 +111,13 @@ pub fn start_frame(engine: &mut Engine) {
     engine.frame.flat_draw_queue.clear();
 
     let mut lowest_possible_layer = Layer::new(engine, 0);
-    erase_rect(
-        &mut lowest_possible_layer,
-        0,
-        0,
-        engine.frame.cols as i16,
-        engine.frame.rows as i16,
-    );
+    fill_screen(&mut lowest_possible_layer, Color::NO_COLOR);
 }
 
 pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
     update_and_draw_particles(engine);
 
-    for layer in engine.frame.draw_queue.iter_mut() {
+    for layer in engine.frame.layered_draw_queue.iter_mut() {
         engine.frame.flat_draw_queue.append(layer);
     }
 

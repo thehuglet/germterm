@@ -100,7 +100,7 @@ pub(crate) fn update_and_draw_particles(engine: &mut Engine) {
         state.pos.0 += state.velocity.0 * engine.delta_time;
         state.pos.1 += state.velocity.1 * engine.delta_time * aspect_ratio;
 
-        let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.draw_queue[state.layer.index];
+        let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[state.layer.index];
         internal::draw_octad(draw_queue, state.pos.0, state.pos.1, color);
 
         i += 1;

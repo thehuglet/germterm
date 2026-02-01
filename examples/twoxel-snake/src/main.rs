@@ -26,8 +26,7 @@ enum GameState {
 fn main() -> io::Result<()> {
     let mut engine: Engine = Engine::new(TERM_COLS, TERM_ROWS)
         .title("twoxel-snake")
-        .limit_fps(0)
-        .default_blending_color(Color(0x1E_1E_2E_FF));
+        .limit_fps(0);
 
     let mut layer_0 = Layer::new(&mut engine, 0);
     let mut layer_1 = Layer::new(&mut engine, 1);
@@ -221,7 +220,7 @@ fn random_pos() -> (i16, i16) {
     let mut rng: ThreadRng = rand::rng();
     (
         rng.random_range(2..(TERM_COLS - 2) as i16),
-        rng.random_range(2..(TERM_ROWS - 2) as i16),
+        rng.random_range(2..(TERM_ROWS * 2 - 2) as i16),
     )
 }
 

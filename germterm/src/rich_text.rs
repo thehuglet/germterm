@@ -17,10 +17,6 @@ bitflags! {
         const TWOXEL        = 0b_00010000;
         /// Incompatible with TWOXEL
         const OCTAD         = 0b_00100000;
-        /// Takes precedence over the specified fg color
-        const NO_FG_COLOR   = 0b_01000000;
-        /// Takes precedence over the specified bg color
-        const NO_BG_COLOR   = 0b_10000000;
     }
 }
 

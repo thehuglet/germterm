@@ -73,7 +73,3 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 ```
-
-## Dependencies
-
-This project only uses `crossterm`, `bitflags` and `rand` as its dependencies.

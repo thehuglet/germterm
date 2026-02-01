@@ -51,22 +51,22 @@ pub static LERP_LUT_B: [[u8; 256]; 256] = {
 pub struct Color(pub u32);
 
 impl Color {
-    pub const WHITE: Self = Color(0xFF_FF_FF_FF);
-    pub const DARK_GRAY: Self = Color(0xA9_A9_A9_FF);
-    pub const LIGHT_GRAY: Self = Color(0xD3_D3_D3_FF);
-    pub const BLACK: Self = Color(0x00_00_00_FF);
-    pub const RED: Color = Color(0xFF_00_00_FF);
-    pub const GREEN: Color = Color(0x00_FF_00_FF);
-    pub const BLUE: Color = Color(0x00_00_FF_FF);
-    pub const YELLOW: Color = Color(0xFF_FF_00_FF);
-    pub const CYAN: Color = Color(0x00_FF_FF_FF);
-    pub const TEAL: Color = Color(0x00_80_80_FF);
-    pub const LIME: Color = Color(0x00_FF_00_FF);
-    pub const VIOLET: Color = Color(0x7F_00_FF_FF);
-    pub const PINK: Color = Color(0xFF_C0_CB_FF);
-    pub const ORANGE: Color = Color(0xFF_A5_00_FF);
-    pub const DARK_GREEN: Color = Color(0x08_48_08_FF);
-    pub const CLEAR: Color = Color(0x00_00_00_00);
+    pub const NO_COLOR: Self = Self(0xBAD_C0DE);
+    pub const CLEAR: Self = Self(0x00_00_00_00);
+    pub const WHITE: Self = Self(0xFF_FF_FF_FF);
+    pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
+    pub const LIGHT_GRAY: Self = Self(0xD3_D3_D3_FF);
+    pub const BLACK: Self = Self(0x00_00_00_FF);
+    pub const RED: Self = Self(0xFF_00_00_FF);
+    pub const GREEN: Self = Self(0x00_FF_00_FF);
+    pub const BLUE: Self = Self(0x00_00_FF_FF);
+    pub const YELLOW: Self = Self(0xFF_FF_00_FF);
+    pub const CYAN: Self = Self(0x00_FF_FF_FF);
+    pub const TEAL: Self = Self(0x00_80_80_FF);
+    pub const VIOLET: Self = Self(0x7F_00_FF_FF);
+    pub const PINK: Self = Self(0xFF_C0_CB_FF);
+    pub const ORANGE: Self = Self(0xFF_A5_00_FF);
+    pub const DARK_GREEN: Self = Self(0x08_48_08_FF);
 
     #[inline]
     pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
@@ -125,6 +125,51 @@ impl Color {
             (b.clamp(0.0, 1.0) * 255.0) as u8,
             (a.clamp(0.0, 1.0) * 255.0) as u8,
         )
+    }
+}
+
+pub struct ColorRgb(u32);
+
+impl ColorRgb {
+    pub const WHITE: Self = Self(0xFF_FF_FF_FF);
+    pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
+    pub const LIGHT_GRAY: Self = Self(0xD3_D3_D3_FF);
+    pub const BLACK: Self = Self(0x00_00_00_FF);
+    pub const RED: Self = Self(0xFF_00_00_FF);
+    pub const GREEN: Self = Self(0x00_FF_00_FF);
+    pub const BLUE: Self = Self(0x00_00_FF_FF);
+    pub const YELLOW: Self = Self(0xFF_FF_00_FF);
+    pub const CYAN: Self = Self(0x00_FF_FF_FF);
+    pub const TEAL: Self = Self(0x00_80_80_FF);
+    pub const VIOLET: Self = Self(0x7F_00_FF_FF);
+    pub const PINK: Self = Self(0xFF_C0_CB_FF);
+    pub const ORANGE: Self = Self(0xFF_A5_00_FF);
+    pub const DARK_GREEN: Self = Self(0x08_48_08_FF);
+
+    #[inline]
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        ColorRgb(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8))
+    }
+
+    #[inline]
+    pub fn r(&self) -> u8 {
+        ((self.0 >> 24) & 0xFF) as u8
+    }
+
+    #[inline]
+    pub fn g(&self) -> u8 {
+        ((self.0 >> 16) & 0xFF) as u8
+    }
+
+    #[inline]
+    pub fn b(&self) -> u8 {
+        ((self.0 >> 8) & 0xFF) as u8
+    }
+}
+
+impl From<ColorRgb> for Color {
+    fn from(color: ColorRgb) -> Self {
+        Color::new(color.r(), color.g(), color.b(), 255)
     }
 }
 

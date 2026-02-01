@@ -36,8 +36,9 @@ fn main() -> io::Result<()> {
         fill_screen(&mut layer, Color::BLACK);
 
         // Those 3 should all merge into a single braille char in the cell
-        draw_octad(&mut layer, 0.1, 0.0, Color::GREEN);
-        draw_octad(&mut layer, 0.9, 0.0, Color::GREEN);
+        // The color should be GREEN as it's set of the topmost merge's color value
+        draw_octad(&mut layer, 0.1, 0.0, Color::RED);
+        draw_octad(&mut layer, 0.9, 0.0, Color::BLUE);
         draw_octad(&mut layer, 0.9, 0.25, Color::GREEN);
 
         end_frame(&mut engine)?;
