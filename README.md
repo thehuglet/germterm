@@ -6,7 +6,7 @@
 
   <!-- Middle element -->
   <div style="flex: 1.2; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-    <img src="https://github.com/thehuglet/germterm/blob/main/assets/header-banner.png" style="width: 100%; display: block;">
+    <img src="https://github.com/thehuglet/germterm/blob/main/assets/logo-middle.png" style="width: 100%; display: block;">
   </div>
 
   <!-- Right element -->
