@@ -58,7 +58,7 @@ impl RichText {
     /// To customize the style, use the following builder methods:
     /// - [`RichText::fg`]
     /// - [`RichText::bg`]
-    /// - [`RichText::Attributes`]
+    /// - [`RichText::attributes`]
     ///
     /// `&str` and `String` types can be turned `into()`, which are converted into [`RichText`].
     pub fn new(text: impl Into<String>) -> Self {
