@@ -2,6 +2,8 @@
 
 Your quality contributions, however small, are greatly appreciated.
 
+I highly recommend reading the [Rendering Pipeline - Architecture & Design](rendering-pipeline.md) document, as it goes in-depth into the internal workings of the renderer.
+
 Thank you for considering contributing to the project!
 
 ## Brief module overview
