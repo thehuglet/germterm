@@ -1,5 +1,6 @@
 use crate::{
     color::{Color, blend_source_over},
+    draw::BLOCKTAD_CHAR_LUT,
     rich_text::{Attributes, RichText},
 };
 use crossterm::{cursor as ctcursor, queue, style as ctstyle};
@@ -247,8 +248,10 @@ pub(crate) fn copy_frame_buffer(to: &mut FrameBuffer, from: &FrameBuffer) {
 fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
     let new_twoxel: bool = new.attributes.contains(Attributes::TWOXEL);
     let new_octad: bool = new.attributes.contains(Attributes::OCTAD);
+    let new_blocktad: bool = new.attributes.contains(Attributes::BLOCKTAD);
     let old_twoxel: bool = old.attributes.contains(Attributes::TWOXEL);
     let old_octad: bool = old.attributes.contains(Attributes::OCTAD);
+    let old_blocktad: bool = old.attributes.contains(Attributes::BLOCKTAD);
     let both_ch_equal: bool = old.ch == new.ch;
 
     // Foreground related
@@ -317,11 +320,18 @@ fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
             attributes,
         }
     } else {
+        // This branch handles the following drawing formats: [standard, octad, blocktad]
+
         let (ch, attributes) = if new_ch_invisible && !new_bg_opaque && !new_bg_no_color {
             // Covers case:
             // - Fading an invisible character should not replace the one underneath
             //      => Keep the old character
             (old.ch, old.attributes)
+        } else if new_blocktad && old_blocktad {
+            // Covers case:
+            // - Drawing a blocktad on top of another blocktad
+            //      => Merge the blocktad chars
+            (merge_blocktad(old.ch, new.ch), new.attributes)
         } else if new_octad && old_octad {
             // Covers case:
             // - Drawing an octad on top of another octad
@@ -395,7 +405,23 @@ fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
 
 #[inline]
 fn merge_octad(a: char, b: char) -> char {
-    let ma = (a as u32) - 0x2800;
-    let mb = (b as u32) - 0x2800;
-    std::char::from_u32(0x2800 + (ma | mb)).unwrap()
+    let mask_a = (a as u32) - 0x2800;
+    let mask_b = (b as u32) - 0x2800;
+    std::char::from_u32(0x2800 + (mask_a | mask_b)).unwrap()
+}
+
+#[inline]
+fn merge_blocktad(a: char, b: char) -> char {
+    let mask_a = BLOCKTAD_CHAR_LUT
+        .iter()
+        .position(|&c| c == a)
+        .expect("char not in BLOCKTAD LUT") as u8;
+    let mask_b = BLOCKTAD_CHAR_LUT
+        .iter()
+        .position(|&c| c == b)
+        .expect("char not in BLOCKTAD LUT") as u8;
+
+    let merged_mask = mask_a | mask_b;
+
+    BLOCKTAD_CHAR_LUT[merged_mask as usize]
 }

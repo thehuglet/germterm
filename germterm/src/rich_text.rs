@@ -25,14 +25,28 @@ bitflags! {
         /// This flag is **not part of the public API**.
         /// Using it may cause rendering glitches.
         ///
-        /// Incompatible with [`Attributes::OCTAD`]
+        /// Incompatible with:
+        /// - [`Attributes::OCTAD`]
+        /// - [`Attributes::BLOCKTAD`]
         const TWOXEL        = 0b_00010000;
         /// # WARNING
         /// This flag is **not part of the public API**.
         /// Using it may cause rendering glitches.
         ///
-        /// Incompatible with [`Attributes::TWOXEL`]
+        /// Incompatible with:
+        /// - [`Attributes::TWOXEL`]
+        /// - [`Attributes::BLOCKTAD`]
         const OCTAD         = 0b_00100000;
+        /// # WARNING
+        /// This flag is **not part of the public API**.
+        /// Using it may cause rendering glitches.
+        ///
+        /// Incompatible with:
+        /// - [`Attributes::TWOXEL`]
+        /// - [`Attributes::OCTAD`]
+        const BLOCKTAD      = 0b_01000000;
+
+
     }
 }
 

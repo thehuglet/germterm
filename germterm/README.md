@@ -31,7 +31,7 @@ It renders in real time, adds support for the alpha channel, adds multiple drawi
 ## Getting started
 
 Add `germterm` as a dependency:
-```
+```plain_text,no_run
 cargo add germterm
 ```
 

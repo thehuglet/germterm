@@ -5,6 +5,7 @@ members = [
     "examples/hello-world",
     "examples/standard-blending",
     "examples/octad-merging",
+    "examples/blocktad-merging",
     "examples/octad-particles",
     "examples/twoxel-tester",
     "examples/twoxel-snake",

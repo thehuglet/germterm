@@ -40,6 +40,26 @@ use crate::{
     color::Color, engine::Engine, fps_counter::get_fps, frame::DrawCall, rich_text::RichText,
 };
 
+#[rustfmt::skip]
+pub(crate) static BLOCKTAD_CHAR_LUT: [char; 256] = [
+    ' ', '𜺨', '𜺫', '🮂', '𜴀', '▘', '𜴁', '𜴂', '𜴃', '𜴄', '▝', '𜴅', '𜴆', '𜴇', '𜴈', '▀',
+    '𜴉', '𜴊', '𜴋', '𜴌', '🯦', '𜴍', '𜴎', '𜴏', '𜴐', '𜴑', '𜴒', '𜴓', '𜴔', '𜴕', '𜴖', '𜴗',
+    '𜴘', '𜴙', '𜴚', '𜴛', '𜴜', '𜴝', '𜴞', '𜴟', '🯧', '𜴠', '𜴡', '𜴢', '𜴣', '𜴤', '𜴥', '𜴦',
+    '𜴧', '𜴨', '𜴩', '𜴪', '𜴫', '𜴬', '𜴭', '𜴮', '𜴯', '𜴰', '𜴱', '𜴲', '𜴳', '𜴴', '𜴵', '🮅',
+    '𜺣', '𜴶', '𜴷', '𜴸', '𜴹', '𜴺', '𜴻', '𜴼', '𜴽', '𜴾', '𜴿', '𜵀', '𜵁', '𜵂', '𜵃', '𜵄',
+    '▖', '𜵅', '𜵆', '𜵇', '𜵈', '▌', '𜵉', '𜵊', '𜵋', '𜵌', '▞', '𜵍', '𜵎', '𜵏', '𜵐', '▛',
+    '𜵑', '𜵒', '𜵓', '𜵔', '𜵕', '𜵖', '𜵗', '𜵘', '𜵙', '𜵚', '𜵛', '𜵜', '𜵝', '𜵞', '𜵟', '𜵠',
+    '𜵡', '𜵢', '𜵣', '𜵤', '𜵥', '𜵦', '𜵧', '𜵨', '𜵩', '𜵪', '𜵫', '𜵬', '𜵭', '𜵮', '𜵯', '𜵰',
+    '𜺠', '𜵱', '𜵲', '𜵳', '𜵴', '𜵵', '𜵶', '𜵷', '𜵸', '𜵹', '𜵺', '𜵻', '𜵼', '𜵽', '𜵾', '𜵿',
+    '𜶀', '𜶁', '𜶂', '𜶃', '𜶄', '𜶅', '𜶆', '𜶇', '𜶈', '𜶉', '𜶊', '𜶋', '𜶌', '𜶍', '𜶎', '𜶏',
+    '▗', '𜶐', '𜶑', '𜶒', '𜶓', '▚', '𜶔', '𜶕', '𜶖', '𜶗', '▐', '𜶘', '𜶙', '𜶚', '𜶛', '▜',
+    '𜶜', '𜶝', '𜶞', '𜶟', '𜶠', '𜶡', '𜶢', '𜶣', '𜶤', '𜶥', '𜶦', '𜶧', '𜶨', '𜶩', '𜶪', '𜶫',
+    '▂', '𜶬', '𜶭', '𜶮', '𜶯', '𜶰', '𜶱', '𜶲', '𜶳', '𜶴', '𜶵', '𜶶', '𜶷', '𜶸', '𜶹', '𜶺',
+    '𜶻', '𜶼', '𜶽', '𜶾', '𜶿', '𜷀', '𜷁', '𜷂', '𜷃', '𜷄', '𜷅', '𜷆', '𜷇', '𜷈', '𜷉', '𜷊',
+    '𜷋', '𜷌', '𜷍', '𜷎', '𜷏', '𜷐', '𜷑', '𜷒', '𜷓', '𜷔', '𜷕', '𜷖', '𜷗', '𜷘', '𜷙', '𜷚',
+    '▄', '𜷛', '𜷜', '𜷝', '𜷞', '▙', '𜷟', '𜷠', '𜷡', '𜷢', '▟', '𜷣', '▆', '𜷤', '𜷥', '█',
+];
+
 /// A handle to a drawing layer.
 ///
 /// Passed into drawing functions, specifies to which layer the contents will be drawn.
@@ -172,6 +192,40 @@ pub fn draw_octad(layer: &mut Layer, x: f32, y: f32, color: Color) {
     internal::draw_octad(draw_queue, x, y, color);
 }
 
+/// Draws a single blocktad at the specified sub-cell position.
+///
+/// Blocktads are represented by the 2x4 square blocky characters from the
+/// [Symbols for Legacy Computing Supplement](https://en.wikipedia.org/wiki/Symbols_for_Legacy_Computing_Supplement) Unicode block.
+/// The character will be drawn in one of the 8 possible sub-positions of a cell,
+/// based on the passed floating point coordinates.
+///
+/// The coordinate space is based on cols and rows (`x` and `y`), just like the rest of the drawing API.
+///
+/// When drawing multiple blocktads to the same cell, at differing sub-positions, the blocktads will merge into a single character representing both.
+/// Merged blocktads possess a technical limitation of having to share the same `fg` color.
+/// Because of this, the entire merged blocktad cluster inherits the `fg` color of the last drawn blocktad in the cell.
+///
+/// # Example
+/// ```rust,no_run
+/// # use germterm::{draw::{Layer, draw_blocktad}, engine::Engine, color::Color};
+/// let mut engine = Engine::new(40, 20);
+/// let mut layer = Layer::new(&mut engine, 0);
+///
+/// // The following blocktads would occupy the same cell,
+/// // resulting in a merged blocktad cluster being drawn
+/// draw_blocktad(&mut layer, 3.0, 4.0, Color::GREEN);
+/// draw_blocktad(&mut layer, 3.0, 4.5, Color::GREEN);
+/// ```
+///
+/// /// # Notes
+/// The characters may not show up on all fonts, as the [Symbols for Legacy Computing Supplement](https://en.wikipedia.org/wiki/Symbols_for_Legacy_Computing_Supplement)
+/// Unicode block is a relatively recent addition. Use with caution.
+pub fn draw_blocktad(layer: &mut Layer, x: f32, y: f32, color: Color) {
+    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
+    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
+    internal::draw_blocktad(draw_queue, x, y, color);
+}
+
 /// Draws a single twoxel at the specified sub-cell position.
 ///
 /// A single twoxel is represented by one of the half block characters (`▀` or `▄`) from the [Block Elements unicode block](https://en.wikipedia.org/wiki/Block_Elements).
@@ -226,6 +280,7 @@ pub(crate) mod internal {
 
     use crate::{
         color::Color,
+        draw::BLOCKTAD_CHAR_LUT,
         frame::DrawCall,
         rich_text::{Attributes, RichText},
     };
@@ -267,6 +322,25 @@ pub(crate) mod internal {
         for row in 0..height {
             draw_text(draw_queue, x, y + row, row_rich_text.clone())
         }
+    }
+
+    pub fn draw_blocktad(draw_queue: &mut Vec<DrawCall>, x: f32, y: f32, color: Color) {
+        let cell_x: i16 = x.floor() as i16;
+        let cell_y: i16 = y.floor() as i16;
+
+        let sub_x: usize = (((x - cell_x as f32) * 2.0).floor().clamp(0.0, 1.0)) as usize;
+        let sub_y: usize = (((y - cell_y as f32) * 4.0).floor().clamp(0.0, 3.0)) as usize;
+
+        let offset: usize = sub_y * 2 + sub_x;
+        let mask: usize = 1 << offset;
+
+        let blocktad_char: char = BLOCKTAD_CHAR_LUT[mask];
+
+        let rich_text: RichText = RichText::new(blocktad_char.to_string())
+            .fg(color)
+            .attributes(Attributes::BLOCKTAD);
+
+        draw_text(draw_queue, cell_x, cell_y, rich_text);
     }
 
     pub fn draw_octad(draw_queue: &mut Vec<DrawCall>, x: f32, y: f32, color: Color) {
