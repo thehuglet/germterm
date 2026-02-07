@@ -131,8 +131,6 @@ pub fn start_frame(engine: &mut Engine) {
     engine.delta_time = wait_for_next_frame(&mut engine.fps_limiter);
     update_fps_counter(&mut engine.fps_counter, engine.delta_time);
 
-    engine.frame.flat_draw_queue.clear();
-
     let mut lowest_possible_layer = Layer::new(engine, 0);
     fill_screen(&mut lowest_possible_layer, Color::NO_COLOR);
 }
@@ -145,24 +143,19 @@ pub fn start_frame(engine: &mut Engine) {
 pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
     update_and_draw_particles(engine);
 
-    for layer in engine.frame.layered_draw_queue.iter_mut() {
-        engine.frame.flat_draw_queue.append(layer);
-    }
-
     compose_frame_buffer(
         &mut engine.frame.current_frame_buffer,
-        &engine.frame.flat_draw_queue,
+        engine.frame.layered_draw_queue.iter_mut().flat_map(|v| v.drain(..)),
         engine.frame.cols,
         engine.frame.rows,
         engine.default_blending_color,
     );
-    diff_frame_buffers(
-        &mut engine.frame.diff_products,
+    let diff_products = diff_frame_buffers(
         &engine.frame.current_frame_buffer,
         &engine.frame.old_frame_buffer,
         engine.frame.cols,
     );
-    draw_to_terminal(&mut engine.stdout, &engine.frame.diff_products)?;
+    draw_to_terminal(&mut engine.stdout, diff_products)?;
     copy_frame_buffer(
         &mut engine.frame.old_frame_buffer,
         &engine.frame.current_frame_buffer,

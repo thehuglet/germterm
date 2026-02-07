@@ -52,10 +52,8 @@ pub struct Frame {
     pub rows: u16,
     /// Inner `Vec`s represent layers
     pub(crate) layered_draw_queue: Vec<Vec<DrawCall>>,
-    pub(crate) flat_draw_queue: Vec<DrawCall>,
     pub(crate) current_frame_buffer: FrameBuffer,
     pub(crate) old_frame_buffer: FrameBuffer,
-    pub(crate) diff_products: Vec<DiffProduct>,
 }
 
 impl Frame {
@@ -77,16 +75,14 @@ impl Frame {
             rows,
             current_frame_buffer: empty_frame_buffer(),
             old_frame_buffer: empty_frame_buffer(),
-            diff_products: vec![],
             layered_draw_queue: vec![],
-            flat_draw_queue: vec![],
         }
     }
 }
 
 pub(crate) fn compose_frame_buffer(
     buffer: &mut FrameBuffer,
-    draw_queue: &[DrawCall],
+    draw_queue: impl Iterator<Item = DrawCall>,
     cols: u16,
     rows: u16,
     default_blending_color: Color,
@@ -136,35 +132,33 @@ pub(crate) fn compose_frame_buffer(
 }
 
 pub(crate) fn diff_frame_buffers(
-    diff_products: &mut Vec<DiffProduct>,
     current_frame_buffer: &FrameBuffer,
     old_frame_buffer: &FrameBuffer,
     cols: u16,
-) {
+) -> impl Iterator<Item = DiffProduct> {
     let cols: usize = cols as usize;
 
-    diff_products.clear();
-
-    let row_pairs = old_frame_buffer
+    old_frame_buffer
         .chunks(cols)
-        .zip(current_frame_buffer.chunks(cols));
-
-    for (y, (old_row, new_row)) in row_pairs.enumerate() {
-        let y: u16 = y as u16;
-        let cell_pairs = old_row.iter().zip(new_row.iter());
-
-        for (x, (old_cell, new_cell)) in cell_pairs.enumerate() {
-            let x: u16 = x as u16;
-
-            if old_cell != new_cell {
-                diff_products.push(DiffProduct {
-                    x,
-                    y,
-                    cell: *new_cell,
-                });
-            }
-        }
-    }
+        .zip(current_frame_buffer.chunks(cols))
+        .enumerate()
+        .flat_map(|(y, (old_row, new_row))| {
+            let y = y as u16;
+            old_row.iter().zip(new_row.iter()).enumerate().filter_map(
+                move |(x, (old_cell, new_cell))| {
+                    let x = x as u16;
+                    if old_cell != new_cell {
+                        Some(DiffProduct {
+                            x,
+                            y,
+                            cell: *new_cell,
+                        })
+                    } else {
+                        None
+                    }
+                },
+            )
+        })
 }
 
 pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::ContentStyle {
@@ -218,9 +212,9 @@ pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::Co
 
 pub(crate) fn draw_to_terminal(
     stdout: &mut Stdout,
-    diff_products: &[DiffProduct],
+    diff_products: impl Iterator<Item = DiffProduct>,
 ) -> io::Result<()> {
-    for diff_product in diff_products.iter() {
+    for diff_product in diff_products {
         let x: u16 = diff_product.x;
         let y: u16 = diff_product.y;
         let cell: &Cell = &diff_product.cell;
