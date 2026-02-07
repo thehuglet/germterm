@@ -127,9 +127,9 @@ pub fn draw_text(layer: &mut Layer, x: i16, y: i16, text: impl Into<RichText>) {
 pub fn fill_screen(layer: &mut Layer, color: Color) {
     let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
     let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    let cols: i16 = engine.frame.cols as i16;
-    let rows: i16 = engine.frame.rows as i16;
-    internal::fill_screen(draw_queue, cols, rows, color);
+    let width: i16 = engine.frame.width as i16;
+    let height: i16 = engine.frame.height as i16;
+    internal::fill_screen(draw_queue, width, height, color);
 }
 
 /// Erases a rect area, restoring the default bg color and deleting the characters.

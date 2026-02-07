@@ -1,4 +1,5 @@
 use crate::{
+    cell::Cell,
     color::{Color, blend_source_over},
     draw::BLOCKTAD_CHAR_LUT,
     rich_text::{Attributes, RichText},
@@ -6,82 +7,123 @@ use crate::{
 use crossterm::{cursor as ctcursor, queue, style as ctstyle};
 use std::{
     io::{self, Stdout, Write},
-    ops::{Deref, DerefMut},
+    ops::{Index, IndexMut},
     str::Chars,
 };
 
 #[derive(Clone)]
-pub(crate) struct DrawCall {
+pub struct DrawCall {
     pub rich_text: RichText,
     pub x: i16,
     pub y: i16,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub(crate) struct Cell {
-    pub ch: char,
-    pub fg: Color,
-    pub bg: Color,
-    pub attributes: Attributes,
-}
-
-pub(crate) struct DiffProduct {
-    pub cell: Cell,
+pub struct DiffProduct<'a> {
+    pub cell: &'a Cell,
     pub x: u16,
     pub y: u16,
 }
 
-pub(crate) struct FrameBuffer(pub Vec<Cell>);
+pub struct Frame<'a>(&'a [Cell], usize);
+pub struct FrameMut<'a>(&'a mut [Cell], usize);
+impl<'a> Index<usize> for Frame<'a> {
+    type Output = Cell;
 
-impl Deref for FrameBuffer {
-    type Target = [Cell];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index * 2 + self.1]
     }
 }
 
-impl DerefMut for FrameBuffer {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+impl<'a> Index<usize> for FrameMut<'a> {
+    type Output = Cell;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index * 2 + self.1]
     }
 }
 
-pub struct Frame {
-    pub cols: u16,
-    pub rows: u16,
-    /// Inner `Vec`s represent layers
+impl<'a> IndexMut<usize> for FrameMut<'a> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index * 2 + self.1]
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum FrameOrder {
+    CurrentOld = 0,
+    OldCurrent = 1,
+}
+
+pub struct FramePair {
+    /// This stores double of the cell count.
+    ///
+    /// Each cell is followed by its new or old version depending on the value of [`FrameOrder`]
+    pub(crate) frames: Vec<Cell>,
+    order: FrameOrder,
+    pub(crate) width: u16,
+    pub(crate) height: u16,
     pub(crate) layered_draw_queue: Vec<Vec<DrawCall>>,
-    pub(crate) current_frame_buffer: FrameBuffer,
-    pub(crate) old_frame_buffer: FrameBuffer,
 }
 
-impl Frame {
-    pub fn new(cols: u16, rows: u16) -> Self {
-        let empty_frame_buffer = || {
-            FrameBuffer(vec![
-                Cell {
-                    ch: ' ',
-                    fg: Color::NO_COLOR,
-                    bg: Color::NO_COLOR,
-                    attributes: Attributes::empty(),
-                };
-                (cols * rows) as usize
-            ])
-        };
-
-        Frame {
-            cols,
-            rows,
-            current_frame_buffer: empty_frame_buffer(),
-            old_frame_buffer: empty_frame_buffer(),
+impl FramePair {
+    pub fn new(width: u16, height: u16) -> Self {
+        Self {
+            order: FrameOrder::OldCurrent,
+            frames: vec![Cell::EMPTY; (width as usize * height as usize) * 2],
+            width,
+            height,
             layered_draw_queue: vec![],
         }
+    }
+
+    pub fn diff(&self) -> impl Iterator<Item = DiffProduct<'_>> {
+        debug_assert!(self.frames.len().is_multiple_of(2));
+        let width = self.width;
+        let order = self.order as usize;
+
+        let mut iter = unsafe { self.frames.as_chunks_unchecked::<2>() }
+            .iter()
+            .enumerate();
+
+        std::iter::from_fn(move || {
+            let (i, cells) = iter.find(|(_, [left, right])| left != right)?;
+
+            let x = (i % width as usize) as u16;
+            let y = (i / width as usize) as u16;
+
+            Some(DiffProduct {
+                cell: unsafe { cells.get_unchecked(order) },
+                x,
+                y,
+            })
+        })
+    }
+
+    pub fn current(&self) -> Frame<'_> {
+        Frame(self.frames.as_slice(), self.order as usize)
+    }
+
+    pub fn current_mut(&mut self) -> FrameMut<'_> {
+        FrameMut(self.frames.as_mut_slice(), self.order as usize)
+    }
+
+    /// Swap the current and old frames
+    pub fn swap_frames(&mut self) {
+        self.order = match self.order {
+            FrameOrder::CurrentOld => FrameOrder::OldCurrent,
+            FrameOrder::OldCurrent => FrameOrder::CurrentOld,
+        };
+    }
+
+    pub fn current_mut_and_layered_mut(&mut self) -> (FrameMut<'_>, &mut Vec<Vec<DrawCall>>) {
+        let frame = FrameMut(&mut self.frames, self.order as usize);
+        let layers = &mut self.layered_draw_queue;
+        (frame, layers)
     }
 }
 
 pub(crate) fn compose_frame_buffer(
-    buffer: &mut FrameBuffer,
+    mut buffer: FrameMut<'_>,
     draw_queue: impl Iterator<Item = DrawCall>,
     cols: u16,
     rows: u16,
@@ -118,7 +160,7 @@ pub(crate) fn compose_frame_buffer(
 
         for (x_offset, ch) in chars.take(remaining_cols).enumerate() {
             let cell_index: usize = row_start_index + x as usize + x_offset;
-            let old_cell: Cell = buffer.0[cell_index];
+            let old_cell: Cell = buffer[cell_index];
             let new_cell: Cell = Cell {
                 ch,
                 fg: draw_call.rich_text.fg,
@@ -126,39 +168,9 @@ pub(crate) fn compose_frame_buffer(
                 attributes: draw_call.rich_text.attributes,
             };
 
-            buffer.0[cell_index] = compose_cell(old_cell, new_cell, default_blending_color);
+            buffer[cell_index] = compose_cell(old_cell, new_cell, default_blending_color);
         }
     }
-}
-
-pub(crate) fn diff_frame_buffers(
-    current_frame_buffer: &FrameBuffer,
-    old_frame_buffer: &FrameBuffer,
-    cols: u16,
-) -> impl Iterator<Item = DiffProduct> {
-    let cols: usize = cols as usize;
-
-    old_frame_buffer
-        .chunks(cols)
-        .zip(current_frame_buffer.chunks(cols))
-        .enumerate()
-        .flat_map(|(y, (old_row, new_row))| {
-            let y = y as u16;
-            old_row.iter().zip(new_row.iter()).enumerate().filter_map(
-                move |(x, (old_cell, new_cell))| {
-                    let x = x as u16;
-                    if old_cell != new_cell {
-                        Some(DiffProduct {
-                            x,
-                            y,
-                            cell: *new_cell,
-                        })
-                    } else {
-                        None
-                    }
-                },
-            )
-        })
 }
 
 pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::ContentStyle {
@@ -210,14 +222,14 @@ pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::Co
     }
 }
 
-pub(crate) fn draw_to_terminal(
+pub(crate) fn draw_to_terminal<'a>(
     stdout: &mut Stdout,
-    diff_products: impl Iterator<Item = DiffProduct>,
+    diff_products: impl Iterator<Item = DiffProduct<'a>>,
 ) -> io::Result<()> {
     for diff_product in diff_products {
         let x: u16 = diff_product.x;
         let y: u16 = diff_product.y;
-        let cell: &Cell = &diff_product.cell;
+        let cell: &Cell = diff_product.cell;
 
         let style: ctstyle::ContentStyle = build_crossterm_content_style(cell);
         queue!(
@@ -231,11 +243,6 @@ pub(crate) fn draw_to_terminal(
 
     stdout.flush()?;
     Ok(())
-}
-
-#[inline]
-pub(crate) fn copy_frame_buffer(to: &mut FrameBuffer, from: &FrameBuffer) {
-    to.copy_from_slice(from);
 }
 
 #[inline]

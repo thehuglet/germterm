@@ -9,7 +9,8 @@ use crate::{
     draw::{Layer, fill_screen},
     fps_counter::{FpsCounter, update_fps_counter},
     fps_limiter::{self, FpsLimiter, wait_for_next_frame},
-    frame::{Frame, compose_frame_buffer, copy_frame_buffer, diff_frame_buffers, draw_to_terminal},
+    frame::FramePair,
+    frame::{compose_frame_buffer, draw_to_terminal},
     particle::{ParticleState, update_and_draw_particles},
 };
 use crossterm::{cursor, event, execute, terminal};
@@ -25,7 +26,7 @@ pub struct Engine {
     pub(crate) default_blending_color: Color,
     pub(crate) fps_counter: FpsCounter,
     pub(crate) max_layer_index: usize,
-    pub(crate) frame: Frame,
+    pub(crate) frame: FramePair,
     pub(crate) fps_limiter: FpsLimiter,
     pub(crate) particle_state: Vec<ParticleState>,
     title: &'static str,
@@ -39,7 +40,7 @@ impl Engine {
             title: "my-awesome-terminal",
             stdout: io::stdout(),
             max_layer_index: 0,
-            frame: Frame::new(cols, rows),
+            frame: FramePair::new(cols, rows),
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
             fps_counter: FpsCounter::new(0.3),
             particle_state: Vec::with_capacity(512),
@@ -143,27 +144,19 @@ pub fn start_frame(engine: &mut Engine) {
 pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
     update_and_draw_particles(engine);
 
+    let height = engine.frame.height;
+    let width = engine.frame.width;
+    let (current, layered) = engine.frame.current_mut_and_layered_mut();
     compose_frame_buffer(
-        &mut engine.frame.current_frame_buffer,
-        engine
-            .frame
-            .layered_draw_queue
-            .iter_mut()
-            .flat_map(|v| v.drain(..)),
-        engine.frame.cols,
-        engine.frame.rows,
+        current,
+        layered.iter_mut().flat_map(|v| v.drain(..)),
+        width,
+        height,
         engine.default_blending_color,
     );
-    let diff_products = diff_frame_buffers(
-        &engine.frame.current_frame_buffer,
-        &engine.frame.old_frame_buffer,
-        engine.frame.cols,
-    );
+    let diff_products = engine.frame.diff();
     draw_to_terminal(&mut engine.stdout, diff_products)?;
-    copy_frame_buffer(
-        &mut engine.frame.old_frame_buffer,
-        &engine.frame.current_frame_buffer,
-    );
+    engine.frame.swap_frames();
 
     engine.game_time += engine.delta_time;
     Ok(())
