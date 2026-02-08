@@ -81,22 +81,22 @@ impl FramePair {
         let width = self.width;
         let order = self.order as usize;
 
-        let mut iter = unsafe { self.frames.as_chunks_unchecked::<2>() }
+        unsafe { self.frames.as_chunks_unchecked::<2>() }
             .iter()
-            .enumerate();
-
-        std::iter::from_fn(move || {
-            let (i, cells) = iter.find(|(_, [left, right])| left != right)?;
-
-            let x = (i % width as usize) as u16;
-            let y = (i / width as usize) as u16;
-
-            Some(DiffProduct {
-                cell: unsafe { cells.get_unchecked(order) },
-                x,
-                y,
+            .enumerate()
+            .filter_map(move |(i, cells @ [left, right])| {
+                if left != right {
+                    let x = (i % width as usize) as u16;
+                    let y = (i / width as usize) as u16;
+                    Some(DiffProduct {
+                        cell: unsafe { cells.get_unchecked(order) },
+                        x,
+                        y,
+                    })
+                } else {
+                    None
+                }
             })
-        })
     }
 
     pub fn current(&self) -> Frame<'_> {
