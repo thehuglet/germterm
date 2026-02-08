@@ -22,7 +22,9 @@ impl Cell {
         ch: ' ',
         fg: Color::BLACK,
         bg: Color::BLACK,
-        attributes: Attributes::empty(),
+        attributes: Attributes::from_bits_truncate(
+            Attributes::NO_FG_COLOR.bits() | Attributes::NO_BG_COLOR.bits(),
+        ),
         format: CellFormat::Standard,
     };
 }

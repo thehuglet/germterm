@@ -1,8 +1,8 @@
 use germterm::{
-    color::Color,
+    color::{Color, ColorRgb},
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{Layer, draw_fps_counter, draw_rect, draw_text},
-    engine::{Engine, end_frame, exit_cleanup, init, start_frame},
+    draw::{Layer, draw_fps_counter, draw_rect, draw_text, erase_rect},
+    engine::{Engine, end_frame, exit_cleanup, init, override_default_blending_color, start_frame},
     input::poll_input,
     rich_text::{Attributes, RichText},
 };
@@ -15,6 +15,8 @@ fn main() -> io::Result<()> {
     let mut engine: Engine = Engine::new(TERM_COLS, TERM_ROWS)
         .title("standard-blending")
         .limit_fps(0);
+
+    override_default_blending_color(&mut engine, ColorRgb::RED);
 
     let mut layer = Layer::new(&mut engine, 0);
 
