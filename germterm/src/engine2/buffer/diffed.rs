@@ -8,14 +8,14 @@ enum FrameOrder {
     OldCurrent = 1,
 }
 
-pub struct DiffedBufferPair<Buf: Buffer> {
+pub struct DiffedBuffers<Buf: Buffer> {
     width: u16,
     height: u16,
     cells: [Buf; 2],
     frame_order: FrameOrder,
 }
 
-impl<Buf: Buffer> DiffedBufferPair<Buf> {
+impl<Buf: Buffer> DiffedBuffers<Buf> {
     pub fn new(width: u16, height: u16, buf1: Buf, buf2: Buf) -> Self {
         Self {
             width,
@@ -33,7 +33,7 @@ impl<Buf: Buffer> DiffedBufferPair<Buf> {
     }
 }
 
-impl<Buf: Buffer> Buffer for DiffedBufferPair<Buf> {
+impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
     fn set_cell(&mut self, x: u16, y: u16, cell: Cell) {
         let idx = 1 - self.frame_order as usize;
         self.cells[idx].set_cell(x, y, cell);
@@ -84,7 +84,7 @@ impl<Buf: Buffer> Buffer for DiffedBufferPair<Buf> {
     }
 }
 
-impl<Buf: Buffer> Drawer for DiffedBufferPair<Buf> {
+impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
         let width = self.width;
         let height = self.height;
