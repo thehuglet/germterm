@@ -1,9 +1,10 @@
 use germterm::{
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{Layer, draw_blocktad, fill_screen},
+    draw::{draw_blocktad, fill_screen},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
+    layer::create_layer,
 };
 
 use std::io;
@@ -16,7 +17,7 @@ fn main() -> io::Result<()> {
         .title("blocktad-merging")
         .limit_fps(240);
 
-    let mut layer = Layer::new(&mut engine, 0);
+    let layer = create_layer(&mut engine, 0);
 
     init(&mut engine)?;
 
@@ -33,15 +34,15 @@ fn main() -> io::Result<()> {
             }
         }
 
-        fill_screen(&mut layer, Color::BLACK);
+        fill_screen(&mut engine, layer, Color::BLACK);
 
-        draw_blocktad(&mut layer, 0.0, 0.0, Color::RED);
-        draw_blocktad(&mut layer, 0.5, 0.25, Color::RED);
-        draw_blocktad(&mut layer, 0.5, 0.75, Color::RED);
+        draw_blocktad(&mut engine, layer, 0.0, 0.0, Color::RED);
+        draw_blocktad(&mut engine, layer, 0.5, 0.25, Color::RED);
+        draw_blocktad(&mut engine, layer, 0.5, 0.75, Color::RED);
 
-        draw_blocktad(&mut layer, 1.0, 0.5, Color::CYAN);
+        draw_blocktad(&mut engine, layer, 1.0, 0.5, Color::CYAN);
 
-        draw_blocktad(&mut layer, 2.5, 0.25, Color::GREEN);
+        draw_blocktad(&mut engine, layer, 2.5, 0.25, Color::GREEN);
 
         end_frame(&mut engine)?;
     }
