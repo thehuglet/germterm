@@ -1,5 +1,8 @@
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises};
-use crate::cell::Cell;
+use crate::{
+    cell::Cell,
+    engine2::{Position, Size},
+};
 
 #[derive(Clone, Copy, Debug)]
 enum FrameOrder {
@@ -24,8 +27,17 @@ impl PairedBuffer {
         }
     }
 
-    fn index(&self, x: u16, y: u16, order: FrameOrder) -> usize {
-        let base = (y as usize * self.width as usize + x as usize) * 2;
+    fn index_current(&self, pos: Position) -> usize {
+        self.index(pos, FrameOrder::CurrentOld)
+    }
+
+    fn index_old(&self, pos: Position) -> usize {
+        self.index(pos, FrameOrder::OldCurrent)
+    }
+
+    #[inline]
+    fn index(&self, pos: Position, order: FrameOrder) -> usize {
+        let base = (pos.y as usize * self.width as usize + pos.x as usize) * 2;
         base + (order as usize)
     }
 
@@ -38,68 +50,28 @@ impl PairedBuffer {
 }
 
 impl Buffer for PairedBuffer {
-    fn set_cell_checked(
-        &mut self,
-        x: u16,
-        y: u16,
-        cell: Cell,
-    ) -> Result<(), ErrorOutOfBoundsAxises> {
-        if x >= self.width && y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::XY);
-        } else if x >= self.width {
-            return Err(ErrorOutOfBoundsAxises::X);
-        } else if y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::Y);
-        }
-
-        let idx = self.index(x, y, self.order);
-        self.frames[idx] = cell;
-        Ok(())
-    }
-
-    fn get_cell_checked(&self, x: u16, y: u16) -> Result<&Cell, ErrorOutOfBoundsAxises> {
-        if x >= self.width && y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::XY);
-        } else if x >= self.width {
-            return Err(ErrorOutOfBoundsAxises::X);
-        } else if y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::Y);
-        }
-
-        let idx = self.index(x, y, self.order);
-        Ok(&self.frames[idx])
-    }
-
-    fn get_cell_mut_checked(
-        &mut self,
-        x: u16,
-        y: u16,
-    ) -> Result<&mut Cell, ErrorOutOfBoundsAxises> {
-        if x >= self.width && y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::XY);
-        } else if x >= self.width {
-            return Err(ErrorOutOfBoundsAxises::X);
-        } else if y >= self.height {
-            return Err(ErrorOutOfBoundsAxises::Y);
-        }
-
-        let idx = self.index(x, y, self.order);
-        Ok(&mut self.frames[idx])
-    }
-
-    fn set_cell(&mut self, x: u16, y: u16, cell: Cell) {
-        let idx = self.index(x, y, self.order);
+    fn set_cell(&mut self, pos: Position, cell: Cell) {
+        let idx = self.index(pos, self.order);
         self.frames[idx] = cell;
     }
 
-    fn get_cell_mut(&mut self, x: u16, y: u16) -> &mut Cell {
-        let idx = self.index(x, y, self.order);
+    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
+        let idx = self.index(pos, self.order);
         &mut self.frames[idx]
     }
 
-    fn get_cell(&self, x: u16, y: u16) -> &Cell {
-        let idx = self.index(x, y, self.order);
+    fn get_cell(&self, pos: Position) -> &Cell {
+        let idx = self.index(pos, self.order);
         &self.frames[idx]
+    }
+
+    fn start_frame(&mut self) {
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let idx = self.index_current(Position { x, y });
+                self.frames[idx] = Cell::EMPTY;
+            }
+        }
     }
 }
 
@@ -124,8 +96,7 @@ impl Drawer for PairedBuffer {
 
                 if current_cell != old_cell {
                     Some(DrawCall {
-                        x,
-                        y,
+                        pos: Position { x, y },
                         cell: current_cell,
                     })
                 } else {
@@ -154,9 +125,9 @@ mod tests {
         let mut cell = Cell::EMPTY;
         cell.ch = 'X';
 
-        buf.set_cell(1, 1, cell);
-        assert_eq!(buf.get_cell(1, 1).ch, 'X');
-        assert_eq!(buf.get_cell(0, 0).ch, ' '); // default is space
+        buf.set_cell(Position { x: 1, y: 1 }, cell);
+        assert_eq!(buf.get_cell(Position { x: 1, y: 1 }).ch, 'X');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, ' '); // default is space
     }
 
     #[test]
@@ -168,22 +139,22 @@ mod tests {
         cell_b.ch = 'B';
 
         // Write to current frame (0)
-        buf.set_cell(0, 0, cell_a);
-        assert_eq!(buf.get_cell(0, 0).ch, 'A');
+        buf.set_cell(Position { x: 0, y: 0 }, cell_a);
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'A');
 
         // Swap to frame 1
         buf.swap_frames();
         // Frame 1 should be empty (from initialization)
-        assert_eq!(buf.get_cell(0, 0).ch, ' ');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, ' ');
 
         // Write to frame 1
-        buf.set_cell(0, 0, cell_b);
-        assert_eq!(buf.get_cell(0, 0).ch, 'B');
+        buf.set_cell(Position { x: 0, y: 0 }, cell_b);
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'B');
 
         // Swap back to frame 0
         buf.swap_frames();
         // Should see 'A' again
-        assert_eq!(buf.get_cell(0, 0).ch, 'A');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'A');
     }
 
     #[test]
@@ -198,18 +169,18 @@ mod tests {
         // Now order is 1.
 
         // Write 'A' to current frame (1).
-        buf.set_cell(0, 0, cell_a);
+        buf.set_cell(Position { x: 0, y: 0 }, cell_a);
 
         // Draw: compares 1 ('A') vs 0 (empty). Diff! Swaps to 0.
         let calls: Vec<_> = buf.draw().collect();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].x, 0);
-        assert_eq!(calls[0].y, 0);
+        assert_eq!(calls[0].pos.x, 0);
+        assert_eq!(calls[0].pos.y, 0);
         assert_eq!(calls[0].cell.ch, 'A');
         // Now order is 0.
 
         // Write 'A' to current frame (0).
-        buf.set_cell(0, 0, cell_a);
+        buf.set_cell(Position { x: 0, y: 0 }, cell_a);
 
         // Draw: compares 0 ('A') vs 1 ('A'). Equal. No diff. Swaps to 1.
         assert_eq!(buf.draw().count(), 0);
@@ -218,9 +189,19 @@ mod tests {
     #[test]
     fn test_out_of_bounds() {
         let mut buf = PairedBuffer::new(10, 5);
-        assert!(buf.set_cell_checked(10, 0, Cell::EMPTY).is_err());
-        assert!(buf.set_cell_checked(0, 5, Cell::EMPTY).is_err());
-        assert!(buf.get_cell_checked(10, 0).is_err());
+        let size = Size {
+            width: 10,
+            height: 5,
+        };
+        assert!(buf
+            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .get_cell_checked(size, Position { x: 10, y: 0 })
+            .is_err());
     }
 
     #[test]
@@ -237,7 +218,7 @@ mod tests {
         assert_eq!(buf.draw().count(), 0);
 
         // 1. Write 'A' to current buffer (1).
-        buf.set_cell(2, 2, cell_a);
+        buf.set_cell(Position { x: 2, y: 2 }, cell_a);
 
         // Draw => compare 1 (A) vs 0 (Empty). Change detected at (2,2).
         // Swap => Current: 0. Old: 1.
@@ -246,7 +227,7 @@ mod tests {
         assert_eq!(calls[0].cell.ch, 'A');
 
         // 2. Write 'B' to current buffer (0).
-        buf.set_cell(2, 2, cell_b);
+        buf.set_cell(Position { x: 2, y: 2 }, cell_b);
 
         // Draw => compare 0 (B) vs 1 (A). Change detected at (2,2).
         // Swap => Current: 1. Old: 0.
@@ -255,14 +236,14 @@ mod tests {
         assert_eq!(calls[0].cell.ch, 'B');
 
         // 3. Write 'B' to current buffer (1).
-        buf.set_cell(2, 2, cell_b);
+        buf.set_cell(Position { x: 2, y: 2 }, cell_b);
 
         // Draw => compare 1 (B) vs 0 (B). No changes.
         // Swap => Current: 0. Old: 1.
         assert_eq!(buf.draw().count(), 0);
 
         // 4. Write Empty to current buffer (0).
-        buf.set_cell(2, 2, Cell::EMPTY);
+        buf.set_cell(Position { x: 2, y: 2 }, Cell::EMPTY);
 
         // Draw => compare 0 (Empty) vs 1 (B). Change detected.
         // Swap => Current: 1. Old: 0.
@@ -278,7 +259,7 @@ mod tests {
         cell.ch = '#';
 
         // Frame 0: Draw '#' at (0,0)
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Draw 0:
         // Current (0): [(0,0)='#']
@@ -286,7 +267,7 @@ mod tests {
         // Diff: (0,0) -> '#'
         let calls: Vec<_> = buf.draw().collect();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].x, 0);
+        assert_eq!(calls[0].pos.x, 0);
         assert_eq!(calls[0].cell.ch, '#');
 
         // Swap happened. Current is 1. Old is 0.
@@ -294,7 +275,7 @@ mod tests {
 
         // Frame 1: Move '#' to (1,0).
         // We are writing to Buffer 1. It is currently empty (never touched).
-        buf.set_cell(1, 0, cell);
+        buf.set_cell(Position { x: 1, y: 0 }, cell);
 
         // Draw 1:
         // Current (1): [(1,0)='#']
@@ -303,15 +284,15 @@ mod tests {
         // (0,0): 1=' ' vs 0='#'. Diff -> ' ' (Clear old pos)
         // (1,0): 1='#' vs 0=' '. Diff -> '#' (Draw new pos)
         let mut calls: Vec<_> = buf.draw().collect();
-        calls.sort_by_key(|c| c.x); // Sort by x to ensure deterministic order check
+        calls.sort_by_key(|c| c.pos.x); // Sort by x to ensure deterministic order check
         assert_eq!(calls.len(), 2);
 
         // Clear (0,0)
-        assert_eq!(calls[0].x, 0);
+        assert_eq!(calls[0].pos.x, 0);
         assert_eq!(calls[0].cell.ch, ' ');
 
         // Draw (1,0)
-        assert_eq!(calls[1].x, 1);
+        assert_eq!(calls[1].pos.x, 1);
         assert_eq!(calls[1].cell.ch, '#');
 
         // Swap happened. Current is 0. Old is 1.
@@ -322,8 +303,8 @@ mod tests {
         // We are writing to Buffer 0.
         // IMPORTANT: We must clear the old artifact at (0,0) on Buffer 0,
         // because it persists from Frame 0.
-        buf.set_cell(0, 0, Cell::EMPTY);
-        buf.set_cell(2, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, Cell::EMPTY);
+        buf.set_cell(Position { x: 2, y: 0 }, cell);
 
         // Draw 2:
         // Current (0): [(0,0)=' ', (2,0)='#']
@@ -333,15 +314,15 @@ mod tests {
         // (1,0): 0=' ' vs 1='#'. Diff -> ' ' (Clear old pos from Frame 1)
         // (2,0): 0='#' vs 1=' '. Diff -> '#' (Draw new pos)
         let mut calls: Vec<_> = buf.draw().collect();
-        calls.sort_by_key(|c| c.x);
+        calls.sort_by_key(|c| c.pos.x);
         assert_eq!(calls.len(), 2);
 
         // Clear (1,0)
-        assert_eq!(calls[0].x, 1);
+        assert_eq!(calls[0].pos.x, 1);
         assert_eq!(calls[0].cell.ch, ' ');
 
         // Draw (2,0)
-        assert_eq!(calls[1].x, 2);
+        assert_eq!(calls[1].pos.x, 2);
         assert_eq!(calls[1].cell.ch, '#');
     }
 
@@ -354,29 +335,29 @@ mod tests {
         cell_2.ch = '2';
 
         // Write '1' to (0,0) on Frame A
-        buf.set_cell(0, 0, cell_1);
-        assert_eq!(buf.get_cell(0, 0).ch, '1');
+        buf.set_cell(Position { x: 0, y: 0 }, cell_1);
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, '1');
 
         // Swap. Now current is Frame B.
         buf.swap_frames();
         // Frame B should be empty.
-        assert_eq!(buf.get_cell(0, 0).ch, ' ');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, ' ');
 
         // Write '2' to (1,1) on Frame B.
-        buf.set_cell(1, 1, cell_2);
-        assert_eq!(buf.get_cell(1, 1).ch, '2');
+        buf.set_cell(Position { x: 1, y: 1 }, cell_2);
+        assert_eq!(buf.get_cell(Position { x: 1, y: 1 }).ch, '2');
 
         // Swap back to Frame A.
         buf.swap_frames();
         // Should see '1' at (0,0) and empty at (1,1).
-        assert_eq!(buf.get_cell(0, 0).ch, '1');
-        assert_eq!(buf.get_cell(1, 1).ch, ' ');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, '1');
+        assert_eq!(buf.get_cell(Position { x: 1, y: 1 }).ch, ' ');
 
         // Swap to Frame B.
         buf.swap_frames();
         // Should see empty at (0,0) and '2' at (1,1).
-        assert_eq!(buf.get_cell(0, 0).ch, ' ');
-        assert_eq!(buf.get_cell(1, 1).ch, '2');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, ' ');
+        assert_eq!(buf.get_cell(Position { x: 1, y: 1 }).ch, '2');
     }
 
     #[test]
@@ -386,29 +367,29 @@ mod tests {
 
         // Frame A: Write 'A'
         cell.ch = 'A';
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         buf.swap_frames();
 
         // Frame B: Write 'B' at same spot
         cell.ch = 'B';
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Check B
-        assert_eq!(buf.get_cell(0, 0).ch, 'B');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'B');
 
         buf.swap_frames();
         // Check A is still 'A'
-        assert_eq!(buf.get_cell(0, 0).ch, 'A');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'A');
 
         // Overwrite A with 'C'
         cell.ch = 'C';
-        buf.set_cell(0, 0, cell);
-        assert_eq!(buf.get_cell(0, 0).ch, 'C');
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'C');
 
         buf.swap_frames();
         // Check B is still 'B'
-        assert_eq!(buf.get_cell(0, 0).ch, 'B');
+        assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'B');
     }
 
     #[test]
@@ -419,14 +400,14 @@ mod tests {
 
         // 1. Basic redundancy check
         // Frame A: Write 'X' at (0,0)
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Draw 1: A vs B(empty). Yields (0,0) -> 'X'. Swap -> B is current.
         assert_eq!(buf.draw().count(), 1);
 
         // Frame B: Write 'X' at (0,0).
         // Since A (old) has 'X' at (0,0), and B (current) has 'X' at (0,0).
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Draw 2: B vs A. 'X' == 'X'. Should yield NONE.
         let count = buf.draw().count();
@@ -439,20 +420,20 @@ mod tests {
         // Current is A (after Draw 2). Old is B ('X').
 
         // Write 'X' at (0,0) [Redundant, matches B]
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Write 'Y' at (1,1) [New]
         let mut cell_y = Cell::EMPTY;
         cell_y.ch = 'Y';
-        buf.set_cell(1, 1, cell_y);
+        buf.set_cell(Position { x: 1, y: 1 }, cell_y);
 
         // Draw 3: A vs B.
         // (0,0): 'X' vs 'X' -> No draw.
         // (1,1): 'Y' vs ' ' -> Draw.
         let calls: Vec<_> = buf.draw().collect();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].x, 1);
-        assert_eq!(calls[0].y, 1);
+        assert_eq!(calls[0].pos.x, 1);
+        assert_eq!(calls[0].pos.y, 1);
         assert_eq!(calls[0].cell.ch, 'Y');
 
         // 3. Redundant Clear check
@@ -461,24 +442,24 @@ mod tests {
 
         // Explicitly write ' ' at (1,1) to B.
         // A has 'Y' at (1,1). So this IS a change (clearing).
-        buf.set_cell(1, 1, Cell::EMPTY);
+        buf.set_cell(Position { x: 1, y: 1 }, Cell::EMPTY);
 
         // Draw 4: B vs A.
         // (0,0): 'X' vs 'X' -> No draw.
         // (1,1): ' ' vs 'Y' -> Draw (clearing).
         let calls: Vec<_> = buf.draw().collect();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].x, 1);
-        assert_eq!(calls[0].y, 1);
+        assert_eq!(calls[0].pos.x, 1);
+        assert_eq!(calls[0].pos.y, 1);
         assert_eq!(calls[0].cell.ch, ' ');
 
         // 4. Truly Redundant Clear
         // Current is A. Old is B ('X' at 0,0; ' ' at 1,1).
 
         // Write ' ' at (1,1) to A.
-        buf.set_cell(1, 1, Cell::EMPTY);
+        buf.set_cell(Position { x: 1, y: 1 }, Cell::EMPTY);
         // Write 'X' at (0,0) to A.
-        buf.set_cell(0, 0, cell);
+        buf.set_cell(Position { x: 0, y: 0 }, cell);
 
         // Draw 5: A vs B.
         // (0,0): 'X' vs 'X' -> No draw.

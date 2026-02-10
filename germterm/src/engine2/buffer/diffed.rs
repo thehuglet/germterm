@@ -1,4 +1,7 @@
-use crate::{cell::Cell, engine2::buffer::Drawer};
+use crate::{
+    cell::Cell,
+    engine2::{buffer::Drawer, Position},
+};
 
 use super::{Buffer, DrawCall, ErrorOutOfBoundsAxises};
 
@@ -34,43 +37,19 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
 }
 
 impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
-    fn set_cell(&mut self, x: u16, y: u16, cell: Cell) {
+    fn set_cell(&mut self, pos: Position, cell: Cell) {
         let idx = 1 - self.frame_order as usize;
-        self.cells[idx].set_cell(x, y, cell);
+        self.cells[idx].set_cell(pos, cell);
     }
 
-    fn set_cell_checked(
-        &mut self,
-        x: u16,
-        y: u16,
-        cell: Cell,
-    ) -> Result<(), ErrorOutOfBoundsAxises> {
+    fn get_cell(&self, pos: Position) -> &Cell {
         let idx = 1 - self.frame_order as usize;
-        self.cells[idx].set_cell_checked(x, y, cell)
+        self.cells[idx].get_cell(pos)
     }
 
-    fn get_cell(&self, x: u16, y: u16) -> &Cell {
+    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
         let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell(x, y)
-    }
-
-    fn get_cell_mut(&mut self, x: u16, y: u16) -> &mut Cell {
-        let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell_mut(x, y)
-    }
-
-    fn get_cell_checked(&self, x: u16, y: u16) -> Result<&Cell, ErrorOutOfBoundsAxises> {
-        let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell_checked(x, y)
-    }
-
-    fn get_cell_mut_checked(
-        &mut self,
-        x: u16,
-        y: u16,
-    ) -> Result<&mut Cell, ErrorOutOfBoundsAxises> {
-        let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell_mut_checked(x, y)
+        self.cells[idx].get_cell_mut(pos)
     }
 
     fn start_frame(&mut self) {
@@ -97,14 +76,13 @@ impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
 
         (0..height).flat_map(move |y| {
             (0..width).filter_map(move |x| {
-                let current_cell = current_buf.get_cell(x, y);
-                let old_cell = old_buf.get_cell(x, y);
+                let current_cell = current_buf.get_cell(Position { x, y });
+                let old_cell = old_buf.get_cell(Position { x, y });
 
                 if current_cell != old_cell {
                     Some(DrawCall {
                         cell: current_cell,
-                        x,
-                        y,
+                        pos: Position { x, y },
                     })
                 } else {
                     None

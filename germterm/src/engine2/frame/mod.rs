@@ -1,4 +1,4 @@
-use crate::engine2::{Position, buffer::Buffer};
+use crate::engine2::{buffer::Buffer, Position};
 
 trait Framer<Buf: Buffer> {}
 
