@@ -1,12 +1,12 @@
 use std::io;
 
-use germterm::draw::Layer;
 use germterm::{
     color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
     draw::draw_fps_counter,
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
+    layer::create_layer,
     particle::{ParticleColor, ParticleEmitter, ParticleSpec, spawn_particles},
 };
 
@@ -19,7 +19,7 @@ fn main() -> io::Result<()> {
         .title("particle-benchmark")
         .limit_fps(240);
 
-    let mut layer = Layer::new(&mut engine, 0);
+    let layer = create_layer(&mut engine, 0);
 
     init(&mut engine)?;
 
@@ -38,7 +38,8 @@ fn main() -> io::Result<()> {
                     ..
                 }) => {
                     spawn_particles(
-                        &mut layer,
+                        &mut engine,
+                        layer,
                         TERM_COLS as f32 * 0.5,
                         TERM_ROWS as f32 * 0.5,
                         &ParticleSpec {
@@ -57,7 +58,7 @@ fn main() -> io::Result<()> {
             }
         }
 
-        draw_fps_counter(&mut layer, 0, 1);
+        draw_fps_counter(&mut engine, layer, 0, 1);
 
         end_frame(&mut engine)?;
     }

@@ -2,6 +2,7 @@ use crate::{
     cell::{Cell, CellFormat},
     color::{Color, blend_source_over},
     draw::BLOCKTAD_CHAR_LUT,
+    layer::Layer,
     rich_text::{Attributes, RichText},
 };
 use crossterm::{cursor as ctcursor, queue, style as ctstyle};
@@ -62,7 +63,7 @@ pub struct FramePair {
     order: FrameOrder,
     pub(crate) width: u16,
     pub(crate) height: u16,
-    pub(crate) layered_draw_queue: Vec<Vec<DrawCall>>,
+    pub(crate) layered_draw_queue: Vec<Layer>,
 }
 
 impl FramePair {
@@ -115,7 +116,7 @@ impl FramePair {
         };
     }
 
-    pub fn current_mut_and_layered_mut(&mut self) -> (FrameMut<'_>, &mut Vec<Vec<DrawCall>>) {
+    pub fn current_mut_and_layered_mut(&mut self) -> (FrameMut<'_>, &mut Vec<Layer>) {
         let frame = FrameMut(&mut self.frames, self.order as usize);
         let layers = &mut self.layered_draw_queue;
         (frame, layers)

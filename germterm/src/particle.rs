@@ -16,12 +16,9 @@ use rand::{Rng, rngs::ThreadRng};
 
 use crate::{
     color::{Color, ColorGradient, sample_gradient},
-    draw::{
-        Layer,
-        internal::{self},
-    },
+    draw::draw_octad,
     engine::Engine,
-    frame::DrawCall,
+    layer::LayerIndex,
 };
 
 pub enum ParticleEmitterShape {
@@ -42,7 +39,7 @@ pub(crate) struct ParticleState {
     gravity_scale: f32,
     spawn_timestamp: f32,
     death_timestamp: f32,
-    layer: Layer,
+    layer_index: LayerIndex,
 }
 
 pub struct ParticleSpec {
@@ -84,23 +81,23 @@ impl Default for ParticleEmitter {
 ///
 /// # Examples
 /// ```rust,no_run
-/// # use germterm::{draw::Layer, engine::Engine, particle::{spawn_particles, ParticleSpec, ParticleEmitter}};
+/// # use germterm::{layer::create_layer, engine::Engine, particle::{spawn_particles, ParticleSpec, ParticleEmitter}};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
+/// let layer = create_layer(&mut engine, 0);
 ///
 /// let spec = ParticleSpec::default();
 /// let emitter = ParticleEmitter::default();
-/// spawn_particles(&mut layer, 20.0, 10.0, &spec, &emitter);
+/// spawn_particles(&mut engine, layer, 20.0, 10.0, &spec, &emitter);
 /// ```
 pub fn spawn_particles(
-    layer: &mut Layer,
+    engine: &mut Engine,
+    layer_index: LayerIndex,
     x: f32,
     y: f32,
     spec: &ParticleSpec,
     emitter: &ParticleEmitter,
 ) {
     let mut rng: ThreadRng = rand::rng();
-    let engine_mut: &mut Engine = unsafe { &mut *layer.engine_ptr };
 
     match emitter.shape {
         ParticleEmitterShape::Circle => {
@@ -111,14 +108,14 @@ pub fn spawn_particles(
                 let velocity_x: f32 = speed * angle.cos();
                 let velocity_y: f32 = speed * angle.sin();
 
-                engine_mut.particle_state.push(ParticleState {
+                engine.particle_state.push(ParticleState {
                     pos: (x, y),
                     velocity: (velocity_x, velocity_y),
                     color: spec.color.clone(),
                     gravity_scale: spec.gravity_scale,
-                    spawn_timestamp: engine_mut.game_time,
-                    death_timestamp: engine_mut.game_time + spec.lifetime_sec,
-                    layer: *layer,
+                    spawn_timestamp: engine.game_time,
+                    death_timestamp: engine.game_time + spec.lifetime_sec,
+                    layer_index,
                 })
             }
         }
@@ -127,7 +124,7 @@ pub fn spawn_particles(
             width_deg,
         } => {
             for _ in 0..emitter.count {
-                let half_angle_rad: f32 = (width_deg / 2.0).to_radians(); // ← Use spread_deg as width
+                let half_angle_rad: f32 = (width_deg / 2.0).to_radians();
                 let direction_rad: f32 = direction_deg.to_radians();
 
                 let random_angle_offset: f32 = rng.random_range(-half_angle_rad..half_angle_rad);
@@ -137,14 +134,14 @@ pub fn spawn_particles(
                 let velocity_x: f32 = speed * particle_angle.cos();
                 let velocity_y: f32 = speed * particle_angle.sin();
 
-                engine_mut.particle_state.push(ParticleState {
+                engine.particle_state.push(ParticleState {
                     pos: (x, y),
                     velocity: (velocity_x, velocity_y),
                     color: spec.color.clone(),
                     gravity_scale: spec.gravity_scale,
-                    spawn_timestamp: engine_mut.game_time,
-                    death_timestamp: engine_mut.game_time + spec.lifetime_sec,
-                    layer: *layer,
+                    spawn_timestamp: engine.game_time,
+                    death_timestamp: engine.game_time + spec.lifetime_sec,
+                    layer_index,
                 })
             }
         }
@@ -167,33 +164,35 @@ pub(crate) fn update_and_draw_particles(engine: &mut Engine) {
 
     let mut i: usize = 0;
     while i < engine.particle_state.len() {
-        let state: &mut ParticleState = &mut engine.particle_state[i];
+        let (layer_index, x, y, color) = {
+            let state: &mut ParticleState = &mut engine.particle_state[i];
 
-        if engine.game_time >= state.death_timestamp {
-            engine.particle_state.swap_remove(i);
-            continue;
-        }
+            if engine.game_time >= state.death_timestamp {
+                engine.particle_state.swap_remove(i);
+                continue;
+            }
 
-        let t: f32 = ((engine.game_time - state.spawn_timestamp)
-            / (state.death_timestamp - state.spawn_timestamp))
-            .clamp(0.0, 1.0);
+            let t: f32 = ((engine.game_time - state.spawn_timestamp)
+                / (state.death_timestamp - state.spawn_timestamp))
+                .clamp(0.0, 1.0);
 
-        let color: Color = match &state.color {
-            ParticleColor::Solid(color) => *color,
-            ParticleColor::Gradient(color_gradient) => sample_gradient(color_gradient, t),
+            let color: Color = match &state.color {
+                ParticleColor::Solid(color) => *color,
+                ParticleColor::Gradient(color_gradient) => sample_gradient(color_gradient, t),
+            };
+
+            state.velocity.1 += gravity * state.gravity_scale * engine.delta_time;
+
+            state.velocity.0 *= drag_decay;
+            state.velocity.1 *= drag_decay;
+
+            state.pos.0 += state.velocity.0 * engine.delta_time;
+            state.pos.1 += state.velocity.1 * engine.delta_time * aspect_ratio;
+
+            (state.layer_index, state.pos.0, state.pos.1, color)
         };
 
-        state.velocity.1 += gravity * state.gravity_scale * engine.delta_time;
-
-        state.velocity.0 *= drag_decay;
-        state.velocity.1 *= drag_decay;
-
-        state.pos.0 += state.velocity.0 * engine.delta_time;
-        state.pos.1 += state.velocity.1 * engine.delta_time * aspect_ratio;
-
-        let draw_queue: &mut Vec<DrawCall> =
-            &mut engine.frame.layered_draw_queue[state.layer.index];
-        internal::draw_octad(draw_queue, state.pos.0, state.pos.1, color);
+        draw_octad(engine, layer_index, x, y, color);
 
         i += 1;
     }
