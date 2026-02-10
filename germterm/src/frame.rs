@@ -246,16 +246,6 @@ pub(crate) fn draw_to_terminal<'a>(
     Ok(())
 }
 
-// The implementation of this function is simply nightmare fuel, just like the challenge at hand.
-// This thing alone has already siphoned dozens of hours of my life.
-//
-// The if-else chains get aggressively optimized by LLVM when running with --release.
-//
-// If you'd like to tidy this lovecraftian monster up without
-// breaking any logic or regressing performance, be my guest.
-// Just be careful as this logic is very volatile and full of edge cases.
-//
-// ~huglet
 #[inline]
 fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
     let both_ch_equal: bool = old.ch == new.ch;
