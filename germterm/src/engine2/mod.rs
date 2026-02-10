@@ -1,11 +1,12 @@
 mod buffer;
+mod draw;
 mod frame;
 mod timer;
 
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{Buffer, paired::PairedBuffer},
+        buffer::{Buffer, ErrorOutOfBoundsAxises, paired::PairedBuffer},
         timer::{DefaultTimer, Timer, TimerMarker, TimerWrapper},
     },
 };
@@ -16,15 +17,43 @@ pub struct Position {
     pub y: u16,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Size {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Size {
+    fn contains(&self, pos: Position) -> Result<(), ErrorOutOfBoundsAxises> {
+        let err = match pos {
+            Position { x, y } if x >= self.width && y >= self.height => ErrorOutOfBoundsAxises::XY,
+            Position { x, y } if y >= self.height => ErrorOutOfBoundsAxises::Y,
+            Position { x, y } if x >= self.width => ErrorOutOfBoundsAxises::X,
+            _ => return Ok(()),
+        };
+
+        Err(err)
+    }
+}
+
 pub struct DrawCall<'a> {
-    pub x: u16,
-    pub y: u16,
+    pub pos: Position,
     pub cell: &'a Cell,
 }
 
 pub struct Engine<Timed: TimerMarker, Buf: Buffer> {
     timer: TimerWrapper<Timed>,
     buffer: Buf,
+}
+
+impl<Timed: TimerMarker, Buf: Buffer> Engine<Timed, Buf> {
+    pub fn buffer(&self) -> &Buf {
+        &self.buffer
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut Buf {
+        &mut self.buffer
+    }
 }
 
 impl Engine<DefaultTimer, PairedBuffer> {
