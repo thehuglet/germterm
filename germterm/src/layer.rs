@@ -8,11 +8,15 @@ pub fn create_layer(engine: &mut Engine, index: usize) -> LayerIndex {
 #[derive(Copy, Clone)]
 pub struct LayerIndex(pub(crate) usize);
 
-pub struct Layer(pub(crate) Vec<DrawCall>);
+pub struct Layer {
+    pub(crate) draw_queue: Vec<DrawCall>,
+}
 
 impl Layer {
     pub const fn new() -> Self {
-        Layer(Vec::new())
+        Layer {
+            draw_queue: Vec::new(),
+        }
     }
 }
 

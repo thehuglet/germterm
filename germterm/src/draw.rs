@@ -82,7 +82,7 @@ pub fn draw_text(
     let layer = &mut engine.frame.layered_draw_queue[layer_index.0];
     let rich_text: RichText = text.into();
 
-    layer.0.push(DrawCall { rich_text, x, y });
+    layer.draw_queue.push(DrawCall { rich_text, x, y });
 }
 
 /// Fills the entire screen with the specified [`Color`].

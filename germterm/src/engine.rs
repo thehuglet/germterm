@@ -152,7 +152,7 @@ pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
     let (current, layered) = engine.frame.current_mut_and_layered_mut();
     compose_frame_buffer(
         current,
-        layered.iter_mut().flat_map(|v| v.0.drain(..)),
+        layered.iter_mut().flat_map(|v| v.draw_queue.drain(..)),
         width,
         height,
         engine.default_blending_color,
