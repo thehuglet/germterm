@@ -1,4 +1,3 @@
-use super::Engine;
 use std::time::Instant;
 
 pub trait Timer {

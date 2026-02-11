@@ -4,8 +4,7 @@ pub mod paired;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    draw::Layer,
-    engine2::{Position, Size},
+    engine2::{draw::Size, Position},
 };
 
 pub enum ErrorOutOfBoundsAxises {

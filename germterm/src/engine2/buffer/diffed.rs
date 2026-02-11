@@ -1,9 +1,9 @@
 use crate::{
     cell::Cell,
-    engine2::{buffer::Drawer, Position},
+    engine2::{Position, buffer::Drawer, draw::Size},
 };
 
-use super::{Buffer, DrawCall, ErrorOutOfBoundsAxises};
+use super::{Buffer, DrawCall};
 
 #[derive(Clone, Copy, Debug)]
 enum FrameOrder {
