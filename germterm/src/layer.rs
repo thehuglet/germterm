@@ -16,12 +16,12 @@ pub fn create_layer_with_bounds(
     height: i16,
 ) -> LayerIndex {
     // Resize layers vec if needed
-    let layer_count = engine.frame.layered_draw_queue.len() + 1;
-    if engine.frame.layered_draw_queue.len() < layer_count {
+    let layer_count: usize = engine.frame.layered_draw_queue.len();
+    if layer_count < index + 1 {
         engine
             .frame
             .layered_draw_queue
-            .resize_with(layer_count, || -> Layer { Layer::new(x, y, width, height) });
+            .resize_with(index + 1, || -> Layer { Layer::new(x, y, width, height) });
     }
 
     LayerIndex(index)

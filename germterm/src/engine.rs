@@ -117,10 +117,10 @@ pub fn start_frame(engine: &mut Engine) {
     engine.delta_time = wait_for_next_frame(&mut engine.fps_limiter);
     update_fps_counter(&mut engine.fps_counter, engine.delta_time);
 
-    let lowest_layer_index: LayerIndex = create_layer(engine, 0);
+    let layer_zero: LayerIndex = create_layer(engine, 0);
     erase_rect(
         engine,
-        lowest_layer_index,
+        layer_zero,
         0,
         0,
         engine.frame.width as i16,
