@@ -61,6 +61,10 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
         let idx = 1 - self.frame_order as usize;
         self.cells[idx].end_frame();
     }
+
+    fn resize(&mut self, size: Size) {
+        self.cells.iter_mut().for_each(|b| b.resize(size))
+    }
 }
 
 impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {

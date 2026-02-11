@@ -4,7 +4,7 @@ pub mod paired;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{draw::Size, Position},
+    engine2::{Position, draw::Size},
 };
 
 pub enum ErrorOutOfBoundsAxises {
@@ -45,6 +45,7 @@ pub trait Buffer {
 
     fn start_frame(&mut self) {}
     fn end_frame(&mut self) {}
+    fn resize(&mut self, size: Size);
 }
 
 pub trait Drawer {
