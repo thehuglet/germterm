@@ -10,7 +10,7 @@ use crate::{
     fps_counter::{FpsCounter, update_fps_counter},
     fps_limiter::{self, FpsLimiter, wait_for_next_frame},
     frame::{FramePair, compose_frame_buffer, draw_to_terminal},
-    layer::{Layer, LayerIndex, create_layer},
+    layer::{LayerIndex, create_layer},
     particle::{ParticleState, update_and_draw_particles},
 };
 use crossterm::{cursor, event, execute, terminal};
@@ -25,7 +25,6 @@ pub struct Engine {
     pub stdout: io::Stdout,
     pub(crate) default_blending_color: Color,
     pub(crate) fps_counter: FpsCounter,
-    pub(crate) max_layer_index: usize,
     pub(crate) frame: FramePair,
     pub(crate) fps_limiter: FpsLimiter,
     pub(crate) particle_state: Vec<ParticleState>,
@@ -39,7 +38,6 @@ impl Engine {
             game_time: 0.0,
             title: "my-awesome-terminal",
             stdout: io::stdout(),
-            max_layer_index: 0,
             frame: FramePair::new(cols, rows),
             fps_limiter: FpsLimiter::new(60, 0.001, 0.002),
             fps_counter: FpsCounter::new(0.3),
@@ -73,25 +71,16 @@ pub fn override_default_blending_color(engine: &mut Engine, color: ColorRgb) {
     engine.default_blending_color = color.into();
 }
 
-/// This function should be called once after constructing the [`Engine`] and defining layers,
-/// and before entering the main update loop to initialize the engine.
+/// This function should be called once before entering
+/// the main update loop to initialize the engine.
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{layer::create_layer, engine::{Engine, init}};
+/// # use germterm::engine::{Engine, init};
 /// let mut engine = Engine::new(40, 20);
-/// let layer = create_layer(&mut engine, 0);
 /// init(&mut engine);
 /// ```
 pub fn init(engine: &mut Engine) -> io::Result<()> {
-    let layer_count = engine.max_layer_index + 1;
-    if engine.frame.layered_draw_queue.len() < layer_count {
-        engine
-            .frame
-            .layered_draw_queue
-            .resize_with(layer_count, Layer::new);
-    }
-
     terminal::enable_raw_mode()?;
     execute!(
         engine.stdout,
