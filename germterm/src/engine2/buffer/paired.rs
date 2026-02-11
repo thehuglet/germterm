@@ -1,7 +1,7 @@
-use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises};
+use super::{Buffer, DrawCall, Drawer};
 use crate::{
     cell::Cell,
-    engine2::{Position, Size},
+    engine2::{Position, draw::Size},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -109,6 +109,8 @@ impl Drawer for PairedBuffer {
 
 #[cfg(test)]
 mod tests {
+    use crate::engine2::draw::Size;
+
     use super::*;
 
     #[test]
@@ -193,15 +195,18 @@ mod tests {
             width: 10,
             height: 5,
         };
-        assert!(buf
-            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .get_cell_checked(size, Position { x: 10, y: 0 })
-            .is_err());
+        assert!(
+            buf.set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            buf.set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            buf.get_cell_checked(size, Position { x: 10, y: 0 })
+                .is_err()
+        );
     }
 
     #[test]
