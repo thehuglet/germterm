@@ -30,3 +30,9 @@ pub struct FrameContext<'a, Buf: Buffer + ?Sized, Timed: TimerMarker = ()> {
     pub(crate) delta: Timed::Data,
     pub(crate) buffer: &'a mut Buf,
 }
+
+impl <Buf: Buffer +?Sized, Timed: Timer>FrameContext<'_, Buf, Timed> {
+    pub fn delta(&self) -> f32 {
+        self.delta
+    }
+}
