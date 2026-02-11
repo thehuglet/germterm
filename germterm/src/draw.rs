@@ -98,7 +98,7 @@ pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
     let width: i16 = engine.frame.width as i16;
     let height: i16 = engine.frame.height as i16;
 
-    draw_rect(engine, layer_index, 0, 0, height, width, color);
+    draw_rect(engine, layer_index, 0, 0, width, height, color);
 }
 
 /// Erases a rect area, restoring the default bg color and deleting the characters.
