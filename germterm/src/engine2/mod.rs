@@ -7,9 +7,9 @@ mod widget;
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{paired::PairedBuffer, Buffer},
+        buffer::{Buffer, paired::PairedBuffer},
         draw::{Position, Size},
-        timer::{DefaultTimer, TimerMarker, TimerWrapper},
+        timer::{DefaultTimer, Timer, TimerWrapper},
     },
 };
 
@@ -18,12 +18,12 @@ pub struct DrawCall<'a> {
     pub cell: &'a Cell,
 }
 
-pub struct Engine<Timed: TimerMarker, Buf: Buffer> {
+pub struct Engine<Timed: Timer, Buf: Buffer> {
     timer: TimerWrapper<Timed>,
     buffer: Buf,
 }
 
-impl<Timed: TimerMarker, Buf: Buffer> Engine<Timed, Buf> {
+impl<Timed: Timer, Buf: Buffer> Engine<Timed, Buf> {
     pub fn buffer(&self) -> &Buf {
         &self.buffer
     }
