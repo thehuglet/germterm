@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use super::{Buffer, DrawCall, Drawer};
 use crate::{
     cell::Cell,
-    engine2::{draw::Size, Position},
+    engine2::{Position, draw::Size},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -26,36 +26,40 @@ enum FrameOrder {
 /// the frames are swapped automatically.
 ///
 /// [`swap_frames`]: PairedBuffer::swap_frames
-pub struct PairedBuffer {
+pub struct PairedBuffer<Meta = ()> {
     size: Size,
-    frames: Vec<Cell>,
+    frames: Vec<[(Cell, Meta); 2]>,
     order: FrameOrder,
 }
 
-impl PairedBuffer {
+#[repr(Rust, packed)]
+struct CellData<Data> {
+    cell: Cell,
+    data: Data,
+}
+
+const _: () = assert!(size_of::<Cell>() == size_of::<CellData<()>>());
+
+impl<D: Default + Clone + Copy> PairedBuffer<D> {
     /// Creates a new `PairedBuffer` with the given size.
     ///
     /// Both buffers are initialised to [`Cell::EMPTY`].
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            frames: vec![Cell::EMPTY; size.area() as usize * 2],
+            frames: vec![[(Cell::EMPTY, D::default()); 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
         }
     }
 
-    fn index_current(&self, pos: Position) -> usize {
-        self.index(pos, FrameOrder::CurrentOld)
+    #[inline(always)]
+    fn index_current(&self) -> usize {
+        self.order as usize
     }
 
-    fn index_old(&self, pos: Position) -> usize {
-        self.index(pos, FrameOrder::OldCurrent)
-    }
-
-    #[inline]
-    fn index(&self, pos: Position, order: FrameOrder) -> usize {
-        let base = (pos.y as usize * self.size.width as usize + pos.x as usize) * 2;
-        base + (order as usize)
+    #[inline(always)]
+    fn index_old(&self) -> usize {
+        1 - self.order as usize
     }
 
     /// Swaps the current and previous frame buffers.
@@ -72,25 +76,25 @@ impl PairedBuffer {
 
 impl Buffer for PairedBuffer {
     fn set_cell(&mut self, pos: Position, cell: Cell) {
-        let idx = self.index(pos, self.order);
-        self.frames[idx] = cell;
+        let cur = self.index_current();
+        self.frames[pos.to_index(self.size.width)][cur].0 = cell;
     }
 
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
-        let idx = self.index(pos, self.order);
-        &mut self.frames[idx]
+        let cur = self.index_current();
+        &mut self.frames[pos.to_index(self.size.width)][cur].0
     }
 
     fn get_cell(&self, pos: Position) -> &Cell {
-        let idx = self.index(pos, self.order);
-        &self.frames[idx]
+        &self.frames[pos.to_index(self.size.width)][self.index_current()].0
     }
 
     fn start_frame(&mut self) {
         for x in 0..self.size.width {
             for y in 0..self.size.height {
-                let idx = self.index_current(Position { x, y });
-                self.frames[idx] = Cell::EMPTY;
+                let idx = Position { x, y }.to_index(self.size.width);
+                let cur = self.index_current();
+                self.frames[idx][cur].0 = Cell::EMPTY;
             }
         }
     }
@@ -98,15 +102,13 @@ impl Buffer for PairedBuffer {
     fn resize(&mut self, size: Size) {
         let w_new = size.width;
         let w_old = self.size.width;
-        let h_new = size.height;
-        let h_old = self.size.height;
         let old_total_size = self.size.area();
         let new_total_size = size.area();
 
         // If growing reserve the needed space in bulk
         if new_total_size > old_total_size {
             self.frames
-                .reserve((new_total_size - old_total_size) as usize * 2);
+                .reserve((new_total_size - old_total_size) as usize);
         }
 
         match w_old.cmp(&w_new) {
@@ -123,24 +125,23 @@ impl Drawer for PairedBuffer {
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
         let width = self.size.width;
         let height = self.size.height;
-        let order = self.order as usize;
-        let old_order = 1 - order;
+        let cur_idx = self.index_current();
+        let cur_old = self.index_old();
 
         self.swap_frames();
-        let frames_slice = &self.frames;
+        let frames = &self.frames;
 
         (0..height).flat_map(move |y| {
             (0..width).filter_map(move |x| {
-                let base_idx = (y as usize * width as usize + x as usize) * 2;
-                let current_idx = base_idx + order;
-                let old_idx = base_idx + old_order;
+                let pos = Position { x, y };
+                let idx = pos.to_index(width);
 
-                let current_cell = &frames_slice[current_idx];
-                let old_cell = &frames_slice[old_idx];
+                let current_cell = &frames[idx][cur_idx].0;
+                let old_cell = &frames[idx][cur_old].0;
 
                 if current_cell != old_cell {
                     Some(DrawCall {
-                        pos: Position { x, y },
+                        pos,
                         cell: current_cell,
                     })
                 } else {
@@ -160,9 +161,9 @@ mod tests {
     #[test]
     fn test_new() {
         let sz = Size::new(10, 5);
-        let buf = PairedBuffer::new(sz);
+        let buf = PairedBuffer::<()>::new(sz);
         assert_eq!(sz, buf.size);
-        assert_eq!(buf.frames.len(), 10 * 5 * 2);
+        assert_eq!(buf.frames.len(), 10 * 5);
     }
 
     #[test]
@@ -239,15 +240,18 @@ mod tests {
             width: 10,
             height: 5,
         };
-        assert!(buf
-            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .get_cell_checked(size, Position { x: 10, y: 0 })
-            .is_err());
+        assert!(
+            buf.set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            buf.set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            buf.get_cell_checked(size, Position { x: 10, y: 0 })
+                .is_err()
+        );
     }
 
     #[test]
