@@ -1,8 +1,8 @@
-mod buffer;
-mod draw;
-mod frame;
-mod timer;
-mod widget;
+pub mod buffer;
+pub mod draw;
+pub mod frame;
+pub mod timer;
+pub mod widget;
 
 use crate::{
     cell::Cell,

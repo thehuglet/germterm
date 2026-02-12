@@ -28,6 +28,10 @@ impl Position {
     pub fn is_within(self, width: u16, height: u16) -> bool {
         self.x < width && self.y < height
     }
+
+    pub(crate) fn to_index(self, width: u16) -> usize {
+        self.y as usize * width as usize + self.x as usize
+    }
 }
 
 #[cfg(test)]
