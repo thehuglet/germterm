@@ -26,28 +26,20 @@ enum FrameOrder {
 /// the frames are swapped automatically.
 ///
 /// [`swap_frames`]: PairedBuffer::swap_frames
-pub struct PairedBuffer<Meta = ()> {
+pub struct PairedBuffer {
     size: Size,
-    frames: Vec<[(Cell, Meta); 2]>,
+    frames: Vec<[Cell; 2]>,
     order: FrameOrder,
 }
 
-#[repr(Rust, packed)]
-struct CellData<Data> {
-    cell: Cell,
-    data: Data,
-}
-
-const _: () = assert!(size_of::<Cell>() == size_of::<CellData<()>>());
-
-impl<D: Default + Clone + Copy> PairedBuffer<D> {
+impl PairedBuffer {
     /// Creates a new `PairedBuffer` with the given size.
     ///
     /// Both buffers are initialised to [`Cell::EMPTY`].
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            frames: vec![[(Cell::EMPTY, D::default()); 2]; size.area() as usize],
+            frames: vec![[Cell::EMPTY; 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
         }
     }
@@ -77,16 +69,16 @@ impl<D: Default + Clone + Copy> PairedBuffer<D> {
 impl Buffer for PairedBuffer {
     fn set_cell(&mut self, pos: Position, cell: Cell) {
         let cur = self.index_current();
-        self.frames[pos.to_index(self.size.width)][cur].0 = cell;
+        self.frames[pos.to_index(self.size.width)][cur] = cell;
     }
 
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
         let cur = self.index_current();
-        &mut self.frames[pos.to_index(self.size.width)][cur].0
+        &mut self.frames[pos.to_index(self.size.width)][cur]
     }
 
     fn get_cell(&self, pos: Position) -> &Cell {
-        &self.frames[pos.to_index(self.size.width)][self.index_current()].0
+        &self.frames[pos.to_index(self.size.width)][self.index_current()]
     }
 
     fn start_frame(&mut self) {
@@ -94,7 +86,7 @@ impl Buffer for PairedBuffer {
             for y in 0..self.size.height {
                 let idx = Position { x, y }.to_index(self.size.width);
                 let cur = self.index_current();
-                self.frames[idx][cur].0 = Cell::EMPTY;
+                self.frames[idx][cur] = Cell::EMPTY;
             }
         }
     }
@@ -136,8 +128,8 @@ impl Drawer for PairedBuffer {
                 let pos = Position { x, y };
                 let idx = pos.to_index(width);
 
-                let current_cell = &frames[idx][cur_idx].0;
-                let old_cell = &frames[idx][cur_old].0;
+                let current_cell = &frames[idx][cur_idx];
+                let old_cell = &frames[idx][cur_old];
 
                 if current_cell != old_cell {
                     Some(DrawCall {
@@ -161,7 +153,7 @@ mod tests {
     #[test]
     fn test_new() {
         let sz = Size::new(10, 5);
-        let buf = PairedBuffer::<()>::new(sz);
+        let buf = PairedBuffer::new(sz);
         assert_eq!(sz, buf.size);
         assert_eq!(buf.frames.len(), 10 * 5);
     }
