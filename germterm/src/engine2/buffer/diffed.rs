@@ -11,6 +11,17 @@ enum FrameOrder {
     OldCurrent = 1,
 }
 
+/// A buffer that wraps two buffers of the same type and produces draw calls
+/// only for cells that differ between the current and previous frame.
+///
+/// On each call to [`Drawer::draw`], `DiffedBuffers` compares the active
+/// (current) buffer against the inactive (previous) buffer and emits a
+/// [`DrawCall`] only for positions where the cell has changed. The two
+/// internal buffers are then swapped so the old frame becomes the baseline
+/// for the next comparison.
+///
+/// This makes it suitable as an adapter around any existing [`Buffer`]
+/// implementation when you want to minimise redundant terminal writes.
 pub struct DiffedBuffers<Buf: Buffer> {
     size: Size,
     cells: [Buf; 2],
@@ -18,7 +29,12 @@ pub struct DiffedBuffers<Buf: Buffer> {
 }
 
 impl<Buf: Buffer> DiffedBuffers<Buf> {
-    pub fn new(size: Size, buf1: Buf, buf2: Buf) -> Self {
+    /// Creates a new `DiffedBuffers` with the given size and two pre-constructed
+    /// inner buffers.
+    pub fn new(size: Size, mut buf1: Buf, mut buf2: Buf) -> Self {
+        // just to ensure that they are the correct size
+        buf1.resize(size);
+        buf2.resize(size);
         Self {
             size,
             cells: [buf1, buf2],
@@ -26,6 +42,10 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
         }
     }
 
+    /// Swaps the current and previous frame buffers.
+    ///
+    /// After swapping, writes go to what was previously the old buffer and
+    /// the old buffer becomes the new baseline for diffing.
     pub fn swap_frames(&mut self) {
         self.frame_order = match self.frame_order {
             FrameOrder::CurrentOld => FrameOrder::OldCurrent,

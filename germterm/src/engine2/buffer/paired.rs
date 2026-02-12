@@ -12,6 +12,20 @@ enum FrameOrder {
     OldCurrent = 1,
 }
 
+/// The default buffer implementation provided by the library.
+///
+/// `PairedBuffer` stores two frames of [`Cell`]s in a single flat `Vec`,
+/// interleaved at the cell level so that both the current and previous frame
+/// for any given position sit adjacent in memory. The active frame is
+/// selected by a `FrameOrder` flag that is toggled on each [`swap_frames`]
+/// call.
+///
+/// On each call to [`Drawer::draw`], the current and previous cells at every
+/// position are compared and a [`DrawCall`] is emitted only for positions
+/// where they differ, minimising redundant terminal writes. After diffing,
+/// the frames are swapped automatically.
+///
+/// [`swap_frames`]: PairedBuffer::swap_frames
 pub struct PairedBuffer {
     size: Size,
     frames: Vec<Cell>,
@@ -19,6 +33,9 @@ pub struct PairedBuffer {
 }
 
 impl PairedBuffer {
+    /// Creates a new `PairedBuffer` with the given size.
+    ///
+    /// Both buffers are initialised to [`Cell::EMPTY`].
     pub fn new(size: Size) -> Self {
         Self {
             size,
@@ -41,6 +58,10 @@ impl PairedBuffer {
         base + (order as usize)
     }
 
+    /// Swaps the current and previous frame buffers.
+    ///
+    /// After swapping, writes and reads target what was previously the old
+    /// frame, and the old frame becomes the new baseline for diffing.
     pub fn swap_frames(&mut self) {
         self.order = match self.order {
             FrameOrder::CurrentOld => FrameOrder::OldCurrent,
