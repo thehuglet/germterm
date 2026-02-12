@@ -1,9 +1,10 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{Layer, draw_fps_counter, draw_text},
+    draw::{draw_fps_counter, draw_text},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
+    layer::create_layer,
     particle::{
         ParticleColor, ParticleEmitter, ParticleEmitterShape, ParticleSpec, spawn_particles,
     },
@@ -20,8 +21,8 @@ fn main() -> io::Result<()> {
         .title("octad-particles")
         .limit_fps(0);
 
-    let mut main_layer = Layer::new(&mut engine, 0);
-    let mut text_top_layer = Layer::new(&mut engine, 1);
+    let main_layer = create_layer(&mut engine, 0);
+    let text_top_layer = create_layer(&mut engine, 1);
 
     init(&mut engine)?;
     'game_loop: loop {
@@ -65,7 +66,8 @@ fn main() -> io::Result<()> {
                 let y_b: f32 = TERM_ROWS as f32 * 0.7;
 
                 spawn_particles(
-                    &mut main_layer,
+                    &mut engine,
+                    main_layer,
                     rng.random_range(x_a..=x_b),
                     rng.random_range(y_a..=y_b),
                     &spec,
@@ -75,15 +77,16 @@ fn main() -> io::Result<()> {
         }
 
         draw_text(
-            &mut text_top_layer,
+            &mut engine,
+            text_top_layer,
             26,
             (TERM_ROWS / 2) as i16,
             RichText::new("Press W to spawn particles!")
-                .fg(Color::WHITE.with_alpha(100))
-                .attributes(Attributes::BOLD),
+                .with_fg(Color::WHITE.with_alpha(100))
+                .with_attributes(Attributes::BOLD),
         );
 
-        draw_fps_counter(&mut text_top_layer, 0, 0);
+        draw_fps_counter(&mut engine, text_top_layer, 0, 0);
 
         end_frame(&mut engine)?;
     }

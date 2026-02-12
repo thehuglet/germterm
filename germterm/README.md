@@ -31,23 +31,24 @@ It renders in real time, adds support for the alpha channel, adds multiple drawi
 ## Getting started
 
 Add `germterm` as a dependency:
-```plain_text,no_run
+
+```plain_text,ignore
 cargo add germterm
 ```
 
-```rust,no_run
+```rust,ignore
 use germterm::{
-    color::Color,
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{Layer, draw_text, fill_screen, draw_fps_counter},
+    draw::{draw_fps_counter, draw_text},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
+    layer::create_layer,
 };
 use std::io;
 
 fn main() -> io::Result<()> {
     let mut engine = Engine::new(40, 20);
-    let mut layer = Layer::new(&mut engine, 0);
+    let layer = create_layer(&mut engine, 0);
 
     // Initialize engine and layers
     init(&mut engine)?;
@@ -68,8 +69,8 @@ fn main() -> io::Result<()> {
         }
 
         // Draw contents
-        draw_text(&mut layer, 14, 9, "Hello world!");
-        draw_fps_counter(&mut layer, 0, 0);
+        draw_text(&mut engine, layer, 14, 9, "Hello, Ferris!");
+        draw_fps_counter(&mut engine, layer, 0, 0);
 
         // End the frame
         end_frame(&mut engine)?;

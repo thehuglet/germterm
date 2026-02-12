@@ -1,10 +1,11 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop, sample_gradient},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{Layer, draw_octad, draw_text, draw_twoxel},
+    draw::{draw_octad, draw_text, draw_twoxel},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     fps_counter::get_fps,
     input::poll_input,
+    layer::{LayerIndex, create_layer},
     particle::{ParticleColor, ParticleEmitter, ParticleSpec, spawn_particles},
     rich_text::{Attributes, RichText},
 };
@@ -29,9 +30,9 @@ fn main() -> io::Result<()> {
         .title("twoxel-snake")
         .limit_fps(0);
 
-    let mut layer_0 = Layer::new(&mut engine, 0);
-    let mut layer_1 = Layer::new(&mut engine, 1);
-    let mut layer_2 = Layer::new(&mut engine, 2);
+    let layer_0 = create_layer(&mut engine, 0);
+    let layer_1 = create_layer(&mut engine, 1);
+    let layer_2 = create_layer(&mut engine, 2);
 
     let bg_decoration_color: Color = Color(0x45475aff);
     let movement_speed: f32 = 20.0;
@@ -113,7 +114,8 @@ fn main() -> io::Result<()> {
                 if segments.contains(&new_head) {
                     game_state = GameState::GameOver;
                     spawn_death_explosion(
-                        &mut layer_1,
+                        &mut engine,
+                        layer_1,
                         new_head.0 as f32 + 0.5,
                         (new_head.1 as f32 + 0.5) * 0.5,
                     );
@@ -122,13 +124,15 @@ fn main() -> io::Result<()> {
 
                 if new_head == apple_pos {
                     spawn_explosion(
-                        &mut layer_0,
+                        &mut engine,
+                        layer_0,
                         apple_pos.0 as f32 + 0.5,
                         (apple_pos.1 as f32 + 0.5) * 0.5,
                     );
                     apple_pos = random_pos();
                     spawn_apple_create_particles(
-                        &mut layer_0,
+                        &mut engine,
+                        layer_0,
                         (apple_pos.0 as f32) + 0.5,
                         ((apple_pos.1 as f32) + 0.5) * 0.5,
                     );
@@ -139,7 +143,7 @@ fn main() -> io::Result<()> {
         }
 
         let mut draw = |x: f32, y: f32| {
-            draw_octad(&mut layer_2, x, y, bg_decoration_color);
+            draw_octad(&mut engine, layer_2, x, y, bg_decoration_color);
         };
 
         // --- Horizontal borders ---
@@ -168,7 +172,8 @@ fn main() -> io::Result<()> {
 
         // --- Draw apple ---
         draw_twoxel(
-            &mut layer_2,
+            &mut engine,
+            layer_2,
             apple_pos.0 as f32,
             apple_pos.1 as f32 * 0.5,
             Color::RED,
@@ -179,7 +184,8 @@ fn main() -> io::Result<()> {
             let t: f32 = i as f32 / segments.len() as f32;
             // Multiplying the y axis by 0.5 here, as terminal cells usually have a 1:2 width to height ratio
             draw_twoxel(
-                &mut layer_2,
+                &mut engine,
+                layer_2,
                 segment.0 as f32,
                 segment.1 as f32 * 0.5,
                 sample_gradient(&snake_color_gradient, t),
@@ -189,22 +195,24 @@ fn main() -> io::Result<()> {
         // --- FPS Counter
         let fps_text: String = format!("UNCAPPED FPS: {:2.0}", get_fps(&engine));
         draw_text(
-            &mut layer_1,
+            &mut engine,
+            layer_1,
             10,
             1,
             RichText::new(fps_text)
-                .fg(Color(0x45475aff))
-                .attributes(Attributes::BOLD),
+                .with_fg(Color(0x45475aff))
+                .with_attributes(Attributes::BOLD),
         );
 
         if matches!(game_state, GameState::GameOver) {
             draw_text(
-                &mut layer_2,
+                &mut engine,
+                layer_2,
                 (TERM_COLS / 2 - 6) as i16,
                 (TERM_ROWS / 2 - 1) as i16,
                 RichText::new("GAME OVER!")
-                    .fg(Color::RED)
-                    .attributes(Attributes::BOLD),
+                    .with_fg(Color::RED)
+                    .with_attributes(Attributes::BOLD),
             );
         }
 
@@ -223,8 +231,9 @@ fn random_pos() -> (i16, i16) {
     )
 }
 
-fn spawn_explosion(layer: &mut Layer, x: f32, y: f32) {
+fn spawn_explosion(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     spawn_particles(
+        engine,
         layer,
         x,
         y,
@@ -245,8 +254,9 @@ fn spawn_explosion(layer: &mut Layer, x: f32, y: f32) {
     );
 }
 
-fn spawn_apple_create_particles(layer: &mut Layer, x: f32, y: f32) {
+fn spawn_apple_create_particles(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     spawn_particles(
+        engine,
         layer,
         x,
         y,
@@ -266,8 +276,9 @@ fn spawn_apple_create_particles(layer: &mut Layer, x: f32, y: f32) {
     );
 }
 
-fn spawn_death_explosion(layer: &mut Layer, x: f32, y: f32) {
+fn spawn_death_explosion(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     spawn_particles(
+        engine,
         layer,
         x,
         y,

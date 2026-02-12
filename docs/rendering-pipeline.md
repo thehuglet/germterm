@@ -3,12 +3,11 @@
 ```mermaid
 flowchart TD
     engine_init["Engine init"] --> frame_setup
-    frame_setup["Frame setup"] --> drawing_phase
+    frame_setup["Prepare frame"] --> drawing_phase
     drawing_phase["Drawing phase (draw_text, draw_rect, etc.)"] -->|"Begin rendering pipeline"| compose_frame_buffer
-    compose_frame_buffer["compose_frame_buffer()"] --> diff_frame_buffers
-    diff_frame_buffers["diff_frame_buffers()"] --> draw_to_terminal
-    draw_to_terminal["draw_to_terminal()"] --> store_frame_buffer_for_next_frame
-    store_frame_buffer_for_next_frame["Store current frame buffer for diffing"] -->|"Next frame"| frame_setup
+    compose_frame_buffer["Compose frame"] --> diff_frame_buffers
+    diff_frame_buffers["Diff with old frame"] --> draw_to_terminal
+    draw_to_terminal["Draw to terminal"] -->|"Next frame"| frame_setup
 ```
 
 ## Reusing structures to avoid allocations
@@ -53,16 +52,14 @@ The following examples demonstrate how this library diverges from traditional te
 - A 50% opacity `bg` would normally only affect the background channel underneath, here however it will blend `bg` with both `fg` and `bg`, making the `fg` appear "behind" the `bg`
 - A 0% opacity `fg` will not be drawn, keeping the old `fg`
 
-Every case that we account for can be found in the `frame::compose_cell` function. I've documented each case in frame::compose_cell as thoroughly as possibl
-
 ## Diffing frame buffers
 
-Diffing the previous and current frame buffer allows us to both avoid flickering and increase performance substantially by only drawing the contents that changed from the previous frame. This step returns an iterator over `DiffProduct`, which contains a `Cell` and the position on screen.
+Diffing the previous and current frame buffer allows us to both avoid flickering and increase performance substantially by only drawing the contents that changed from the previous frame. This step returns an iterator over `DiffProduct` items, which contains a `Cell` and the position on screen.
 
-## Justifying the `Color::NO_COLOR` sentinel over `Option<Color>`
+## Justifying `Attributes::NO_{FG/BG}_COLOR` over `Option<Color>`
 
 **Problem**: We need a way to represent absence of color, to "erase" a cell, restoring the terminal default. We can't use a color with 0% alpha for this, as 0% alpha means keeping the color underneath, not erasing it.
 
 **The obvious solution**: Using `Option<T>`, which would leave us with an `Option<Color>`. This works, but doubles the size of `Color` since Rust can't use a niche optimization which costs us 1 byte + 3 bytes of padding, resulting in 8 bytes compared to the original 4 bytes.
 
-**The solution I chose**: I decided to use a sentinel color value, as the chances of someone hitting it are very unlikely. An added benefit is keeping the `frame::compose_cell` function more readable compared to using `Option<T>`.
+**The solution I chose**: I decided to store this information in 2 bits of `Attributes` in order to avoid sacrificing performance.

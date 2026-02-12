@@ -1,7 +1,8 @@
 use crate::{
-    cell::Cell,
+    cell::{Cell, CellFormat},
     color::{Color, blend_source_over},
     draw::BLOCKTAD_CHAR_LUT,
+    layer::Layer,
     rich_text::{Attributes, RichText},
 };
 use crossterm::{cursor as ctcursor, queue, style as ctstyle};
@@ -62,7 +63,7 @@ pub struct FramePair {
     order: FrameOrder,
     pub(crate) width: u16,
     pub(crate) height: u16,
-    pub(crate) layered_draw_queue: Vec<Vec<DrawCall>>,
+    pub(crate) layered_draw_queue: Vec<Layer>,
 }
 
 impl FramePair {
@@ -115,7 +116,7 @@ impl FramePair {
         };
     }
 
-    pub fn current_mut_and_layered_mut(&mut self) -> (FrameMut<'_>, &mut Vec<Vec<DrawCall>>) {
+    pub fn current_mut_and_layered_mut(&mut self) -> (FrameMut<'_>, &mut Vec<Layer>) {
         let frame = FrameMut(&mut self.frames, self.order as usize);
         let layers = &mut self.layered_draw_queue;
         (frame, layers)
@@ -166,6 +167,7 @@ pub(crate) fn compose_frame_buffer(
                 fg: draw_call.rich_text.fg,
                 bg: draw_call.rich_text.bg,
                 attributes: draw_call.rich_text.attributes,
+                format: draw_call.rich_text.cell_format,
             };
 
             buffer[cell_index] = compose_cell(old_cell, new_cell, default_blending_color);
@@ -176,7 +178,7 @@ pub(crate) fn compose_frame_buffer(
 pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::ContentStyle {
     use crossterm::style as ctstyle;
 
-    let fg_color: Option<ctstyle::Color> = if cell.fg == Color::NO_COLOR {
+    let fg_color: Option<ctstyle::Color> = if cell.attributes.contains(Attributes::NO_FG_COLOR) {
         None
     } else {
         Some(ctstyle::Color::Rgb {
@@ -186,7 +188,7 @@ pub(crate) fn build_crossterm_content_style(cell: &Cell) -> crossterm::style::Co
         })
     };
 
-    let bg_color: Option<ctstyle::Color> = if cell.bg == Color::NO_COLOR {
+    let bg_color: Option<ctstyle::Color> = if cell.attributes.contains(Attributes::NO_BG_COLOR) {
         None
     } else {
         Some(ctstyle::Color::Rgb {
@@ -247,160 +249,155 @@ pub(crate) fn draw_to_terminal<'a>(
 
 #[inline]
 fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
-    let new_twoxel: bool = new.attributes.contains(Attributes::TWOXEL);
-    let new_octad: bool = new.attributes.contains(Attributes::OCTAD);
-    let new_blocktad: bool = new.attributes.contains(Attributes::BLOCKTAD);
-    let old_twoxel: bool = old.attributes.contains(Attributes::TWOXEL);
-    let old_octad: bool = old.attributes.contains(Attributes::OCTAD);
-    let old_blocktad: bool = old.attributes.contains(Attributes::BLOCKTAD);
     let both_ch_equal: bool = old.ch == new.ch;
 
+    // Cell format related
+    let new_twoxel: bool = new.format == CellFormat::Twoxel;
+    let new_octad: bool = new.format == CellFormat::Octad;
+    let new_blocktad: bool = new.format == CellFormat::Blocktad;
+
+    let old_twoxel: bool = old.format == CellFormat::Twoxel;
+    let old_octad: bool = old.format == CellFormat::Octad;
+    let old_blocktad: bool = old.format == CellFormat::Blocktad;
+
     // Foreground related
-    let new_fg_no_color: bool = new.fg == Color::NO_COLOR;
+    let new_fg_no_color: bool = new.attributes.contains(Attributes::NO_FG_COLOR);
     let new_fg_invisible: bool = new.fg.a() == 0;
     let new_fg_opaque: bool = new.fg.a() == 255;
     let new_ch_invisible: bool = new.ch == ' ' || new_fg_invisible;
+    let new_ch_translucent: bool = new.ch != ' ' && !new_fg_opaque && !new_fg_invisible;
 
     let old_fg_invisible: bool = old.fg.a() == 0;
+    let old_fg_no_color: bool = old.attributes.contains(Attributes::NO_FG_COLOR);
     let old_ch_invisible: bool = old.ch == ' ' || old_fg_invisible;
 
     // Background related
-    let new_bg_no_color: bool = new.bg == Color::NO_COLOR;
+    let new_bg_no_color: bool = new.attributes.contains(Attributes::NO_BG_COLOR);
     let new_bg_invisible: bool = new.bg.a() == 0;
     let new_bg_opaque: bool = new.bg.a() == 255;
     let new_bg_translucent: bool = !new_bg_opaque && !new_bg_invisible;
 
-    let old_bg_no_color: bool = old.bg == Color::NO_COLOR;
+    let old_bg_no_color: bool = old.attributes.contains(Attributes::NO_BG_COLOR);
+    let old_bg_opaque: bool = old.bg.a() == 255;
 
-    if new_twoxel {
-        let (ch, attributes) = if old_twoxel && !new_fg_no_color {
-            // Covers case:
-            // - Drawing a twoxel on top of another twoxel
-            //      => Keep the old char
-            (old.ch, old.attributes)
+    let (ch, format, mut attributes, fg, no_fg_color, bg, no_bg_color) = if new_twoxel {
+        let (ch, format, attributes) = if old_twoxel && !new_fg_no_color {
+            (old.ch, old.format, old.attributes)
         } else {
-            (new.ch, new.attributes)
+            (new.ch, new.format, new.attributes)
         };
 
-        let fg = if old_twoxel && both_ch_equal {
-            // Covers case:
-            // - Drawing a twoxel on top of another twoxel (same half-block)
-            //      => Blend the old fg with the new fg
-            blend_source_over(old.fg, new.fg)
+        let (fg, no_fg_color) = if old_twoxel && both_ch_equal {
+            (blend_source_over(old.fg, new.fg), false)
         } else if old_twoxel {
-            // Covers case:
-            // - Drawing a twoxel on top of another twoxel (different half-block)
-            //      => Keep the old fg
-            old.fg
+            (old.fg, false)
         } else if !old_bg_no_color {
-            blend_source_over(old.bg, new.fg)
+            (blend_source_over(old.bg, new.fg), false)
+        } else if new_fg_invisible {
+            (default_blending_color, true)
         } else {
-            blend_source_over(default_blending_color, new.fg)
+            (blend_source_over(default_blending_color, new.fg), false)
         };
 
-        let bg = if old_twoxel && both_ch_equal {
-            // Covers case:
-            // - Drawing a twoxel on top of another twoxel (same half)
-            //      => Keep the old bg
-            old.bg
+        let (bg, no_bg_color) = if old_twoxel && both_ch_equal {
+            (old.bg, false)
         } else if old_twoxel && old_bg_no_color {
-            blend_source_over(default_blending_color, new.fg)
+            if new_fg_invisible {
+                (default_blending_color, true)
+            } else {
+                (blend_source_over(default_blending_color, new.fg), false)
+            }
         } else if old_twoxel {
-            // Covers case:
-            // - Drawing a twoxel on top of another twoxel (different half-block)
-            //      => Draw the twoxel's fg as the bg channel
-            blend_source_over(old.bg, new.fg)
-        } else {
-            old.bg
-        };
-
-        Cell {
-            ch,
-            fg,
-            bg,
-            attributes,
-        }
-    } else {
-        // This branch handles the following drawing formats: [standard, octad, blocktad]
-
-        let (ch, attributes) = if new_ch_invisible && !new_bg_opaque && !new_bg_no_color {
-            // Covers case:
-            // - Fading an invisible character should not replace the one underneath
-            //      => Keep the old character
-            (old.ch, old.attributes)
-        } else if new_blocktad && old_blocktad {
-            // Covers case:
-            // - Drawing a blocktad on top of another blocktad
-            //      => Merge the blocktad chars
-            (merge_blocktad(old.ch, new.ch), new.attributes)
-        } else if new_octad && old_octad {
-            // Covers case:
-            // - Drawing an octad on top of another octad
-            //      => Merge the octad braille chars
-            (merge_octad(old.ch, new.ch), new.attributes)
-        } else {
-            (new.ch, new.attributes)
-        };
-
-        let fg = if new_bg_translucent && new_fg_invisible {
-            // Covers case:
-            // - Drawing a translucent bg with no visible char over a visible char
-            //      => Tint the old fg with the new bg to make it look like it's underneath it
-            blend_source_over(old.fg, new.bg)
-        } else if !old_ch_invisible && new_ch_invisible {
-            // Covers case:
-            // - Drawing an invisible char on top of another char
-            //      => Preserve old fg as the invisible char shouldn't be covering it
-            old.fg
-        } else if !old_ch_invisible && !new_fg_opaque {
-            // Covers case:
-            // - Drawing a non-opaque char on top of another visible char
-            //      => Blend the old fg with the new fg for a smoother transition
-            blend_source_over(old.fg, new.fg)
-        } else if !old_bg_no_color && !new_bg_invisible {
-            // Covers case:
-            // - Drawing fg text with a translucent bg above a regular bg
-            //      => Blend the translucent new bg with the old bg, then blend the new fg with the result
-            blend_source_over(blend_source_over(old.bg, new.bg), new.fg)
-        } else if old_bg_no_color && !new_bg_invisible {
-            // Covers case:
-            // - Drawing fg text with a translucent bg above a Color::NO_COLOR bg
-            //      => Blend the translucent new bg with the default blending color, then blend the new fg with the result
-            blend_source_over(blend_source_over(default_blending_color, new.bg), new.fg)
+            (blend_source_over(old.bg, new.fg), false)
         } else if old_bg_no_color {
-            // Covers case:
-            // - Drawing a translucent fg char over a Color::NO_COLOR bg
-            //      => Blend the new fg with the default blending color
-            blend_source_over(default_blending_color, new.fg)
+            (old.bg, true)
         } else {
-            blend_source_over(old.bg, new.fg)
+            (old.bg, false)
         };
 
-        let bg = if new_bg_no_color {
-            // Covers case:
-            // - Drawing a Color::NO_COLOR bg
-            //      => Erase the bg
-            Color::NO_COLOR
-        } else if old_bg_no_color && new_bg_invisible {
-            // Covers case:
-            // - Drawing a bg with an alpha of 0 over Color::NO_COLOR
-            //      => Erase the bg
-            Color::NO_COLOR
-        } else if old_bg_no_color && !new_bg_opaque {
-            // Covers cases:
-            // - Drawing a translucent background over a Color::NO_COLOR bg
-            //      => The new bg will be blended with the default blending color
-            blend_source_over(default_blending_color, new.bg)
+        (ch, format, attributes, fg, no_fg_color, bg, no_bg_color)
+    } else {
+        // This branch handles the following cell formats: [Standard, Octad, Blocktad]
+        let (ch, format, attributes) = if new_fg_no_color && new_bg_opaque && !old_ch_invisible {
+            (new.ch, new.format, new.attributes)
+        } else if new_blocktad && old_blocktad {
+            (merge_blocktad(old.ch, new.ch), new.format, new.attributes)
+        } else if new_octad && old_octad {
+            (merge_octad(old.ch, new.ch), new.format, new.attributes)
+        } else if new_ch_invisible && !new_bg_no_color {
+            (old.ch, old.format, old.attributes)
         } else {
-            blend_source_over(old.bg, new.bg)
+            (new.ch, new.format, new.attributes)
         };
 
-        Cell {
-            ch,
-            fg,
-            bg,
-            attributes,
-        }
+        let (fg, no_fg_color) = if new_ch_invisible && new_bg_opaque {
+            (Color::CLEAR, true)
+        } else if new_ch_invisible {
+            if new_bg_invisible && old_bg_no_color {
+                (old.fg, false)
+            } else if new_bg_translucent {
+                (blend_source_over(old.fg, new.bg), false)
+            } else {
+                (old.fg, old_fg_no_color)
+            }
+        } else if new_ch_translucent {
+            let bottom_color = if !old_ch_invisible {
+                old.fg
+            } else if old_bg_no_color && new_bg_invisible {
+                default_blending_color
+            } else if old_bg_no_color && new_bg_translucent {
+                blend_source_over(default_blending_color, new.bg)
+            } else if new_bg_opaque {
+                new.bg
+            } else if old_bg_opaque && new_bg_translucent {
+                blend_source_over(old.bg, new.bg)
+            } else if old_bg_opaque {
+                old.bg
+            } else {
+                Color::CLEAR
+            };
+            (blend_source_over(bottom_color, new.fg), new_fg_no_color)
+        } else {
+            (new.fg, new_fg_no_color)
+        };
+
+        let (bg, no_bg_color) = if new_bg_no_color || (old_bg_no_color && new_bg_invisible) {
+            (Color::CLEAR, true)
+        } else if new_bg_invisible {
+            (old.bg, false)
+        } else if new_bg_translucent {
+            let bottom_color = if old_bg_no_color {
+                default_blending_color
+            } else {
+                old.bg
+            };
+            (blend_source_over(bottom_color, new.bg), false)
+        } else {
+            (new.bg, false)
+        };
+
+        (ch, format, attributes, fg, no_fg_color, bg, no_bg_color)
+    };
+
+    // Independent NO_{FG/BG}_COLOR patched into attributes
+    attributes = (attributes & !(Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR))
+        | (if no_fg_color {
+            Attributes::NO_FG_COLOR
+        } else {
+            Attributes::empty()
+        })
+        | (if no_bg_color {
+            Attributes::NO_BG_COLOR
+        } else {
+            Attributes::empty()
+        });
+
+    Cell {
+        ch,
+        fg,
+        bg,
+        attributes,
+        format,
     }
 }
 

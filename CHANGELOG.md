@@ -1,3 +1,21 @@
+# 0.4.0
+
+### 🍀 Added
+
+- Added a new **Blocktad** drawing format. It works similarly to **Octads**, but uses blocks instead of braille characters
+
+### 🛠 Changed
+
+- Reworked the layer API into a more memory safe form
+- Improved stability and performance of the diffing step ([@airblast-dev](https://github.com/airblast-dev))
+- Removed unnecessary allocations ([@airblast-dev](https://github.com/airblast-dev))
+
+### ⚠ Breaking
+
+- `Layer` is now reserved for internal use, the new public API uses `LayerIndex` and the `create_layer()` factory
+- Changed drawing function first args from `&mut Layer` to `&mut Engine` and `LayerIndex`
+- Removed `Color::NO_COLOR` in favor of `Attributes::NO_FG_COLOR` and `Attributes::NO_BG_COLOR`
+
 # 0.3.0
 
 ### 🍀 Added

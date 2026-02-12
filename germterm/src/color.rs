@@ -119,7 +119,6 @@ pub static LERP_LUT_B: [[u8; 256]; 256] = {
 pub struct Color(pub u32);
 
 impl Color {
-    pub const NO_COLOR: Self = Self(0xBAD_C0DE);
     pub const CLEAR: Self = Self(0x00_00_00_00);
     pub const WHITE: Self = Self(0xFF_FF_FF_FF);
     pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
@@ -376,13 +375,6 @@ pub fn lerp(a: Color, b: Color, t: f32) -> Color {
 pub(crate) fn blend_source_over(bottom: Color, top: Color) -> Color {
     let (tr, tg, tb, ta) = top.rgba();
     let (br, bg, bb, ba) = bottom.rgba();
-
-    if ta == 0 {
-        return bottom;
-    }
-    if ta == 255 {
-        return top;
-    }
 
     let alpha_mult = BLEND_ALPHA_MULT[ta as usize][ba as usize] as u16;
     let out_a = ta as u16 + alpha_mult;

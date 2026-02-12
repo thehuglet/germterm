@@ -1,13 +1,12 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use germterm::{cell::Cell, color::Color, frame::FramePair, rich_text::Attributes};
+use germterm::{cell::Cell, color::Color, frame::FramePair};
 
 fn full_cell() -> Cell {
-    Cell {
-        ch: 'X',
-        fg: Color::WHITE,
-        bg: Color::BLACK,
-        attributes: Attributes::empty(),
-    }
+    let mut cell = Cell::EMPTY;
+    cell.ch = 'X';
+    cell.fg = Color::WHITE;
+    cell.bg = Color::BLACK;
+    cell
 }
 
 fn bench_frame_diff(c: &mut Criterion) {

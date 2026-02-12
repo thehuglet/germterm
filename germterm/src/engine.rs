@@ -6,11 +6,11 @@
 
 use crate::{
     color::{Color, ColorRgb},
-    draw::{Layer, fill_screen},
+    draw::erase_rect,
     fps_counter::{FpsCounter, update_fps_counter},
     fps_limiter::{self, FpsLimiter, wait_for_next_frame},
-    frame::FramePair,
-    frame::{compose_frame_buffer, draw_to_terminal},
+    frame::{FramePair, compose_frame_buffer, draw_to_terminal},
+    layer::{Layer, LayerIndex, create_layer},
     particle::{ParticleState, update_and_draw_particles},
 };
 use crossterm::{cursor, event, execute, terminal};
@@ -73,18 +73,14 @@ pub fn override_default_blending_color(engine: &mut Engine, color: ColorRgb) {
     engine.default_blending_color = color.into();
 }
 
-/// This function should be called once after constructing the [`Engine`] and defining the [`Layer`]s,
+/// This function should be called once after constructing the [`Engine`] and defining layers,
 /// and before entering the main update loop to initialize the engine.
-///
-/// # Panics
-/// This function will not panic directly, but misusing it by defining a [`Layer`] after
-/// [`init`] has been called, and then referencing the layer will likely cause a panic.
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer}, engine::{Engine, init}};
+/// # use germterm::{layer::create_layer, engine::{Engine, init}};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
+/// let layer = create_layer(&mut engine, 0);
 /// init(&mut engine);
 /// ```
 pub fn init(engine: &mut Engine) -> io::Result<()> {
@@ -93,7 +89,7 @@ pub fn init(engine: &mut Engine) -> io::Result<()> {
         engine
             .frame
             .layered_draw_queue
-            .resize_with(layer_count, Vec::new);
+            .resize_with(layer_count, Layer::new);
     }
 
     terminal::enable_raw_mode()?;
@@ -132,8 +128,15 @@ pub fn start_frame(engine: &mut Engine) {
     engine.delta_time = wait_for_next_frame(&mut engine.fps_limiter);
     update_fps_counter(&mut engine.fps_counter, engine.delta_time);
 
-    let mut lowest_possible_layer = Layer::new(engine, 0);
-    fill_screen(&mut lowest_possible_layer, Color::NO_COLOR);
+    let lowest_layer_index: LayerIndex = create_layer(engine, 0);
+    erase_rect(
+        engine,
+        lowest_layer_index,
+        0,
+        0,
+        engine.frame.width as i16,
+        engine.frame.height as i16,
+    );
 }
 
 /// Renders the contents to the terminal and ends the frame.
@@ -149,7 +152,7 @@ pub fn end_frame(engine: &mut Engine) -> io::Result<()> {
     let (current, layered) = engine.frame.current_mut_and_layered_mut();
     compose_frame_buffer(
         current,
-        layered.iter_mut().flat_map(|v| v.drain(..)),
+        layered.iter_mut().flat_map(|v| v.0.drain(..)),
         width,
         height,
         engine.default_blending_color,

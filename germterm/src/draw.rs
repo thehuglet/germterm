@@ -8,14 +8,9 @@
 //!
 //! ## Layers
 //!
-//! A [`Layer`] is a lightweight handle identifying
-//! a specific draw layer within an [`Engine`].
-//!
-//! Multiple layers may coexist and be drawn independently.
-//!
-//! Layers are sorted during rendering by their specified index, where index 1 would be drawn above index 0, etc.
-//!
-//! You can define as many layers as you need to, they are fairly cheap.
+//! Each drawing function accepts a layer index, created by `layer::create_layer()`.
+//! Layers are ordered and rendered by index and sorted from lowest to highest.
+//! You can define as many layers as you need, they are fairly cheap.
 //!
 //! ## Coordinate space
 //!
@@ -37,7 +32,13 @@
 //! that are consumed by the engine at the end of the frame.
 
 use crate::{
-    color::Color, engine::Engine, fps_counter::get_fps, frame::DrawCall, rich_text::RichText,
+    cell::CellFormat,
+    color::Color,
+    engine::Engine,
+    fps_counter::get_fps,
+    frame::DrawCall,
+    layer::LayerIndex,
+    rich_text::{Attributes, RichText},
 };
 
 #[rustfmt::skip]
@@ -60,106 +61,101 @@ pub(crate) static BLOCKTAD_CHAR_LUT: [char; 256] = [
     '▄', '𜷛', '𜷜', '𜷝', '𜷞', '▙', '𜷟', '𜷠', '𜷡', '𜷢', '▟', '𜷣', '▆', '𜷤', '𜷥', '█',
 ];
 
-/// A handle to a drawing layer.
+/// Draws text at the given coordinates.
 ///
-/// Passed into drawing functions, specifies to which layer the contents will be drawn.
-///
-/// Multiple layers can coexist and be passed around freely.
-///
-/// # Notes
-/// Layer index can not be negative, the lowest layer index is 0.
-///
-/// # SAFETY
-/// A [`Layer`] must not outlive the [`Engine`] it references due to the `&mut Engine` pointer.
-#[derive(Clone, Copy)]
-pub struct Layer {
-    pub(crate) engine_ptr: *mut Engine,
-    pub(crate) index: usize,
-}
-
-impl Layer {
-    /// Creates a drawing layer handle.
-    ///
-    /// # Examples
-    /// ```rust,no_run
-    /// # use germterm::{draw::Layer, engine::Engine};
-    /// let mut engine = Engine::new(40, 20);
-    /// let mut layer = Layer::new(&mut engine, 0);
-    /// ```
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    pub fn new(engine_ptr: *mut Engine, layer_index: usize) -> Self {
-        let engine: &mut Engine = unsafe { &mut *engine_ptr };
-        engine.max_layer_index = engine.max_layer_index.max(layer_index);
-
-        Self {
-            engine_ptr,
-            index: layer_index,
-        }
-    }
-}
-
-/// Draws text at the given coordinates on a layer.
-///
-/// Accepts either a `&str` or `String`, which are converted into [`RichText`].
+/// Accepts either a `&str` or `String` or `RichText`.
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_text}, engine::Engine};
+/// # use germterm::{draw::draw_text, layer::create_layer, engine::Engine};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
-/// draw_text(&mut layer, 2, 1, "Hello world!");
+/// let layer = create_layer(&mut engine, 0);
+/// draw_text(&mut engine, layer, 2, 1, "Hello world!");
 /// ```
-pub fn draw_text(layer: &mut Layer, x: i16, y: i16, text: impl Into<RichText>) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::draw_text(draw_queue, x, y, text);
+pub fn draw_text(
+    engine: &mut Engine,
+    layer_index: LayerIndex,
+    x: i16,
+    y: i16,
+    text: impl Into<RichText>,
+) {
+    let layer = &mut engine.frame.layered_draw_queue[layer_index.0];
+    let rich_text: RichText = text.into();
+
+    layer.0.push(DrawCall { rich_text, x, y });
 }
 
 /// Fills the entire screen with the specified [`Color`].
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, fill_screen}, engine::Engine, color::Color};
+/// # use germterm::{draw::fill_screen, layer::create_layer, engine::Engine, color::Color};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
-/// fill_screen(&mut layer, Color::PINK);
+/// let layer = create_layer(&mut engine, 0);
+/// fill_screen(&mut engine, layer, Color::PINK);
 /// ```
-pub fn fill_screen(layer: &mut Layer, color: Color) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
+pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
     let width: i16 = engine.frame.width as i16;
     let height: i16 = engine.frame.height as i16;
-    internal::fill_screen(draw_queue, width, height, color);
+
+    draw_rect(engine, layer_index, 0, 0, width, height, color);
 }
 
 /// Erases a rect area, restoring the default bg color and deleting the characters.
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, erase_rect}, engine::Engine};
+/// # use germterm::{draw::erase_rect, layer::create_layer, engine::Engine};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
-/// erase_rect(&mut layer, 2, 2, 6, 3);
+/// let layer = create_layer(&mut engine, 0);
+/// erase_rect(&mut engine, layer, 2, 2, 6, 3);
 /// ```
-pub fn erase_rect(layer: &mut Layer, x: i16, y: i16, width: i16, height: i16) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::erase_rect(draw_queue, x, y, width, height)
+pub fn erase_rect(
+    engine: &mut Engine,
+    layer_index: LayerIndex,
+    x: i16,
+    y: i16,
+    width: i16,
+    height: i16,
+) {
+    let row_text: String = " ".repeat(width as usize);
+    let row_rich_text = RichText::new(row_text)
+        .with_fg(Color::CLEAR)
+        .with_bg(Color::CLEAR)
+        .with_attributes(Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR);
+
+    for row in 0..height {
+        draw_text(engine, layer_index, x, y + row, row_rich_text.clone())
+    }
 }
 
 /// Draws a filled rect area with the specified [`Color`].
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_rect}, engine::Engine, color::Color};
+/// # use germterm::{draw::draw_rect, layer::create_layer, engine::Engine, color::Color};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
-/// draw_rect(&mut layer, 10, 5, 20, 10, Color::CYAN);
+/// let layer = create_layer(&mut engine, 0);
+/// draw_rect(&mut engine, layer, 10, 5, 20, 10, Color::CYAN);
 /// ```
-pub fn draw_rect(layer: &mut Layer, x: i16, y: i16, width: i16, height: i16, color: Color) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::draw_rect(draw_queue, x, y, width, height, color);
+pub fn draw_rect(
+    engine: &mut Engine,
+    layer_index: LayerIndex,
+    x: i16,
+    y: i16,
+    width: i16,
+    height: i16,
+    color: Color,
+) {
+    let row_text: String = " ".repeat(width as usize);
+    let row_rich_text: RichText = RichText::new(&row_text)
+        .with_fg(Color::CLEAR)
+        .with_bg(color)
+        .with_attributes(Attributes::NO_FG_COLOR);
+
+    for row in 0..height {
+        draw_text(engine, layer_index, x, y + row, row_rich_text.clone())
+    }
 }
 
 /// Draws a single octad at the specified sub-cell position.
@@ -177,19 +173,40 @@ pub fn draw_rect(layer: &mut Layer, x: i16, y: i16, width: i16, height: i16, col
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_octad}, engine::Engine, color::Color};
+/// # use germterm::{draw::draw_octad, layer::create_layer, engine::Engine, color::Color};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
+/// let layer = create_layer(&mut engine, 0);
 ///
 /// // The following octads would occupy the same cell,
 /// // resulting in a merged octad cluster being drawn
-/// draw_octad(&mut layer, 3.0, 4.0, Color::YELLOW);
-/// draw_octad(&mut layer, 3.0, 4.5, Color::YELLOW);
+/// draw_octad(&mut engine, layer, 3.0, 4.0, Color::YELLOW);
+/// draw_octad(&mut engine, layer, 3.0, 4.5, Color::YELLOW);
 /// ```
-pub fn draw_octad(layer: &mut Layer, x: f32, y: f32, color: Color) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::draw_octad(draw_queue, x, y, color);
+pub fn draw_octad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
+    let cell_x: i16 = x.floor() as i16;
+    let cell_y: i16 = y.floor() as i16;
+
+    let sub_x: u8 = ((x - cell_x as f32) * 2.0).clamp(0.0, 1.0) as u8;
+    let sub_y_float: f32 = (y - cell_y as f32) * 4.0;
+    let sub_y: usize = sub_y_float.floor().clamp(0.0, 3.0) as usize;
+    let offset: usize = match (sub_x, sub_y) {
+        (0, 0) => 0,
+        (0, 1) => 1,
+        (0, 2) => 2,
+        (0, 3) => 6,
+        (1, 0) => 3,
+        (1, 1) => 4,
+        (1, 2) => 5,
+        (1, 3) => 7,
+        _ => panic!("Octad sub-position ({sub_x}, {sub_y}) falls out of range."),
+    };
+
+    let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
+    let rich_text: RichText = RichText::new(braille_char.to_string())
+        .with_fg(color)
+        .with_cell_format(CellFormat::Octad);
+
+    draw_text(engine, layer_index, cell_x, cell_y, rich_text);
 }
 
 /// Draws a single blocktad at the specified sub-cell position.
@@ -207,23 +224,34 @@ pub fn draw_octad(layer: &mut Layer, x: f32, y: f32, color: Color) {
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_blocktad}, engine::Engine, color::Color};
+/// # use germterm::{draw::draw_blocktad, layer::create_layer, engine::Engine, color::Color};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
+/// let layer = create_layer(&mut engine, 0);
 ///
 /// // The following blocktads would occupy the same cell,
 /// // resulting in a merged blocktad cluster being drawn
-/// draw_blocktad(&mut layer, 3.0, 4.0, Color::GREEN);
-/// draw_blocktad(&mut layer, 3.0, 4.5, Color::GREEN);
+/// draw_blocktad(&mut engine, layer, 3.0, 4.0, Color::GREEN);
+/// draw_blocktad(&mut engine, layer, 3.0, 4.5, Color::GREEN);
 /// ```
 ///
 /// /// # Notes
 /// The characters may not show up on all fonts, as the [Symbols for Legacy Computing Supplement](https://en.wikipedia.org/wiki/Symbols_for_Legacy_Computing_Supplement)
 /// Unicode block is a relatively recent addition. Use with caution.
-pub fn draw_blocktad(layer: &mut Layer, x: f32, y: f32, color: Color) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::draw_blocktad(draw_queue, x, y, color);
+pub fn draw_blocktad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
+    let cell_x: i16 = x.floor() as i16;
+    let cell_y: i16 = y.floor() as i16;
+
+    let sub_x: usize = (((x - cell_x as f32) * 2.0).floor().clamp(0.0, 1.0)) as usize;
+    let sub_y: usize = (((y - cell_y as f32) * 4.0).floor().clamp(0.0, 3.0)) as usize;
+    let offset: usize = sub_y * 2 + sub_x;
+    let mask: usize = 1 << offset;
+
+    let blocktad_char: char = BLOCKTAD_CHAR_LUT[mask];
+    let rich_text: RichText = RichText::new(blocktad_char.to_string())
+        .with_fg(color)
+        .with_cell_format(CellFormat::Blocktad);
+
+    draw_text(engine, layer_index, cell_x, cell_y, rich_text);
 }
 
 /// Draws a single twoxel at the specified sub-cell position.
@@ -241,19 +269,32 @@ pub fn draw_blocktad(layer: &mut Layer, x: f32, y: f32, color: Color) {
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_twoxel}, engine::Engine, color::Color};
+/// # use germterm::{draw::draw_twoxel, layer::create_layer, engine::Engine, color::Color};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
+/// let layer = create_layer(&mut engine, 0);
 ///
 /// // The following twoxels would occupy the same cell,
 /// // resulting in a merged twoxel with independent colors
-/// draw_twoxel(&mut layer, 3.0, 4.0, Color::RED);
-/// draw_twoxel(&mut layer, 3.0, 4.5, Color::CYAN);
+/// draw_twoxel(&mut engine, layer, 3.0, 4.0, Color::RED);
+/// draw_twoxel(&mut engine, layer, 3.0, 4.5, Color::CYAN);
 /// ```
-pub fn draw_twoxel(layer: &mut Layer, x: f32, y: f32, color: Color) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    let draw_queue: &mut Vec<DrawCall> = &mut engine.frame.layered_draw_queue[layer.index];
-    internal::draw_twoxel(draw_queue, x, y, color);
+pub fn draw_twoxel(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
+    let cell_x: i16 = x.floor() as i16;
+    let cell_y: i16 = y.floor() as i16;
+
+    let sub_y_float: f32 = (y - cell_y as f32) * 2.0;
+    let sub_y: usize = sub_y_float.floor().clamp(0.0, 1.0) as usize;
+
+    let half_block: char = match sub_y {
+        0 => '▀',
+        1 => '▄',
+        _ => panic!("Twoxel 'sub_y': {sub_y} falls out of range."),
+    };
+    let rich_text: RichText = RichText::new(half_block.to_string())
+        .with_fg(color)
+        .with_cell_format(CellFormat::Twoxel);
+
+    draw_text(engine, layer_index, cell_x, cell_y, rich_text)
 }
 
 /// Draws the current FPS.
@@ -265,131 +306,12 @@ pub fn draw_twoxel(layer: &mut Layer, x: f32, y: f32, color: Color) {
 ///
 /// # Example
 /// ```rust,no_run
-/// # use germterm::{draw::{Layer, draw_fps_counter}, engine::Engine};
+/// # use germterm::{draw::draw_fps_counter, layer::create_layer, engine::Engine};
 /// let mut engine = Engine::new(40, 20);
-/// let mut layer = Layer::new(&mut engine, 0);
-/// draw_fps_counter(&mut layer, 0, 0);
+/// let layer = create_layer(&mut engine, 0);
+/// draw_fps_counter(&mut engine, layer, 0, 0);
 /// ```
-pub fn draw_fps_counter(layer: &mut Layer, x: i16, y: i16) {
-    let engine: &mut Engine = unsafe { &mut *layer.engine_ptr };
-    draw_text(layer, x, y, format!("FPS: {:2.0}", get_fps(engine)));
-}
-
-pub(crate) mod internal {
-    use std::sync::Arc;
-
-    use crate::{
-        color::Color,
-        draw::BLOCKTAD_CHAR_LUT,
-        frame::DrawCall,
-        rich_text::{Attributes, RichText},
-    };
-
-    pub fn fill_screen(draw_queue: &mut Vec<DrawCall>, cols: i16, rows: i16, color: Color) {
-        draw_rect(draw_queue, 0, 0, cols, rows, color);
-    }
-
-    pub fn draw_text(draw_queue: &mut Vec<DrawCall>, x: i16, y: i16, text: impl Into<RichText>) {
-        let rich_text: RichText = text.into();
-        draw_queue.push(DrawCall { rich_text, x, y });
-    }
-
-    pub fn draw_rect(
-        draw_queue: &mut Vec<DrawCall>,
-        x: i16,
-        y: i16,
-        width: i16,
-        height: i16,
-        color: Color,
-    ) {
-        let row_text: String = " ".repeat(width as usize);
-        let row_rich_text: RichText = RichText::new(&row_text).fg(Color::CLEAR).bg(color);
-
-        for row in 0..height {
-            draw_text(draw_queue, x, y + row, row_rich_text.clone())
-        }
-    }
-
-    pub fn erase_rect(draw_queue: &mut Vec<DrawCall>, x: i16, y: i16, width: i16, height: i16) {
-        let row_text: String = " ".repeat(width as usize);
-        let row_rich_text: RichText = RichText {
-            text: Arc::new(row_text),
-            fg: Color::NO_COLOR,
-            bg: Color::NO_COLOR,
-            attributes: Attributes::empty(),
-        };
-
-        for row in 0..height {
-            draw_text(draw_queue, x, y + row, row_rich_text.clone())
-        }
-    }
-
-    pub fn draw_blocktad(draw_queue: &mut Vec<DrawCall>, x: f32, y: f32, color: Color) {
-        let cell_x: i16 = x.floor() as i16;
-        let cell_y: i16 = y.floor() as i16;
-
-        let sub_x: usize = (((x - cell_x as f32) * 2.0).floor().clamp(0.0, 1.0)) as usize;
-        let sub_y: usize = (((y - cell_y as f32) * 4.0).floor().clamp(0.0, 3.0)) as usize;
-
-        let offset: usize = sub_y * 2 + sub_x;
-        let mask: usize = 1 << offset;
-
-        let blocktad_char: char = BLOCKTAD_CHAR_LUT[mask];
-
-        let rich_text: RichText = RichText::new(blocktad_char.to_string())
-            .fg(color)
-            .attributes(Attributes::BLOCKTAD);
-
-        draw_text(draw_queue, cell_x, cell_y, rich_text);
-    }
-
-    pub fn draw_octad(draw_queue: &mut Vec<DrawCall>, x: f32, y: f32, color: Color) {
-        let cell_x: i16 = x.floor() as i16;
-        let cell_y: i16 = y.floor() as i16;
-
-        let sub_x: u8 = ((x - cell_x as f32) * 2.0).clamp(0.0, 1.0) as u8;
-        let sub_y_float: f32 = (y - cell_y as f32) * 4.0;
-        let sub_y: usize = sub_y_float.floor().clamp(0.0, 3.0) as usize;
-
-        let offset: usize = match (sub_x, sub_y) {
-            (0, 0) => 0,
-            (0, 1) => 1,
-            (0, 2) => 2,
-            (0, 3) => 6,
-            (1, 0) => 3,
-            (1, 1) => 4,
-            (1, 2) => 5,
-            (1, 3) => 7,
-            _ => panic!(
-                "Octad sub-position ({sub_x}, {sub_y}) falls out of expected ranges (0..1, 0..3)"
-            ),
-        };
-
-        let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
-        let rich_text: RichText = RichText::new(braille_char.to_string())
-            .fg(color)
-            .attributes(Attributes::OCTAD);
-
-        draw_text(draw_queue, cell_x, cell_y, rich_text);
-    }
-
-    pub fn draw_twoxel(draw_queue: &mut Vec<DrawCall>, x: f32, y: f32, color: Color) {
-        let cell_x: i16 = x.floor() as i16;
-        let cell_y: i16 = y.floor() as i16;
-
-        let sub_y_float: f32 = (y - cell_y as f32) * 2.0;
-        let sub_y: usize = sub_y_float.floor().clamp(0.0, 1.0) as usize;
-
-        let half_block: char = match sub_y {
-            0 => '▀',
-            1 => '▄',
-            _ => panic!("Twoxel 'sub_y': {sub_y} falls out of the expected 0..1 range"),
-        };
-
-        let rich_text: RichText = RichText::new(half_block.to_string())
-            .fg(color)
-            .attributes(Attributes::TWOXEL);
-
-        draw_text(draw_queue, cell_x, cell_y, rich_text)
-    }
+pub fn draw_fps_counter(engine: &mut Engine, layer_index: LayerIndex, x: i16, y: i16) {
+    let text: String = format!("FPS: {:2.0}", get_fps(engine));
+    draw_text(engine, layer_index, x, y, text);
 }
