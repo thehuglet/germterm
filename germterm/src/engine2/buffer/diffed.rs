@@ -81,6 +81,7 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
     }
 
     fn resize(&mut self, size: Size) {
+        self.size = size;
         self.cells.iter_mut().for_each(|b| b.resize(size))
     }
 }
