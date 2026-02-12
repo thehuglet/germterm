@@ -34,10 +34,10 @@ impl<Timed: Timer, Buf: Buffer> Engine<Timed, Buf> {
 }
 
 impl Engine<DefaultTimer, PairedBuffer> {
-    pub fn new(width: u16, height: u16) -> Self {
+    pub fn new(sz: Size) -> Self {
         Self {
             timer: TimerWrapper::new(DefaultTimer::new(), 0.0),
-            buffer: PairedBuffer::new(Size::new(width, height)),
+            buffer: PairedBuffer::new(sz),
         }
     }
 }
