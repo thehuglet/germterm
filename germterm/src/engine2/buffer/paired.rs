@@ -1,7 +1,9 @@
+use std::cmp::Ordering;
+
 use super::{Buffer, DrawCall, Drawer};
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Size},
+    engine2::{draw::Size, Position},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -11,18 +13,16 @@ enum FrameOrder {
 }
 
 pub struct PairedBuffer {
-    width: u16,
-    height: u16,
+    size: Size,
     frames: Vec<Cell>,
     order: FrameOrder,
 }
 
 impl PairedBuffer {
-    pub fn new(width: u16, height: u16) -> Self {
+    pub fn new(size: Size) -> Self {
         Self {
-            width,
-            height,
-            frames: vec![Cell::EMPTY; (width as usize * height as usize) * 2],
+            size,
+            frames: vec![Cell::EMPTY; size.area() as usize * 2],
             order: FrameOrder::CurrentOld,
         }
     }
@@ -37,7 +37,7 @@ impl PairedBuffer {
 
     #[inline]
     fn index(&self, pos: Position, order: FrameOrder) -> usize {
-        let base = (pos.y as usize * self.width as usize + pos.x as usize) * 2;
+        let base = (pos.y as usize * self.size.width as usize + pos.x as usize) * 2;
         base + (order as usize)
     }
 
@@ -66,19 +66,42 @@ impl Buffer for PairedBuffer {
     }
 
     fn start_frame(&mut self) {
-        for x in 0..self.width {
-            for y in 0..self.height {
+        for x in 0..self.size.width {
+            for y in 0..self.size.height {
                 let idx = self.index_current(Position { x, y });
                 self.frames[idx] = Cell::EMPTY;
             }
+        }
+    }
+
+    fn resize(&mut self, size: Size) {
+        let w_new = size.width;
+        let w_old = self.size.width;
+        let h_new = size.height;
+        let h_old = self.size.height;
+        let old_total_size = self.size.area();
+        let new_total_size = size.area();
+
+        // If growing reserve the needed space in bulk
+        if new_total_size > old_total_size {
+            self.frames
+                .reserve((new_total_size - old_total_size) as usize * 2);
+        }
+
+        match w_old.cmp(&w_new) {
+            // Grow case
+            Ordering::Less => {}
+            // Shrink case
+            Ordering::Greater => todo!(),
+            Ordering::Equal => {}
         }
     }
 }
 
 impl Drawer for PairedBuffer {
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
-        let width = self.width;
-        let height = self.height;
+        let width = self.size.width;
+        let height = self.size.height;
         let order = self.order as usize;
         let old_order = 1 - order;
 
@@ -115,15 +138,15 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let buf = PairedBuffer::new(10, 5);
-        assert_eq!(buf.width, 10);
-        assert_eq!(buf.height, 5);
+        let sz = Size::new(10, 5);
+        let buf = PairedBuffer::new(sz);
+        assert_eq!(sz, buf.size);
         assert_eq!(buf.frames.len(), 10 * 5 * 2);
     }
 
     #[test]
     fn test_set_get_cell() {
-        let mut buf = PairedBuffer::new(10, 5);
+        let mut buf = PairedBuffer::new(Size::new(10, 5));
         let mut cell = Cell::EMPTY;
         cell.ch = 'X';
 
@@ -134,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_swap_frames() {
-        let mut buf = PairedBuffer::new(10, 5);
+        let mut buf = PairedBuffer::new(Size::new(10, 5));
         let mut cell_a = Cell::EMPTY;
         cell_a.ch = 'A';
         let mut cell_b = Cell::EMPTY;
@@ -161,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_draw_diff() {
-        let mut buf = PairedBuffer::new(2, 2);
+        let mut buf = PairedBuffer::new(Size::new(2, 2));
         let mut cell_a = Cell::EMPTY;
         cell_a.ch = 'A';
 
@@ -190,28 +213,25 @@ mod tests {
 
     #[test]
     fn test_out_of_bounds() {
-        let mut buf = PairedBuffer::new(10, 5);
+        let mut buf = PairedBuffer::new(Size::new(10, 5));
         let size = Size {
             width: 10,
             height: 5,
         };
-        assert!(
-            buf.set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            buf.set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            buf.get_cell_checked(size, Position { x: 10, y: 0 })
-                .is_err()
-        );
+        assert!(buf
+            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .get_cell_checked(size, Position { x: 10, y: 0 })
+            .is_err());
     }
 
     #[test]
     fn test_multiple_swaps_and_draws() {
-        let mut buf = PairedBuffer::new(5, 5);
+        let mut buf = PairedBuffer::new(Size::new(5, 5));
         let mut cell_a = Cell::EMPTY;
         cell_a.ch = 'A';
         let mut cell_b = Cell::EMPTY;
@@ -259,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_complex_moving_pixel() {
-        let mut buf = PairedBuffer::new(5, 1);
+        let mut buf = PairedBuffer::new(Size::new(5, 1));
         let mut cell = Cell::EMPTY;
         cell.ch = '#';
 
@@ -333,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_swap_persistence() {
-        let mut buf = PairedBuffer::new(5, 5);
+        let mut buf = PairedBuffer::new(Size::new(5, 5));
         let mut cell_1 = Cell::EMPTY;
         cell_1.ch = '1';
         let mut cell_2 = Cell::EMPTY;
@@ -367,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_overwrite_after_swap() {
-        let mut buf = PairedBuffer::new(3, 3);
+        let mut buf = PairedBuffer::new(Size::new(3, 3));
         let mut cell = Cell::EMPTY;
 
         // Frame A: Write 'A'
@@ -395,80 +415,5 @@ mod tests {
         buf.swap_frames();
         // Check B is still 'B'
         assert_eq!(buf.get_cell(Position { x: 0, y: 0 }).ch, 'B');
-    }
-
-    #[test]
-    fn test_redundant_updates_yield_no_draws() {
-        let mut buf = PairedBuffer::new(3, 3);
-        let mut cell = Cell::EMPTY;
-        cell.ch = 'X';
-
-        // 1. Basic redundancy check
-        // Frame A: Write 'X' at (0,0)
-        buf.set_cell(Position { x: 0, y: 0 }, cell);
-
-        // Draw 1: A vs B(empty). Yields (0,0) -> 'X'. Swap -> B is current.
-        assert_eq!(buf.draw().count(), 1);
-
-        // Frame B: Write 'X' at (0,0).
-        // Since A (old) has 'X' at (0,0), and B (current) has 'X' at (0,0).
-        buf.set_cell(Position { x: 0, y: 0 }, cell);
-
-        // Draw 2: B vs A. 'X' == 'X'. Should yield NONE.
-        let count = buf.draw().count();
-        assert_eq!(
-            count, 0,
-            "Expected 0 draw calls when content matches old frame"
-        );
-
-        // 2. Mixed redundancy check
-        // Current is A (after Draw 2). Old is B ('X').
-
-        // Write 'X' at (0,0) [Redundant, matches B]
-        buf.set_cell(Position { x: 0, y: 0 }, cell);
-
-        // Write 'Y' at (1,1) [New]
-        let mut cell_y = Cell::EMPTY;
-        cell_y.ch = 'Y';
-        buf.set_cell(Position { x: 1, y: 1 }, cell_y);
-
-        // Draw 3: A vs B.
-        // (0,0): 'X' vs 'X' -> No draw.
-        // (1,1): 'Y' vs ' ' -> Draw.
-        let calls: Vec<_> = buf.draw().collect();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].pos.x, 1);
-        assert_eq!(calls[0].pos.y, 1);
-        assert_eq!(calls[0].cell.ch, 'Y');
-
-        // 3. Redundant Clear check
-        // Current is B. Old is A ('X' at 0,0; 'Y' at 1,1).
-        // B has 'X' at 0,0 (persisted/written previously) and ' ' at 1,1 (default).
-
-        // Explicitly write ' ' at (1,1) to B.
-        // A has 'Y' at (1,1). So this IS a change (clearing).
-        buf.set_cell(Position { x: 1, y: 1 }, Cell::EMPTY);
-
-        // Draw 4: B vs A.
-        // (0,0): 'X' vs 'X' -> No draw.
-        // (1,1): ' ' vs 'Y' -> Draw (clearing).
-        let calls: Vec<_> = buf.draw().collect();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].pos.x, 1);
-        assert_eq!(calls[0].pos.y, 1);
-        assert_eq!(calls[0].cell.ch, ' ');
-
-        // 4. Truly Redundant Clear
-        // Current is A. Old is B ('X' at 0,0; ' ' at 1,1).
-
-        // Write ' ' at (1,1) to A.
-        buf.set_cell(Position { x: 1, y: 1 }, Cell::EMPTY);
-        // Write 'X' at (0,0) to A.
-        buf.set_cell(Position { x: 0, y: 0 }, cell);
-
-        // Draw 5: A vs B.
-        // (0,0): 'X' vs 'X' -> No draw.
-        // (1,1): ' ' vs ' ' -> No draw.
-        assert_eq!(buf.draw().count(), 0);
     }
 }

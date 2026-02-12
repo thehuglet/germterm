@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{marker::PhantomData, time::Instant};
 
 pub trait Timer {
     fn delta(&mut self) -> f32;
@@ -30,8 +30,10 @@ pub trait TimerMarker {
     type Data;
 }
 
-impl TimerMarker for () {
-    type Data = ();
+#[repr(transparent)]
+pub struct NoTimer;
+impl TimerMarker for NoTimer {
+    type Data = NoTimer;
 }
 
 impl<T: Timer> TimerMarker for T {

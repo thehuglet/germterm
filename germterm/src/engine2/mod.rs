@@ -7,9 +7,9 @@ mod widget;
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{Buffer, paired::PairedBuffer},
-        draw::Position,
-        timer::{DefaultTimer,  TimerMarker, TimerWrapper},
+        buffer::{paired::PairedBuffer, Buffer},
+        draw::{Position, Size},
+        timer::{DefaultTimer, TimerMarker, TimerWrapper},
     },
 };
 
@@ -37,7 +37,7 @@ impl Engine<DefaultTimer, PairedBuffer> {
     pub fn new(width: u16, height: u16) -> Self {
         Self {
             timer: TimerWrapper::new(DefaultTimer::new(), 0.0),
-            buffer: PairedBuffer::new(width, height),
+            buffer: PairedBuffer::new(Size::new(width, height)),
         }
     }
 }

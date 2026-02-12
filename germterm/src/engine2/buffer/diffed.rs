@@ -1,6 +1,6 @@
 use crate::{
     cell::Cell,
-    engine2::{Position, buffer::Drawer, draw::Size},
+    engine2::{buffer::Drawer, draw::Size, Position},
 };
 
 use super::{Buffer, DrawCall};
@@ -12,17 +12,15 @@ enum FrameOrder {
 }
 
 pub struct DiffedBuffers<Buf: Buffer> {
-    width: u16,
-    height: u16,
+    size: Size,
     cells: [Buf; 2],
     frame_order: FrameOrder,
 }
 
 impl<Buf: Buffer> DiffedBuffers<Buf> {
-    pub fn new(width: u16, height: u16, buf1: Buf, buf2: Buf) -> Self {
+    pub fn new(size: Size, buf1: Buf, buf2: Buf) -> Self {
         Self {
-            width,
-            height,
+            size,
             cells: [buf1, buf2],
             frame_order: FrameOrder::CurrentOld,
         }
@@ -69,8 +67,8 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
 
 impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
-        let width = self.width;
-        let height = self.height;
+        let width = self.size.width;
+        let height = self.size.height;
         let order = 1 - self.frame_order as usize;
         let old_order = 1 - order;
 
@@ -80,13 +78,14 @@ impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
 
         (0..height).flat_map(move |y| {
             (0..width).filter_map(move |x| {
-                let current_cell = current_buf.get_cell(Position { x, y });
-                let old_cell = old_buf.get_cell(Position { x, y });
+                let pos = Position { x, y };
+                let current_cell = current_buf.get_cell(pos);
+                let old_cell = old_buf.get_cell(pos);
 
                 if current_cell != old_cell {
                     Some(DrawCall {
                         cell: current_cell,
-                        pos: Position { x, y },
+                        pos,
                     })
                 } else {
                     None
