@@ -1,5 +1,6 @@
 pub mod diffed;
 pub mod paired;
+pub mod slice;
 
 use super::DrawCall;
 use crate::{
@@ -79,6 +80,19 @@ pub trait Buffer {
     fn end_frame(&mut self) {}
     /// Resizes the buffer to the given [`Size`].
     fn resize(&mut self, size: Size);
+
+    /// Returns a [`SubSlice`](slice::SubSlice) viewing into this buffer at
+    /// `origin` with the given `size`.
+    ///
+    /// All positions written through the sub-slice are translated by `origin`
+    /// before reaching this buffer. The sub-slice's checked methods use `size`
+    /// as the bounds.
+    fn subslice(&mut self, origin: Position, size: Size) -> slice::SubBuffer<'_, Self>
+    where
+        Self: Sized,
+    {
+        slice::SubBuffer::new(self, origin, size)
+    }
 }
 
 /// Produces an iterator of [`DrawCall`]s representing cells that need to be
