@@ -120,6 +120,7 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
     fn size(&self) -> Size {
         self.size
     }
+
     fn set_cell_checked(
         &mut self,
         pos: Position,
