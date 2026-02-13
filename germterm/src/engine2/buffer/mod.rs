@@ -29,7 +29,7 @@ pub trait Buffer {
     ///
     /// # Panics
     ///
-    /// Implementations are free to panic if `pos` is out of bounds.
+    /// Implementations must panic if `pos` is out of bounds.
     fn set_cell(&mut self, pos: Position, cell: Cell);
     /// Sets the cell at `pos`, returning an error if `pos` is outside `size`.
     fn set_cell_checked(
@@ -49,13 +49,13 @@ pub trait Buffer {
     ///
     /// # Panics
     ///
-    /// Implementations are free to panic if `pos` is out of bounds.
+    /// Implementations must panic if `pos` is out of bounds.
     fn get_cell(&self, pos: Position) -> &Cell;
     /// Returns a mutable reference to the cell at `pos` without bounds checking.
     ///
     /// # Panics
     ///
-    /// Implementations are free to panic if `pos` is out of bounds.
+    /// Implementations must panic if `pos` is out of bounds.
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell;
     /// Returns a reference to the cell at `pos`, returning an error if `pos` is outside `size`.
     fn get_cell_checked(&self, size: Size, pos: Position) -> Result<&Cell, ErrorOutOfBoundsAxises> {

@@ -74,7 +74,7 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
         // When the shrink amount exceeds the width, shrink whilst keeping the position centered.
         //
         // In general it shouldn't matter as having a zero size should result in no draws being
-        // performed. However one could use the origin and size to compute some distance. 
+        // performed. However one could use the origin and size to compute some distance.
         // In which case shrinking equally by both sides creating a zero size buffer is likely to
         // yield better results.
         //
@@ -246,23 +246,17 @@ mod tests {
         let sz = sub_buffer.size();
 
         // Within sub_buffer bounds
-        assert!(
-            sub_buffer
-                .set_cell_checked(sz, Position::new(4, 4), Cell::EMPTY)
-                .is_ok()
-        );
+        assert!(sub_buffer
+            .set_cell_checked(sz, Position::new(4, 4), Cell::EMPTY)
+            .is_ok());
 
         // Outside sub_buffer bounds
-        assert!(
-            sub_buffer
-                .set_cell_checked(sz, Position::new(5, 0), Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            sub_buffer
-                .set_cell_checked(sz, Position::new(0, 5), Cell::EMPTY)
-                .is_err()
-        );
+        assert!(sub_buffer
+            .set_cell_checked(sz, Position::new(5, 0), Cell::EMPTY)
+            .is_err());
+        assert!(sub_buffer
+            .set_cell_checked(sz, Position::new(0, 5), Cell::EMPTY)
+            .is_err());
     }
 
     #[test]

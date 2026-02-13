@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use super::{Buffer, DrawCall, Drawer};
 use crate::{
     cell::Cell,
-    engine2::{Position, buffer::ResizableBuffer, draw::Size},
+    engine2::{buffer::ResizableBuffer, draw::Size, Position},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -236,18 +236,15 @@ mod tests {
             width: 10,
             height: 5,
         };
-        assert!(
-            buf.set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            buf.set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            buf.get_cell_checked(size, Position { x: 10, y: 0 })
-                .is_err()
-        );
+        assert!(buf
+            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
+            .is_err());
+        assert!(buf
+            .get_cell_checked(size, Position { x: 10, y: 0 })
+            .is_err());
     }
 
     #[test]

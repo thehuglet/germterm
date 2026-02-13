@@ -1,9 +1,9 @@
 use crate::{
     cell::Cell,
     engine2::{
-        Position,
         buffer::{Drawer, ResizableBuffer},
         draw::Size,
+        Position,
     },
 };
 
