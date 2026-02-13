@@ -79,13 +79,13 @@ pub trait Buffer {
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}
 
-    /// Returns a [`SubSlice`](slice::SubSlice) viewing into this buffer at
+    /// Returns a [`SubBuffer`](slice::SubBuffer) viewing into this buffer at
     /// `origin` with the given `size`.
     ///
-    /// All positions written through the sub-slice are translated by `origin`
-    /// before reaching this buffer. The sub-slice's checked methods use `size`
+    /// All positions written through the sub-buffer are translated by `origin`
+    /// before reaching this buffer. The sub-buffer's checked methods use `size`
     /// as the bounds.
-    fn subslice(&mut self, origin: Position, size: Size) -> slice::SubBuffer<'_, Self>
+    fn sub_buffer(&mut self, origin: Position, size: Size) -> slice::SubBuffer<'_, Self>
     where
         Self: Sized,
     {
