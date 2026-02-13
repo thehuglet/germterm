@@ -41,6 +41,12 @@ impl DefaultTimer {
     }
 }
 
+impl Default for DefaultTimer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timer for DefaultTimer {
     type Delta = f32;
 
