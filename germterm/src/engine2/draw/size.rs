@@ -3,7 +3,7 @@ use crate::engine2::buffer::ErrorOutOfBoundsAxises;
 use super::Position;
 
 /// A 2D size representing width and height in terminal cells.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 pub struct Size {
     pub width: u16,
     pub height: u16,
