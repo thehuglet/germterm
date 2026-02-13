@@ -50,7 +50,8 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
 
     /// Translates a local position into the parent buffer's coordinate space.
     ///
-    /// If the resulting position is out of bounds of the subbuffer returns [`None`].
+    /// If the resulting position is out of bounds of the subbuffer returns
+    /// [`ErrorOutOfBoundsAxises`].
     #[inline(always)]
     fn translate(&self, pos: Position) -> Result<Position, ErrorOutOfBoundsAxises> {
         self.size
