@@ -1,6 +1,7 @@
 pub mod diffed;
 pub mod paired;
 pub mod slice;
+pub mod utils;
 
 use super::DrawCall;
 use crate::{
