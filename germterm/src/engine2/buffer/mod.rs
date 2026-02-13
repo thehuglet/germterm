@@ -87,6 +87,12 @@ pub trait Buffer {
 }
 
 pub trait ResizableBuffer: Buffer {
+    /// Resized this buffer to `size`.
+    ///
+    /// # Panics
+    ///
+    /// The size provided here must be the same one that will be returned by [`Buffer::size`].
+    /// Not doing so may result in panics caused by this discrepancy.
     fn resize(&mut self, size: Size);
 }
 
