@@ -18,7 +18,7 @@ enum FrameOrder {
 /// A buffer that wraps two buffers of the same type and produces draw calls
 /// only for cells that differ between the current and previous frame.
 ///
-/// On each call to [`Drawer::draw`], `DiffedBuffers` compares the active
+/// On each call to [`Drawer::draw`], [`DiffedBuffers`] compares the active
 /// (current) buffer against the inactive (previous) buffer and emits a
 /// [`DrawCall`] only for positions where the cell has changed. The two
 /// internal buffers are then swapped so the old frame becomes the baseline
