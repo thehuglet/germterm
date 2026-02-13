@@ -15,6 +15,7 @@ use super::Buffer;
 /// [`FrameContext`](crate::engine2::widget::FrameContext) or any other
 /// context expecting a buffer without the callee knowing it operates on
 /// a sub-region.
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
     inner: &'a mut Buf,
     origin: Position,
@@ -45,25 +46,47 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     }
 
     /// Translates a local position into the parent buffer's coordinate space.
+    ///
+    /// If the resulting position is out of bounds of the subbuffer returns [`None`].
     #[inline(always)]
-    fn translate(&self, pos: Position) -> Position {
-        Position::new(self.origin.x + pos.x, self.origin.y + pos.y)
+    fn translate(&self, pos: Position) -> Option<Position> {
+        pos.is_within(self.size.width, self.size.height)
+            .then_some(Position::new(self.origin.x + pos.x, self.origin.y + pos.y))
     }
 
+    /// Shrink the buffer from the left side.
     #[inline(always)]
     pub fn shrink_left(&mut self, by: u16) {
         self.origin.x = self.origin.x.saturating_add(by);
         self.size.width = self.size.width.saturating_sub(by);
     }
 
+    /// Shrink the buffer from the right side.
     #[inline(always)]
     pub fn shrink_right(&mut self, by: u16) {
         self.size.width = self.size.width.saturating_sub(by);
     }
 
+    /// Shrink the buffer horizontally.
+    ///
+    /// The buffer is shrunk at the left and right side.
     pub fn shrink_width(&mut self, by: u16) {
-        self.shrink_left(by);
-        self.shrink_right(by);
+        // When the shrink amount exceeds the width, shrink whilst keeping the position centered.
+        //
+        // In general it shouldn't matter as having a zero size should result in no draws being
+        // performed. However one could use the origin and size to compute some distance. 
+        // In which case shrinking equally by both sides creating a zero size buffer is likely to
+        // yield better results.
+        //
+        // This isn't for the `Buffer` impl as our sub buffer already handles bounds checking. This
+        // is for when values are read externally to be used in some other part of the render.
+        if self.size.width <= by * 2 {
+            self.origin.x += self.size.width / 2;
+            self.size.width = 0;
+        } else {
+            self.shrink_left(by);
+            self.shrink_right(by);
+        }
     }
 
     #[inline(always)]
@@ -78,6 +101,11 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     }
 
     pub fn shrink_height(&mut self, by: u16) {
+        // see comments in `Self::shrink_width` for why we do this
+        if self.size.height <= by * 2 {
+            self.origin.y += self.size.height / 2;
+            self.size.height = 0;
+        }
         self.shrink_top(by);
         self.shrink_bottom(by);
     }
@@ -85,24 +113,28 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
 
 impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
     fn set_cell(&mut self, pos: Position, cell: Cell) {
-        if !self.size.is_within(pos) {
-            panic!("out of bounds set_cell for subbuffer of");
-        }
-        self.inner.set_cell(self.translate(pos), cell);
+        self.inner.set_cell(
+            self.translate(pos)
+                .expect("out of bounds set_cell for subbuffer of"),
+            cell,
+        );
     }
 
     fn get_cell(&self, pos: Position) -> &Cell {
-        if !self.size.is_within(pos) {
-            panic!("out of bounds get_cell for subbuffer of");
-        }
-        self.inner.get_cell(self.translate(pos))
+        self.inner.get_cell(
+            self.translate(pos)
+                .expect("out of bounds get_cell for subbuffer of"),
+        )
     }
 
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
         if !self.size.is_within(pos) {
-            panic!("out of bounds get_cell_mut for subbuffer of");
+            panic!();
         }
-        self.inner.get_cell_mut(self.translate(pos))
+        self.inner.get_cell_mut(
+            self.translate(pos)
+                .expect("out of bounds get_cell_mut for subbuffer of"),
+        )
     }
 }
 
@@ -322,4 +354,3 @@ mod tests {
         sub_buffer.get_cell_mut(Position::new(5, 5));
     }
 }
-
