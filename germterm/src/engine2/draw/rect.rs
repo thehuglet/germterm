@@ -8,16 +8,16 @@ pub struct Rect {
 
 impl Rect {
     /// A rectangle with zero size at the origin.
-    pub const ZERO: Self = Self::new(Size::ZERO, Position::ZERO);
+    pub const ZERO: Self = Self::new(Position::ZERO, Size::ZERO);
 
     /// Creates a new `Rect` from a `Size` and an origin `Position`.
-    pub const fn new(size: Size, origin: Position) -> Self {
+    pub const fn new(origin: Position, size: Size) -> Self {
         Self { size, origin }
     }
 
     /// Creates a new `Rect` from x, y, width, and height.
     pub const fn from_xywh(x: u16, y: u16, width: u16, height: u16) -> Self {
-        Self::new(Size::new(width, height), Position::new(x, y))
+        Self::new(Position::new(x, y), Size::new(width, height))
     }
 
     /// Returns the x-coordinate of the origin.
@@ -96,6 +96,38 @@ impl Rect {
             None
         }
     }
+
+    /// Splits the rectangle horizontally into two.
+    ///
+    /// The `at` parameter is relative to the top of the rectangle.
+    pub fn split_h(self, at: u16) -> (Self, Self) {
+        let h = at.min(self.size.height);
+        (
+            Self::from_xywh(self.origin.x, self.origin.y, self.size.width, h),
+            Self::from_xywh(
+                self.origin.x,
+                self.origin.y + h,
+                self.size.width,
+                self.size.height - h,
+            ),
+        )
+    }
+
+    /// Splits the rectangle vertically into two.
+    ///
+    /// The `at` parameter is relative to the left of the rectangle.
+    pub fn split_v(self, at: u16) -> (Self, Self) {
+        let w = at.min(self.size.width);
+        (
+            Self::from_xywh(self.origin.x, self.origin.y, w, self.size.height),
+            Self::from_xywh(
+                self.origin.x + w,
+                self.origin.y,
+                self.size.width - w,
+                self.size.height,
+            ),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -157,4 +189,3 @@ mod tests {
         assert!(!Rect::from_xywh(0, 0, 1, 1).is_empty());
     }
 }
-
