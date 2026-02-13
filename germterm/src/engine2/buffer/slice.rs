@@ -59,20 +59,24 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
 
 impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
     fn set_cell(&mut self, pos: Position, cell: Cell) {
+        if !self.size.is_within(pos) {
+            panic!("out of bounds set_cell for subbuffer of");
+        }
         self.inner.set_cell(self.translate(pos), cell);
     }
 
     fn get_cell(&self, pos: Position) -> &Cell {
+        if !self.size.is_within(pos) {
+            panic!("out of bounds get_cell for subbuffer of");
+        }
         self.inner.get_cell(self.translate(pos))
     }
 
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
+        if !self.size.is_within(pos) {
+            panic!("out of bounds get_cell_mut for subbuffer of");
+        }
         self.inner.get_cell_mut(self.translate(pos))
-    }
-
-    /// Adjusts the view dimensions. Does **not** resize the parent buffer.
-    fn resize(&mut self, size: Size) {
-        self.size = size;
     }
 }
 
@@ -184,34 +188,23 @@ mod tests {
         let sz = slice.size();
 
         // Within slice bounds
-        assert!(slice
-            .set_cell_checked(sz, Position::new(4, 4), Cell::EMPTY)
-            .is_ok());
+        assert!(
+            slice
+                .set_cell_checked(sz, Position::new(4, 4), Cell::EMPTY)
+                .is_ok()
+        );
 
         // Outside slice bounds
-        assert!(slice
-            .set_cell_checked(sz, Position::new(5, 0), Cell::EMPTY)
-            .is_err());
-        assert!(slice
-            .set_cell_checked(sz, Position::new(0, 5), Cell::EMPTY)
-            .is_err());
-    }
-
-    #[test]
-    fn resize_changes_view_not_parent() {
-        let mut buf = PairedBuffer::new(Size::new(20, 20));
-        let mut slice = SubBuffer::new(&mut buf, Position::new(0, 0), Size::new(5, 5));
-
-        assert_eq!(slice.size(), Size::new(5, 5));
-
-        slice.resize(Size::new(10, 10));
-        assert_eq!(slice.size(), Size::new(10, 10));
-
-        let sz = slice.size();
-        // Position (7,7) is now within the enlarged view
-        assert!(slice
-            .set_cell_checked(sz, Position::new(7, 7), Cell::EMPTY)
-            .is_ok());
+        assert!(
+            slice
+                .set_cell_checked(sz, Position::new(5, 0), Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            slice
+                .set_cell_checked(sz, Position::new(0, 5), Cell::EMPTY)
+                .is_err()
+        );
     }
 
     #[test]
