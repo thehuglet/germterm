@@ -86,7 +86,7 @@ pub trait Buffer {
     }
 }
 
-trait ResizableBuffer: Buffer {
+pub trait ResizableBuffer: Buffer {
     fn resize(&mut self, size: Size);
 }
 
