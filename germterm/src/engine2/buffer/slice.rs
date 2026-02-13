@@ -109,9 +109,10 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
         if self.size.height <= by * 2 {
             self.origin.y += self.size.height / 2;
             self.size.height = 0;
+        } else {
+            self.shrink_top(by);
+            self.shrink_bottom(by);
         }
-        self.shrink_top(by);
-        self.shrink_bottom(by);
     }
 }
 
