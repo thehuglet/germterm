@@ -15,16 +15,10 @@ use super::Buffer;
 /// [`FrameContext`](crate::engine2::widget::FrameContext) or any other
 /// context expecting a buffer without the callee knowing it operates on
 /// a sub-region.
-///
-/// # Panics
-///
-/// The unchecked [`Buffer`] methods (`set_cell`, `get_cell`, `get_cell_mut`)
-/// follow the same contract as the parent buffer: if the translated position
-/// falls outside the parent's bounds the parent is free to panic. Use the
-/// checked variants with [`size`](SubBuffer::size) to guarantee bounds safety.
 pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
     inner: &'a mut Buf,
     origin: Position,
+    // Never make this public as the we never want a widget to grow its area.
     size: Size,
 }
 
