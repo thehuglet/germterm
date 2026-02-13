@@ -35,7 +35,7 @@ pub struct DiffedBuffers<Buf: Buffer> {
 impl<Buf: Buffer> DiffedBuffers<Buf> {
     /// Creates a new `DiffedBuffers` with the given size and two pre-constructed
     /// inner buffers.
-    pub fn new(size: Size, mut buf1: Buf, mut buf2: Buf) -> Self {
+    pub fn new(size: Size, buf1: Buf, buf2: Buf) -> Self {
         Self {
             size,
             cells: [buf1, buf2],
