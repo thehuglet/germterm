@@ -87,7 +87,7 @@ pub trait Buffer {
 }
 
 pub trait ResizableBuffer: Buffer {
-    /// Resized this buffer to `size`.
+    /// Resizes this buffer to `size`.
     ///
     /// After performing a resize the [`Size`] provided here must be returned from
     /// [`Buffer::size`]. Not doing so may result in incorrect values or panics.
