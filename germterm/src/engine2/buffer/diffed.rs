@@ -56,19 +56,32 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
 }
 
 impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
-    fn set_cell(&mut self, pos: Position, cell: Cell) {
-        let idx = 1 - self.frame_order as usize;
-        self.cells[idx].set_cell(pos, cell);
+    fn size(&self) -> Size {
+        debug_assert_eq!(self.cells[0].size(), self.cells[1].size(), "both buffers should always provide the equal size");
+
+        self.cells[0].size()
     }
 
-    fn get_cell(&self, pos: Position) -> &Cell {
+    fn set_cell_checked(
+        &mut self,
+        pos: Position,
+        cell: Cell,
+    ) -> Result<(), super::ErrorOutOfBoundsAxises> {
         let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell(pos)
+        self.cells[idx].set_cell_checked(pos, cell)
     }
 
-    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
+    fn get_cell_checked(&self, pos: Position) -> Result<&Cell, super::ErrorOutOfBoundsAxises> {
         let idx = 1 - self.frame_order as usize;
-        self.cells[idx].get_cell_mut(pos)
+        self.cells[idx].get_cell_checked(pos)
+    }
+
+    fn get_cell_mut_checked(
+        &mut self,
+        pos: Position,
+    ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
+        let idx = 1 - self.frame_order as usize;
+        self.cells[idx].get_cell_mut_checked(pos)
     }
 
     fn start_frame(&mut self) {

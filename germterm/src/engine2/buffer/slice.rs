@@ -1,6 +1,9 @@
 use crate::{
     cell::Cell,
-    engine2::draw::{Position, Size},
+    engine2::{
+        buffer::ErrorOutOfBoundsAxises,
+        draw::{Position, Size},
+    },
 };
 
 use super::Buffer;
@@ -49,9 +52,10 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     ///
     /// If the resulting position is out of bounds of the subbuffer returns [`None`].
     #[inline(always)]
-    fn translate(&self, pos: Position) -> Option<Position> {
-        pos.is_within(self.size.width, self.size.height)
-            .then_some(Position::new(self.origin.x + pos.x, self.origin.y + pos.y))
+    fn translate(&self, pos: Position) -> Result<Position, ErrorOutOfBoundsAxises> {
+        self.size
+            .contains(pos)
+            .map(|_| Position::new(self.origin.x + pos.x, self.origin.y + pos.y))
     }
 
     /// Shrink the buffer from the left side.
@@ -112,29 +116,30 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
 }
 
 impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
-    fn set_cell(&mut self, pos: Position, cell: Cell) {
-        self.inner.set_cell(
-            self.translate(pos)
-                .expect("out of bounds set_cell for subbuffer of"),
-            cell,
-        );
+    fn size(&self) -> Size {
+        self.size
+    }
+    fn set_cell_checked(
+        &mut self,
+        pos: Position,
+        cell: Cell,
+    ) -> Result<(), super::ErrorOutOfBoundsAxises> {
+        let translated = self.translate(pos)?;
+        self.inner.set_cell(translated, cell);
+        Ok(())
     }
 
-    fn get_cell(&self, pos: Position) -> &Cell {
-        self.inner.get_cell(
-            self.translate(pos)
-                .expect("out of bounds get_cell for subbuffer of"),
-        )
+    fn get_cell_checked(&self, pos: Position) -> Result<&Cell, super::ErrorOutOfBoundsAxises> {
+        let translated = self.translate(pos)?;
+        Ok(self.inner.get_cell(translated))
     }
 
-    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
-        if !self.size.is_within(pos) {
-            panic!();
-        }
-        self.inner.get_cell_mut(
-            self.translate(pos)
-                .expect("out of bounds get_cell_mut for subbuffer of"),
-        )
+    fn get_cell_mut_checked(
+        &mut self,
+        pos: Position,
+    ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
+        let translated = self.translate(pos)?;
+        Ok(self.inner.get_cell_mut(translated))
     }
 }
 
@@ -243,20 +248,25 @@ mod tests {
     fn checked_write_uses_sub_buffer_size() {
         let mut buf = PairedBuffer::new(Size::new(20, 20));
         let mut sub_buffer = SubBuffer::new(&mut buf, Position::new(0, 0), Size::new(5, 5));
-        let sz = sub_buffer.size();
 
         // Within sub_buffer bounds
-        assert!(sub_buffer
-            .set_cell_checked(sz, Position::new(4, 4), Cell::EMPTY)
-            .is_ok());
+        assert!(
+            sub_buffer
+                .set_cell_checked(Position::new(4, 4), Cell::EMPTY)
+                .is_ok()
+        );
 
         // Outside sub_buffer bounds
-        assert!(sub_buffer
-            .set_cell_checked(sz, Position::new(5, 0), Cell::EMPTY)
-            .is_err());
-        assert!(sub_buffer
-            .set_cell_checked(sz, Position::new(0, 5), Cell::EMPTY)
-            .is_err());
+        assert!(
+            sub_buffer
+                .set_cell_checked(Position::new(5, 0), Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            sub_buffer
+                .set_cell_checked(Position::new(0, 5), Cell::EMPTY)
+                .is_err()
+        );
     }
 
     #[test]

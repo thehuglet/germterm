@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use super::{Buffer, DrawCall, Drawer};
 use crate::{
     cell::Cell,
-    engine2::{buffer::ResizableBuffer, draw::Size, Position},
+    engine2::{Position, buffer::ResizableBuffer, draw::Size},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -67,18 +67,33 @@ impl PairedBuffer {
 }
 
 impl Buffer for PairedBuffer {
-    fn set_cell(&mut self, pos: Position, cell: Cell) {
+    fn size(&self) -> Size {
+        self.size
+    }
+
+    fn set_cell_checked(
+        &mut self,
+        pos: Position,
+        cell: Cell,
+    ) -> Result<(), super::ErrorOutOfBoundsAxises> {
+        self.size.contains(pos)?;
         let cur = self.index_current();
         self.frames[pos.to_index(self.size.width)][cur] = cell;
+        Ok(())
     }
 
-    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
+    fn get_cell_checked(&self, pos: Position) -> Result<&Cell, super::ErrorOutOfBoundsAxises> {
+        self.size.contains(pos)?;
+        Ok(&self.frames[pos.to_index(self.size.width)][self.index_current()])
+    }
+
+    fn get_cell_mut_checked(
+        &mut self,
+        pos: Position,
+    ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
+        self.size.contains(pos)?;
         let cur = self.index_current();
-        &mut self.frames[pos.to_index(self.size.width)][cur]
-    }
-
-    fn get_cell(&self, pos: Position) -> &Cell {
-        &self.frames[pos.to_index(self.size.width)][self.index_current()]
+        Ok(&mut self.frames[pos.to_index(self.size.width)][cur])
     }
 
     fn start_frame(&mut self) {
@@ -232,19 +247,15 @@ mod tests {
     #[test]
     fn test_out_of_bounds() {
         let mut buf = PairedBuffer::new(Size::new(10, 5));
-        let size = Size {
-            width: 10,
-            height: 5,
-        };
-        assert!(buf
-            .set_cell_checked(size, Position { x: 10, y: 0 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .set_cell_checked(size, Position { x: 0, y: 5 }, Cell::EMPTY)
-            .is_err());
-        assert!(buf
-            .get_cell_checked(size, Position { x: 10, y: 0 })
-            .is_err());
+        assert!(
+            buf.set_cell_checked(Position { x: 10, y: 0 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(
+            buf.set_cell_checked(Position { x: 0, y: 5 }, Cell::EMPTY)
+                .is_err()
+        );
+        assert!(buf.get_cell_checked(Position { x: 10, y: 0 }).is_err());
     }
 
     #[test]

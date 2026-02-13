@@ -16,7 +16,6 @@ impl<W: Widget<NoTimer>> Widget<f64> for W {
             self,
             FrameContext {
                 delta: NoTimer,
-                size: ctx.size,
                 buffer: ctx.buffer,
             },
         );
@@ -31,7 +30,6 @@ impl<W: Widget<f64>> Widget<f32> for W {
             self,
             FrameContext {
                 delta: ctx.delta as f64,
-                size: ctx.size,
                 buffer: ctx.buffer,
             },
         );
@@ -40,7 +38,6 @@ impl<W: Widget<f64>> Widget<f32> for W {
 
 pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoTimer> {
     pub(crate) delta: Delta,
-    pub(crate) size: Size,
     pub(crate) buffer: &'a mut Buf,
 }
 

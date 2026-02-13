@@ -5,7 +5,7 @@ pub mod slice;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{draw::Size, Position},
+    engine2::{Position, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -21,55 +21,48 @@ pub enum ErrorOutOfBoundsAxises {
 
 /// A 2D grid of [`Cell`]s that can be read and written by position.
 ///
-/// Implementors manage their own internal storage and frame lifecycle.
-/// The checked variants of read/write methods return an error if the
-/// given position falls outside the provided [`Size`] bounds.
+/// Implementors manage their own internal storage of [`Cell`]'s.
+/// Implementations must provide the checked variants of read/write methods
+/// which return an error if the given position falls outside the buffer's
+/// bounds. The unchecked variants must panic when a given position is out of bounds.
 pub trait Buffer {
+    /// The size of the area that can be drawn in this buffer
+    fn size(&self) -> Size;
+
+    /// Sets the cell at `pos`, returning an error if `pos` is outside bounds.
+    fn set_cell_checked(&mut self, pos: Position, cell: Cell)
+    -> Result<(), ErrorOutOfBoundsAxises>;
     /// Sets the cell at `pos` without bounds checking.
     ///
     /// # Panics
     ///
-    /// Implementations must panic if `pos` is out of bounds.
-    fn set_cell(&mut self, pos: Position, cell: Cell);
-    /// Sets the cell at `pos`, returning an error if `pos` is outside `size`.
-    fn set_cell_checked(
-        &mut self,
-        size: Size,
-        pos: Position,
-        cell: Cell,
-    ) -> Result<(), ErrorOutOfBoundsAxises> {
-        if let err @ Err(_) = size.contains(pos) {
-            return err;
-        }
-
-        self.set_cell(pos, cell);
-        Ok(())
+    /// Panics if `pos` is out of bounds.
+    fn set_cell(&mut self, pos: Position, cell: Cell) {
+        self.set_cell_checked(pos, cell)
+            .expect("out of bounds set_cell")
     }
+
+    /// Returns a reference to the cell at `pos`, returning an error if `pos` is outside bounds.
+    fn get_cell_checked(&self, pos: Position) -> Result<&Cell, ErrorOutOfBoundsAxises>;
     /// Returns a reference to the cell at `pos` without bounds checking.
     ///
     /// # Panics
     ///
-    /// Implementations must panic if `pos` is out of bounds.
-    fn get_cell(&self, pos: Position) -> &Cell;
+    /// Panics if `pos` is out of bounds.
+    fn get_cell(&self, pos: Position) -> &Cell {
+        self.get_cell_checked(pos).expect("out of bounds get_cell")
+    }
+
+    /// Returns a mutable reference to the cell at `pos`, returning an error if `pos` is outside bounds.
+    fn get_cell_mut_checked(&mut self, pos: Position) -> Result<&mut Cell, ErrorOutOfBoundsAxises>;
     /// Returns a mutable reference to the cell at `pos` without bounds checking.
     ///
     /// # Panics
     ///
-    /// Implementations must panic if `pos` is out of bounds.
-    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell;
-    /// Returns a reference to the cell at `pos`, returning an error if `pos` is outside `size`.
-    fn get_cell_checked(&self, size: Size, pos: Position) -> Result<&Cell, ErrorOutOfBoundsAxises> {
-        size.contains(pos)?;
-        Ok(self.get_cell(pos))
-    }
-    /// Returns a mutable reference to the cell at `pos`, returning an error if `pos` is outside `size`.
-    fn get_cell_mut_checked(
-        &mut self,
-        size: Size,
-        pos: Position,
-    ) -> Result<&mut Cell, ErrorOutOfBoundsAxises> {
-        size.contains(pos)?;
-        Ok(self.get_cell_mut(pos))
+    /// Panics if `pos` is out of bounds.
+    fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
+        self.get_cell_mut_checked(pos)
+            .expect("out of bounds get_cell_mut")
     }
 
     /// Called at the beginning of a frame. Implementations may use this to
