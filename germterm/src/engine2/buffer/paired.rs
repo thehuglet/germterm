@@ -96,14 +96,15 @@ impl Buffer for PairedBuffer {
         Ok(&mut self.frames[pos.to_index(self.size.width)][cur])
     }
 
-    fn start_frame(&mut self) {
-        for x in 0..self.size.width {
-            for y in 0..self.size.height {
-                let idx = Position { x, y }.to_index(self.size.width);
-                let cur = self.index_current();
-                self.frames[idx][cur] = Cell::EMPTY;
-            }
+    fn fill(&mut self, cell: Cell) {
+        let cur = self.index_current();
+        for frame in &mut self.frames {
+            frame[cur] = cell;
         }
+    }
+
+    fn start_frame(&mut self) {
+        self.clear();
     }
 }
 

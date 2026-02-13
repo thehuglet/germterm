@@ -6,7 +6,7 @@ pub mod utils;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Size},
+    engine2::{Position, draw::Rect, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -66,6 +66,21 @@ pub trait Buffer {
             .expect("out of bounds get_cell_mut")
     }
 
+    /// Fills the entire buffer with `cell`.
+    fn fill(&mut self, cell: Cell) {
+        let size = self.size();
+        for y in 0..size.height {
+            for x in 0..size.width {
+                self.set_cell(Position { x, y }, cell);
+            }
+        }
+    }
+
+    /// Clears the buffer by filling it with [`Cell::EMPTY`].
+    fn clear(&mut self) {
+        self.fill(Cell::EMPTY);
+    }
+
     /// Called at the beginning of a frame. Implementations may use this to
     /// clear or prepare the buffer for new draw commands.
     fn start_frame(&mut self) {}
@@ -79,11 +94,11 @@ pub trait Buffer {
     /// All positions written through the sub-buffer are translated by `origin`
     /// before reaching this buffer. The sub-buffer's checked methods use `size`
     /// as the bounds.
-    fn sub_buffer(&mut self, origin: Position, size: Size) -> slice::SubBuffer<'_, Self>
+    fn sub_buffer(&mut self, region: Rect) -> slice::SubBuffer<'_, Self>
     where
         Self: Sized,
     {
-        slice::SubBuffer::new(self, origin, size)
+        slice::SubBuffer::new(self, region)
     }
 }
 
