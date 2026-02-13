@@ -1,6 +1,10 @@
 use crate::{
     cell::Cell,
-    engine2::{buffer::Drawer, draw::Size, Position},
+    engine2::{
+        Position,
+        buffer::{Drawer, ResizableBuffer},
+        draw::Size,
+    },
 };
 
 use super::{Buffer, DrawCall};
@@ -32,9 +36,6 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
     /// Creates a new `DiffedBuffers` with the given size and two pre-constructed
     /// inner buffers.
     pub fn new(size: Size, mut buf1: Buf, mut buf2: Buf) -> Self {
-        // just to ensure that they are the correct size
-        buf1.resize(size);
-        buf2.resize(size);
         Self {
             size,
             cells: [buf1, buf2],
@@ -79,7 +80,9 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
         let idx = 1 - self.frame_order as usize;
         self.cells[idx].end_frame();
     }
+}
 
+impl<Buf: ResizableBuffer> ResizableBuffer for DiffedBuffers<Buf> {
     fn resize(&mut self, size: Size) {
         self.size = size;
         self.cells.iter_mut().for_each(|b| b.resize(size))

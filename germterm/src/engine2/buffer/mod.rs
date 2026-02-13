@@ -78,8 +78,6 @@ pub trait Buffer {
     /// Called at the end of a frame. Implementations may use this to
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}
-    /// Resizes the buffer to the given [`Size`].
-    fn resize(&mut self, size: Size);
 
     /// Returns a [`SubSlice`](slice::SubSlice) viewing into this buffer at
     /// `origin` with the given `size`.
@@ -93,6 +91,10 @@ pub trait Buffer {
     {
         slice::SubBuffer::new(self, origin, size)
     }
+}
+
+trait ResizableBuffer: Buffer {
+    fn resize(&mut self, size: Size);
 }
 
 /// Produces an iterator of [`DrawCall`]s representing cells that need to be
