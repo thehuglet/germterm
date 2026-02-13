@@ -57,9 +57,7 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
 
 impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
     fn size(&self) -> Size {
-        debug_assert_eq!(self.cells[0].size(), self.cells[1].size(), "both buffers should always provide the equal size");
-
-        self.cells[0].size()
+        self.size
     }
 
     fn set_cell_checked(
