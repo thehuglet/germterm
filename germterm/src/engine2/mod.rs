@@ -7,9 +7,11 @@ pub mod widget;
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{Buffer, paired::PairedBuffer},
-        draw::{Position, Size},
-        timer::{DefaultTimer, Timer, TimerWrapper},
+        buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
+        draw::{Position, Rect, Size},
+        layer::{LayerIndex, Layers},
+        timer::{DefaultTimer, FrameTimer, TimerWrapper},
+        widget::{FrameContext, Widget},
     },
 };
 
@@ -18,12 +20,12 @@ pub struct DrawCall<'a> {
     pub cell: &'a Cell,
 }
 
-pub struct Engine<Timed: Timer, Buf: Buffer> {
+pub struct Engine<Timed: FrameTimer, Buf> {
     timer: TimerWrapper<Timed>,
     buffer: Buf,
 }
 
-impl<Timed: Timer, Buf: Buffer> Engine<Timed, Buf> {
+impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     pub fn buffer(&self) -> &Buf {
         &self.buffer
     }
@@ -33,11 +35,23 @@ impl<Timed: Timer, Buf: Buffer> Engine<Timed, Buf> {
     }
 }
 
-impl Engine<DefaultTimer, PairedBuffer> {
-    pub fn new(sz: Size) -> Self {
-        Self {
-            timer: TimerWrapper::new(DefaultTimer::new(), 0.0),
-            buffer: PairedBuffer::new(sz),
-        }
+impl<Timed: FrameTimer, Layered: Layers> Engine<Timed, Layered> {
+    pub fn draw_at(&mut self, index: LayerIndex, area: Rect, widget: impl Widget<Timed::Delta>) {
+        let li = self.buffer.current_layer_index();
+        self.buffer.set_layer(index);
+        self.draw(area, widget);
+
+        self.buffer.set_layer(li);
+    }
+}
+
+impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
+    fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
+        let fc = FrameContext {
+            delta: self.timer.previous_delta,
+            buffer: &mut SubBuffer::new(&mut self.buffer, area),
+        };
+
+        widget.draw(fc);
     }
 }
