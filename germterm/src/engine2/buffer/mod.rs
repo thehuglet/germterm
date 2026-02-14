@@ -6,7 +6,10 @@ pub mod utils;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Rect, draw::Size},
+    engine2::{
+        Position,
+        draw::{Rect, Size},
+    },
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -87,19 +90,6 @@ pub trait Buffer {
     /// Called at the end of a frame. Implementations may use this to
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}
-
-    /// Returns a [`SubBuffer`](slice::SubBuffer) viewing into this buffer at
-    /// `origin` with the given `size`.
-    ///
-    /// All positions written through the sub-buffer are translated by `origin`
-    /// before reaching this buffer. The sub-buffer's checked methods use `size`
-    /// as the bounds.
-    fn sub_buffer(&mut self, region: Rect) -> slice::SubBuffer<'_, Self>
-    where
-        Self: Sized,
-    {
-        slice::SubBuffer::new(self, region)
-    }
 }
 
 pub trait ResizableBuffer: Buffer {
