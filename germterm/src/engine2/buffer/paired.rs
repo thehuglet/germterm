@@ -106,6 +106,10 @@ impl Buffer for PairedBuffer {
     fn start_frame(&mut self) {
         self.clear();
     }
+
+    fn end_frame(&mut self) {
+        self.swap_frames();
+    }
 }
 
 impl ResizableBuffer for PairedBuffer {
@@ -140,7 +144,6 @@ impl Drawer for PairedBuffer {
         let cur_idx = self.index_current();
         let cur_old = self.index_old();
 
-        self.swap_frames();
         let frames = &self.frames;
 
         (0..height).flat_map(move |y| {

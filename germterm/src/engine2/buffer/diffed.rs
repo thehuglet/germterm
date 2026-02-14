@@ -95,6 +95,7 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
     fn end_frame(&mut self) {
         let idx = 1 - self.frame_order as usize;
         self.cells[idx].end_frame();
+        self.swap_frames();
     }
 }
 
@@ -112,7 +113,6 @@ impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
         let order = 1 - self.frame_order as usize;
         let old_order = 1 - order;
 
-        self.swap_frames();
         let current_buf = &self.cells[order];
         let old_buf = &self.cells[old_order];
 

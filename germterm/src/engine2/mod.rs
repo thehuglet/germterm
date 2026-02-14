@@ -9,7 +9,6 @@ use crate::{
     engine2::{
         buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
         draw::{Position, Rect, Size},
-        layer::{LayerIndex, Layers},
         timer::{DefaultTimer, FrameTimer, TimerWrapper},
         widget::{FrameContext, Widget},
     },
@@ -32,16 +31,6 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 
     pub fn buffer_mut(&mut self) -> &mut Buf {
         &mut self.buffer
-    }
-}
-
-impl<Timed: FrameTimer, Layered: Layers> Engine<Timed, Layered> {
-    pub fn draw_at(&mut self, index: LayerIndex, area: Rect, widget: impl Widget<Timed::Delta>) {
-        let li = self.buffer.current_layer_index();
-        self.buffer.set_layer(index);
-        self.draw(area, widget);
-
-        self.buffer.set_layer(li);
     }
 }
 
