@@ -8,9 +8,9 @@ use crate::{
 
 /// A borrowed rectangular view into a parent [`Buffer`].
 ///
-/// `SubBuffer` translates all positions by an [`origin`](SubBuffer::origin)
-/// offset before forwarding them to the parent buffer, presenting a
-/// sub-region as if it were an independent buffer starting at `(0, 0)`.
+/// `SubBuffer` translates all positions by a [`SubBuffer::origin`] offset
+/// before forwarding them to the parent buffer, presenting a sub-region as if
+/// it were an independent buffer starting at `(0, 0)`.
 ///
 /// Implements [`Buffer`] itself, so it can be passed directly into
 /// [`FrameContext`](crate::engine2::widget::FrameContext) or any other
@@ -19,6 +19,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
     inner: &'a mut Buf,
+    // Never make this public as we never want a widget to grow its area.
     area: Rect,
 }
 
@@ -40,31 +41,23 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
         self.area.size
     }
 
-    /// Returns the [`Rect`] representing this subbuffer's area in the parent buffer.
-    pub fn rect(&self) -> Rect {
-        self.area
-    }
-
     /// Translates a local position into the parent buffer's coordinate space.
     ///
-    /// If the resulting position is out of bounds of the subbuffer returns
-    /// [`ErrorOutOfBoundsAxises`].
+    /// Returns [`ErrorOutOfBoundsAxises`] if `pos` is outside this
+    /// sub-buffer's own bounds (i.e. `pos` is not within `self.size`).
     #[inline(always)]
     fn translate(&self, pos: Position) -> Result<Position, ErrorOutOfBoundsAxises> {
-        let o = self.origin();
-        let sz = self.size();
-        sz.contains(pos)
-            .map(|_| Position::new(o.x + pos.x, o.y + pos.y))
+        self.area
+            .size
+            .contains(pos)
+            .map(|_| Position::new(self.origin().x + pos.x, self.origin().y + pos.y))
     }
 
     /// Shrink the buffer from the left side.
     #[inline(always)]
     pub fn shrink_left(&mut self, by: u16) {
-        let r = self.rect();
-        let o = r.origin;
-        let sz = r.size;
-        self.area.origin.x = o.x.saturating_add(by);
-        self.area.size.width = sz.width.saturating_sub(by);
+        self.area.origin.x = self.area.origin.x.saturating_add(by);
+        self.area.size.width = self.area.size.width.saturating_sub(by);
     }
 
     /// Shrink the buffer from the right side.
@@ -77,17 +70,16 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     ///
     /// The buffer is shrunk at the left and right side.
     pub fn shrink_width(&mut self, by: u16) {
-        // When the shrink amount exceeds the width, shrink whilst keeping the position centered.
+        // When the shrink amount would exceed the width, collapse to zero width
+        // whilst keeping the origin centered rather than biasing to one side.
         //
-        // In general it shouldn't matter as having a zero size should result in no draws being
-        // performed. However one could use the origin and size to compute some distance.
-        // In which case shrinking equally by both sides creating a zero size buffer is likely to
-        // yield better results.
-        //
-        // This isn't for the `Buffer` impl as our sub buffer already handles bounds checking. This
-        // is for when values are read externally to be used in some other part of the render.
-        if self.area.size.width <= by * 2 {
-            self.area.origin.x += self.area.size.width / 2;
+        // A zero-size buffer produces no draws, so the exact behavior rarely
+        // matters for rendering. However callers may read `origin` and `size`
+        // directly (e.g. to compute layout distances), and a symmetrically
+        // centered origin is a more predictable result than an arbitrarily
+        // left-biased one.
+        if self.size().width <= by * 2 {
+            self.area.origin.x += self.size().width / 2;
             self.area.size.width = 0;
         } else {
             self.shrink_left(by);
@@ -95,21 +87,26 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
         }
     }
 
+    /// Shrink the buffer from the top side.
     #[inline(always)]
     pub fn shrink_top(&mut self, by: u16) {
-        self.area.origin.y = self.area.origin.y.saturating_add(by);
-        self.area.size.height = self.area.size.height.saturating_sub(by);
+        self.area.origin.y = self.origin().y.saturating_add(by);
+        self.area.size.height = self.size().height.saturating_sub(by);
     }
 
+    /// Shrink the buffer from the bottom side.
     #[inline(always)]
     pub fn shrink_bottom(&mut self, by: u16) {
-        self.area.size.height = self.area.size.height.saturating_sub(by);
+        self.area.size.height = self.size().height.saturating_sub(by);
     }
 
+    /// Shrink the buffer vertically.
+    ///
+    /// The buffer is shrunk at the top and bottom side.
     pub fn shrink_height(&mut self, by: u16) {
         // see comments in `Self::shrink_width` for why we do this
-        if self.area.size.height <= by * 2 {
-            self.area.origin.y += self.area.size.height / 2;
+        if self.size().height <= by * 2 {
+            self.area.origin.y += self.size().height / 2;
             self.area.size.height = 0;
         } else {
             self.shrink_top(by);
