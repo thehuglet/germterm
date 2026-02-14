@@ -7,12 +7,12 @@ use std::time::Instant;
 /// call. The associated type allows both real timers (which return `f32` or
 /// `f64` seconds) and the no-op [`NoTimer`] (which returns [`NoTimer`]
 /// itself) to share the same trait.
-pub trait Timer {
+pub trait FrameTimer {
     /// The type of value produced by [`delta`](Timer::delta).
     ///
     /// For real timers this is typically `f32` or `f64` (elapsed seconds).
     /// For [`NoTimer`] this is [`NoTimer`] itself.
-    type Delta: Default;
+    type Delta: Default + Copy;
 
     /// Returns the time elapsed since the last call to this method, expressed
     /// as a value of type [`Delta`](Timer::Delta).
@@ -47,7 +47,7 @@ impl Default for DefaultTimer {
     }
 }
 
-impl Timer for DefaultTimer {
+impl FrameTimer for DefaultTimer {
     type Delta = f32;
 
     /// Returns the number of seconds elapsed since the last call as an `f32`,
@@ -70,7 +70,7 @@ impl Timer for DefaultTimer {
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct NoTimer;
 
-impl Timer for NoTimer {
+impl FrameTimer for NoTimer {
     type Delta = NoTimer;
 
     /// Returns [`NoTimer`] immediately. No time measurement is performed.
@@ -80,13 +80,13 @@ impl Timer for NoTimer {
 }
 
 /// Wraps a [`Timer`] and caches the most recent delta value.
-pub(crate) struct TimerWrapper<T: Timer> {
+pub(crate) struct TimerWrapper<T: FrameTimer> {
     pub(crate) timer: T,
     /// The delta value produced by the most recent call to [`Timer::delta`].
     pub(crate) previous_delta: T::Delta,
 }
 
-impl<T: Timer> TimerWrapper<T> {
+impl<T: FrameTimer> TimerWrapper<T> {
     /// Creates a new `TimerWrapper` with the given timer and an initial cached
     /// delta (typically [`Default::default`]).
     pub const fn new(timer: T, previous_delta: T::Delta) -> Self {
