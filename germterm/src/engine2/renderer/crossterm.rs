@@ -45,6 +45,9 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
         &mut self,
         calls: impl Iterator<Item = crate::engine2::DrawCall<'a>>,
     ) -> Result<(), Self::Error> {
+        // TODO: Based on the crossterm source there are a few optimizations we can do here
+        // specifically when writing fg/bg
+        //
         // Track the last cursor position to skip MoveTo when cells are
         // consecutive on the same row, and the last style to skip redundant
         // Reset+SetStyle pairs when adjacent cells share styling.
