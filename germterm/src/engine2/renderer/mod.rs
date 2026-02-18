@@ -1,3 +1,5 @@
+pub mod crossterm;
+
 use crate::engine2::DrawCall;
 
 /// Consumes an iterator of [`DrawCall`]s and writes them to a physical display.
@@ -47,6 +49,10 @@ pub trait Renderer {
     /// hardware or a byte stream.
     type Error;
 
+    fn init(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
     /// Called once at the start of each frame, before any draw calls are issued.
     ///
     /// Use this hook to perform any per-frame setup required by the display target, such as
@@ -72,9 +78,11 @@ pub trait Renderer {
     ///
     /// Use this hook to flush buffered output to the display (e.g. `stdout.flush()`, an SPI
     /// transaction commit, or a framebuffer swap).
-    ///
-    /// The default implementation does nothing.
     fn end_frame(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn restore(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }

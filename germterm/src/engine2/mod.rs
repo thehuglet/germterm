@@ -6,14 +6,14 @@ pub mod timer;
 pub mod widget;
 
 use crossterm::{cursor, event, execute, terminal};
-use std::io;
+use std::{io, panic::AssertUnwindSafe};
 
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
-        draw::{Position, Rect, Size},
-        timer::{DefaultTimer, FrameTimer, TimerWrapper},
+        buffer::{Buffer, slice::SubBuffer},
+        draw::{Position, Rect},
+        timer::{FrameTimer, TimerWrapper},
         widget::{FrameContext, Widget},
     },
 };
@@ -85,45 +85,42 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
         R: renderer::Renderer<Error = io::Error>,
         F: FnMut(&mut Self) -> bool,
     {
-        let mut stdout = io::stdout();
+        renderer.init()?;
 
-        terminal::enable_raw_mode()?;
-        execute!(
-            stdout,
-            terminal::EnterAlternateScreen,
-            event::EnableMouseCapture,
-            cursor::Hide,
-        )?;
+        // ideally we would catch panics and restore but that means [`std::panic::catch_unwind`]
+        // must be used.
+        //
+        // Since this is intended to be in the core of the library pefer to use core features
+        let res = || -> Result<(), io::Error> {
+            loop {
+                self.buffer.start_frame();
 
-        loop {
-            self.buffer.start_frame();
+                let should_exit = update(self);
 
-            let should_exit = update(self);
+                if let err @ Err(_) = renderer.start_frame() {
+                    return err;
+                }
+                if let err @ Err(_) = renderer.render(self.buffer.draw()) {
+                    return err;
+                }
 
-            renderer.start_frame()?;
-            renderer.render(self.buffer.draw())?;
+                self.buffer.end_frame();
+                if let err @ Err(_) = renderer.end_frame() {
+                    return err;
+                }
 
-            self.buffer.end_frame();
-            renderer.end_frame()?;
+                // Tick the timer after the full frame (update + render) so that
+                // `delta()` reflects real frame time rather than just update time.
+                self.timer.previous_delta = self.timer.timer.delta();
 
-            // Tick the timer after the full frame (update + render) so that
-            // `delta()` reflects real frame time rather than just update time.
-            self.timer.previous_delta = self.timer.timer.delta();
-
-            if should_exit {
-                break;
+                if should_exit {
+                    break;
+                }
             }
-        }
 
-        terminal::disable_raw_mode()?;
-        execute!(
-            stdout,
-            terminal::LeaveAlternateScreen,
-            terminal::EnableLineWrap,
-            cursor::Show,
-            event::DisableMouseCapture,
-        )?;
+            Ok(())
+        }();
 
-        Ok(())
+        res.and(renderer.restore())
     }
 }

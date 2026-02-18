@@ -97,6 +97,13 @@ impl<T: FrameTimer> TimerWrapper<T> {
     }
 }
 
+impl<T: FrameTimer> TimerWrapper<T> {
+    fn process_delta(&mut self) {
+        let delta = self.timer.delta();
+        self.previous_delta = delta;
+    }
+}
+
 /// Marker trait for numeric delta types that can be passed through a
 /// [`FrameContext`](crate::engine2::widget::FrameContext).
 ///
