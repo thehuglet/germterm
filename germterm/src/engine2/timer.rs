@@ -50,6 +50,14 @@ pub struct Timer<Timer: FrameTimer> {
     pub(crate) delta: Timer::Delta,
 }
 
+impl<T: FrameTimer> Timer<T> {
+    pub(crate) fn update(&mut self) {
+        let delta = self.timer.delta();
+        self.total_time = TimerDelta::total(self.total_time, delta);
+        self.delta = delta;
+    }
+}
+
 pub type Delta = f32;
 // TODO: maybe seal this trait??
 pub trait TimerDelta: Copy {

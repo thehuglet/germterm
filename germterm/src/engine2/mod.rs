@@ -5,15 +5,14 @@ pub mod renderer;
 pub mod timer;
 pub mod widget;
 
-use crossterm::{cursor, event, execute, terminal};
-use std::{io, panic::AssertUnwindSafe};
+use std::io;
 
 use crate::{
     cell::Cell,
     engine2::{
         buffer::{Buffer, slice::SubBuffer},
         draw::{Position, Rect},
-        timer::{FrameTimer, Timer},
+        timer::{FrameTimer, Timer, TimerDelta},
         widget::{FrameContext, Widget},
     },
 };
@@ -117,10 +116,7 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
                     return err;
                 }
 
-                // Tick the timer after the full frame (update + render) so that
-                // `delta()` reflects real frame time rather than just update time.
-                self.timer.delta = self.timer.timer.delta();
-
+                self.timer.update();
                 if should_exit {
                     break;
                 }
