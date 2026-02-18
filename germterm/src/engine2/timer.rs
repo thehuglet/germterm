@@ -43,7 +43,6 @@ impl NoDelta {
         Self(PhantomData)
     }
 }
-impl TimerDelta for NoDelta {}
 
 pub struct Timer<Timer: FrameTimer> {
     pub(crate) timer: Timer,
@@ -53,6 +52,16 @@ pub struct Timer<Timer: FrameTimer> {
 
 pub type Delta = f32;
 // TODO: maybe seal this trait??
-pub trait TimerDelta: Copy {}
-impl TimerDelta for Delta {}
-impl TimerDelta for NoTimer {}
+pub trait TimerDelta: Copy {
+    fn total(lhs: Self, rhs: Self) -> Self;
+}
+impl TimerDelta for Delta {
+    fn total(lhs: Self, rhs: Self) -> Self {
+        lhs + rhs
+    }
+}
+impl TimerDelta for NoDelta {
+    fn total(_lhs: Self, _rhs: Self) -> Self {
+        Self::new()
+    }
+}
