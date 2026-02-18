@@ -12,7 +12,7 @@ use crate::{
     engine2::{
         buffer::{Buffer, slice::SubBuffer},
         draw::{Position, Rect},
-        timer::{FrameTimer, Timer, TimerDelta},
+        timer::{FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
 };
