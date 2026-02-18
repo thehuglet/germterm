@@ -41,6 +41,7 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
     fn end_frame(&mut self) -> Result<(), Self::Error> {
         self.out.flush()
     }
+
     fn render<'a>(
         &mut self,
         calls: impl Iterator<Item = crate::engine2::DrawCall<'a>>,
