@@ -162,12 +162,12 @@ mod tests {
     use super::*;
     use crate::engine2::buffer::paired::PairedBuffer;
     use crate::engine2::draw::Size;
-    use crate::engine2::timer::NoTimer;
+    use crate::engine2::timer::{NoDelta, NoTimer};
     use crate::engine2::widget::block::set::SimpleBorderSet;
 
     struct EmptyWidget;
-    impl Widget<NoTimer> for EmptyWidget {
-        fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, crate::engine2::timer::NoTimer>) {}
+    impl Widget<NoDelta> for EmptyWidget {
+        fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, crate::engine2::timer::NoDelta>) {}
     }
 
     #[test]
@@ -175,8 +175,8 @@ mod tests {
         let mut buf = PairedBuffer::new(Size::new(3, 3));
         let mut block = Block::new(EmptyWidget, SimpleBorderSet::ASCII);
         let ctx = FrameContext {
-            total_time: NoTimer::new(),
-            delta: NoTimer::new(),
+            total_time: NoDelta::new(),
+            delta: NoDelta::new(),
             buffer: &mut buf,
         };
 
@@ -202,8 +202,8 @@ mod tests {
         struct SpyWidget {
             drawn: Rc<Cell<bool>>,
         }
-        impl Widget<NoTimer> for SpyWidget {
-            fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, NoTimer>) {
+        impl Widget<NoDelta> for SpyWidget {
+            fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, NoDelta>) {
                 self.drawn.set(true);
             }
         }
@@ -215,8 +215,8 @@ mod tests {
         };
         let mut block = Block::new(spy, SimpleBorderSet::ASCII);
         let ctx = FrameContext {
-            total_time: NoTimer::new(),
-            delta: NoTimer::new(),
+            total_time: NoDelta::new(),
+            delta: NoDelta::new(),
             buffer: &mut buf,
         };
 
