@@ -5,21 +5,21 @@ use crate::engine2::DrawCall;
 /// Consumes an iterator of [`DrawCall`]s and writes them to a physical display.
 ///
 /// A [`Renderer`] is the consumer-side counterpart to [`Drawer`](crate::engine2::buffer::Drawer),
-/// which produces [`DrawCall`]s. The engine calls [`Renderer::begin_frame`] before issuing any
+/// which produces [`DrawCall`]s. The engine calls [`Renderer::start_frame`] before issuing any
 /// draw calls, passes the full diff iterator to [`Renderer::render`], then calls
 /// [`Renderer::end_frame`] to flush or finalise the output.
 ///
 /// # Frame lifecycle
 ///
 /// ```text
-/// begin_frame()
+/// start_frame()
 ///     render(draw_calls)
 /// end_frame()
 /// ```
 ///
 /// # Implementing for a new display target
 ///
-/// Only [`render`](Renderer::render) is required. The `begin_frame` and `end_frame` hooks have
+/// Only [`render`](Renderer::render) is required. The `start_frame` and `end_frame` hooks have
 /// empty default implementations and only need to be overridden when the target requires
 /// setup or teardown work around the draw call stream (e.g. sending a flush command over SPI,
 /// hiding a hardware cursor, or locking a framebuffer).

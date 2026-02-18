@@ -78,11 +78,13 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
     /// at which point the loop breaks and the terminal is restored.
     ///
     /// Each iteration follows this order:
-    /// 1. `Buffer::start_frame` — clear/prepare the buffer for new draw commands.
-    /// 2. `update(engine)` — caller draws into the buffer; return `true` to stop.
-    /// 3. `Renderer::start_frame` → `Renderer::render(draw_calls)` — emit draw calls from the current frame.
-    /// 4. `Buffer::end_frame` — finalise the buffer (diff + swap).
-    /// 5. `Renderer::end_frame` — flush/complete the rendered frame.
+    /// 1. `Buffer::start_frame` - clear/prepare the buffer for new draw commands.
+    /// 2. `update(&mut engine)` - caller draws into the buffer; return `true` to stop.
+    /// 3. `Renderer::start_frame` -> `Renderer::render(draw_calls)` - diff the buffer
+    ///    and emit only changed cells to the renderer.
+    /// 4. `Buffer::end_frame` - swap the current and previous frames so the
+    ///    just-rendered frame becomes the baseline for the next diff.
+    /// 5. `Renderer::end_frame` - flush/complete the rendered frame.
     ///
     /// # Errors
     ///
@@ -94,7 +96,7 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
     {
         renderer.init()?;
 
-        // ideally we would catch panics and restore but that means [`std::panic::catch_unwind`]
+        // Ideally we would catch panics and restore but that means [`std::panic::catch_unwind`]
         // must be used.
         //
         // Since this is intended to be in the core of the library pefer to use core features
