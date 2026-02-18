@@ -7,9 +7,9 @@ pub mod widget;
 use crate::{
     cell::Cell,
     engine2::{
-        buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
-        draw::{Position, Rect, Size},
-        timer::{DefaultTimer, FrameTimer, TimerWrapper},
+        buffer::{Buffer, slice::SubBuffer},
+        draw::{Position, Rect},
+        timer::{FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
 };
@@ -20,7 +20,7 @@ pub struct DrawCall<'a> {
 }
 
 pub struct Engine<Timed: FrameTimer, Buf> {
-    timer: TimerWrapper<Timed>,
+    timer: Timer<Timed>,
     buffer: Buf,
 }
 
@@ -37,7 +37,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
         let fc = FrameContext {
-            delta: self.timer.previous_delta,
+            delta: self.timer.delta,
             buffer: &mut SubBuffer::new(&mut self.buffer, area),
         };
 
