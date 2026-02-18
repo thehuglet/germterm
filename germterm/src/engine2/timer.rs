@@ -46,7 +46,8 @@ pub struct Timer<Timer: FrameTimer> {
     pub(crate) delta: Timer::Delta,
 }
 
+pub type Delta = f32;
 // TODO: maybe seal this trait??
 pub trait TimerDelta: Copy {}
-impl TimerDelta for f32 {}
+impl TimerDelta for Delta {}
 impl TimerDelta for NoTimer {}

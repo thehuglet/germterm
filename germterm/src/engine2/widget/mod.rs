@@ -2,15 +2,15 @@ pub mod block;
 
 use crate::engine2::{
     buffer::Buffer,
-    timer::{NoTimer, TimerDelta},
+    timer::{Delta, NoTimer, TimerDelta},
 };
 
 pub trait Widget<Delta: TimerDelta = NoTimer> {
     fn draw(&mut self, ctx: FrameContext<'_, impl Buffer, Delta>);
 }
 
-impl<W: Widget> Widget<f32> for W {
-    fn draw(&mut self, ctx: FrameContext<'_, impl Buffer, f32>) {
+impl<W: Widget> Widget<Delta> for W {
+    fn draw(&mut self, ctx: FrameContext<'_, impl Buffer, Delta>) {
         W::draw(
             self,
             FrameContext {
