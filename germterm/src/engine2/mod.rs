@@ -87,9 +87,9 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
     /// # Errors
     ///
     /// Returns an [`io::Error`] if terminal initialization, rendering, or cleanup fails.
-    pub fn run<R, F>(&mut self, renderer: &mut R, mut update: F) -> io::Result<()>
+    pub fn run<R, F>(&mut self, renderer: &mut R, mut update: F) -> Result<(), R::Error>
     where
-        R: renderer::Renderer<Error = io::Error>,
+        R: renderer::Renderer,
         F: FnMut(&mut Self) -> bool,
     {
         renderer.init()?;
@@ -98,7 +98,7 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
         // must be used.
         //
         // Since this is intended to be in the core of the library pefer to use core features
-        let res = || -> Result<(), io::Error> {
+        let res = || -> Result<(), R::Error> {
             loop {
                 self.buffer.start_frame();
 
@@ -125,6 +125,8 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
             Ok(())
         }();
 
-        res.and(renderer.restore())
+        res.and(renderer.restore())?;
+
+        Ok(())
     }
 }
