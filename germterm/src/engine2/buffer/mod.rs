@@ -6,10 +6,7 @@ pub mod utils;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{
-        Position,
-        draw::{Rect, Size},
-    },
+    engine2::{Position, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -48,6 +45,7 @@ pub trait Buffer {
 
     /// Returns a reference to the cell at `pos`, returning an error if `pos` is outside bounds.
     fn get_cell_checked(&self, pos: Position) -> Result<&Cell, ErrorOutOfBoundsAxises>;
+
     /// Returns a reference to the cell at `pos` without bounds checking.
     ///
     /// # Panics
@@ -59,6 +57,7 @@ pub trait Buffer {
 
     /// Returns a mutable reference to the cell at `pos`, returning an error if `pos` is outside bounds.
     fn get_cell_mut_checked(&mut self, pos: Position) -> Result<&mut Cell, ErrorOutOfBoundsAxises>;
+
     /// Returns a mutable reference to the cell at `pos` without bounds checking.
     ///
     /// # Panics

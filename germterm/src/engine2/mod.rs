@@ -13,7 +13,7 @@ use crate::{
     engine2::{
         buffer::{Buffer, slice::SubBuffer},
         draw::{Position, Rect},
-        timer::{FrameTimer, TimerWrapper},
+        timer::{FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
 };
@@ -24,15 +24,22 @@ pub struct DrawCall<'a> {
 }
 
 pub struct Engine<Timed: FrameTimer, Buf> {
-    timer: TimerWrapper<Timed>,
+    timer: Timer<Timed>,
     buffer: Buf,
 }
 
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     /// Creates a new `Engine` with the given timer and buffer.
-    pub fn new(timer: Timed, buffer: Buf) -> Self {
+    pub fn new(timer: Timed, buffer: Buf) -> Self
+    where
+        Timed::Delta: Default,
+    {
         Self {
-            timer: TimerWrapper::new(timer, Default::default()),
+            timer: Timer {
+                timer,
+                total_time: Default::default(),
+                delta: Default::default(),
+            },
             buffer,
         }
     }
@@ -41,7 +48,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     ///
     /// On the very first frame this returns `Timed::Delta::default()`.
     pub fn delta(&self) -> Timed::Delta {
-        self.timer.previous_delta
+        self.timer.delta
     }
 
     pub fn buffer(&self) -> &Buf {
@@ -56,7 +63,8 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
         let fc = FrameContext {
-            delta: self.timer.previous_delta,
+            total_time: self.timer.total_time,
+            delta: self.timer.delta,
             buffer: &mut SubBuffer::new(&mut self.buffer, area),
         };
 
@@ -111,7 +119,7 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
 
                 // Tick the timer after the full frame (update + render) so that
                 // `delta()` reflects real frame time rather than just update time.
-                self.timer.previous_delta = self.timer.timer.delta();
+                self.timer.delta = self.timer.timer.delta();
 
                 if should_exit {
                     break;
