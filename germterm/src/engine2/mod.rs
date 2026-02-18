@@ -37,6 +37,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
         let fc = FrameContext {
+            total_time: self.timer.total_time,
             delta: self.timer.delta,
             buffer: &mut SubBuffer::new(&mut self.buffer, area),
         };

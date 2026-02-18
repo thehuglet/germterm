@@ -2,8 +2,7 @@ pub mod block;
 
 use crate::engine2::{
     buffer::Buffer,
-    draw::Size,
-    timer::{FrameTimer, NoTimer, TimerDelta},
+    timer::{NoTimer, TimerDelta},
 };
 
 pub trait Widget<Delta: TimerDelta = NoTimer> {
@@ -15,6 +14,7 @@ impl<W: Widget> Widget<f32> for W {
         W::draw(
             self,
             FrameContext {
+                total_time: NoTimer::new(),
                 delta: NoTimer::new(),
                 buffer: ctx.buffer,
             },
@@ -23,11 +23,17 @@ impl<W: Widget> Widget<f32> for W {
 }
 
 pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoTimer> {
+    pub(crate) total_time: Delta,
     pub(crate) delta: Delta,
     pub(crate) buffer: &'a mut Buf,
 }
 
 impl<Buf: Buffer + ?Sized, Delta: TimerDelta> FrameContext<'_, Buf, Delta> {
+    #[inline(always)]
+    pub fn total_time(&self) -> Delta {
+        self.total_time
+    }
+
     #[inline(always)]
     pub fn delta(&self) -> Delta {
         self.delta

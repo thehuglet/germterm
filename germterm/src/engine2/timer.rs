@@ -42,9 +42,11 @@ impl TimerDelta for NoDelta {}
 
 pub struct Timer<Timer: FrameTimer> {
     pub(crate) timer: Timer,
+    pub(crate) total_time: Timer::Delta,
     pub(crate) delta: Timer::Delta,
 }
 
+// TODO: maybe seal this trait??
 pub trait TimerDelta: Copy {}
 impl TimerDelta for f32 {}
 impl TimerDelta for NoTimer {}

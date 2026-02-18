@@ -33,6 +33,7 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
         }
 
         let delta = ctx.delta;
+        let total_time = ctx.total_time;
         let buf = ctx.buffer_mut();
 
         // top left corner
@@ -145,6 +146,7 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
 
         if size.width > 2 && size.height > 2 {
             self.widget.draw(FrameContext {
+                total_time,
                 delta,
                 buffer: &mut SubBuffer::new(
                     buf,
@@ -173,7 +175,8 @@ mod tests {
         let mut buf = PairedBuffer::new(Size::new(3, 3));
         let mut block = Block::new(EmptyWidget, SimpleBorderSet::ASCII);
         let ctx = FrameContext {
-            delta: crate::engine2::timer::NoTimer::new(),
+            total_time: NoTimer::new(),
+            delta: NoTimer::new(),
             buffer: &mut buf,
         };
 
@@ -212,6 +215,7 @@ mod tests {
         };
         let mut block = Block::new(spy, SimpleBorderSet::ASCII);
         let ctx = FrameContext {
+            total_time: NoTimer::new(),
             delta: NoTimer::new(),
             buffer: &mut buf,
         };
