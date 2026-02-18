@@ -2,10 +2,10 @@ pub mod block;
 
 use crate::engine2::{
     buffer::Buffer,
-    timer::{Delta, NoTimer, TimerDelta},
+    timer::{Delta, NoDelta, TimerDelta},
 };
 
-pub trait Widget<Delta: TimerDelta = NoTimer> {
+pub trait Widget<Delta: TimerDelta = NoDelta> {
     fn draw(&mut self, ctx: FrameContext<'_, impl Buffer, Delta>);
 }
 
@@ -14,15 +14,15 @@ impl<W: Widget> Widget<Delta> for W {
         W::draw(
             self,
             FrameContext {
-                total_time: NoTimer::new(),
-                delta: NoTimer::new(),
+                total_time: NoDelta::new(),
+                delta: NoDelta::new(),
                 buffer: ctx.buffer,
             },
         );
     }
 }
 
-pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoTimer> {
+pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoDelta> {
     pub(crate) total_time: Delta,
     pub(crate) delta: Delta,
     pub(crate) buffer: &'a mut Buf,

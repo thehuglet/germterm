@@ -38,6 +38,11 @@ impl FrameTimer for NoTimer {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoDelta(PhantomData<()>);
+impl NoDelta {
+    pub(crate) const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 impl TimerDelta for NoDelta {}
 
 pub struct Timer<Timer: FrameTimer> {
