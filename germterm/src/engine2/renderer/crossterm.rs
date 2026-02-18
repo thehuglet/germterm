@@ -13,6 +13,10 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
     type Error = std::io::Error;
 
     fn start_frame(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn init(&mut self) -> Result<(), Self::Error> {
         terminal::enable_raw_mode()?;
         execute!(
             &mut self.out,
@@ -21,10 +25,6 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
             cursor::Hide,
             event::EnableMouseCapture,
         )
-    }
-
-    fn init(&mut self) -> Result<(), Self::Error> {
-        Ok(())
     }
 
     fn restore(&mut self) -> Result<(), Self::Error> {
