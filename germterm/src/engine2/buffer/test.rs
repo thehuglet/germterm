@@ -1,3 +1,30 @@
+/// Generates a test module exercising the [`Buffer`] contract for a concrete
+/// type.
+///
+/// # Parameters
+///
+/// - `$module_name` — the name of the generated `mod` (e.g. `paired_buffer`).
+/// - `$constructor` — an expression that takes a [`Size`] and returns an
+///   instance of `$buffer_type` (e.g. `PairedBuffer::new`).
+/// - `$buffer_type` — the concrete type under test; must implement [`Buffer`].
+///
+/// # Tests generated
+///
+/// - **`size`** — `size()` returns the value passed to the constructor.
+/// - **`set_cell_checked` / `get_cell_checked`** — round-trip at the origin,
+///   the last valid position, and an arbitrary interior position; all three
+///   out-of-bounds variants (`X`, `Y`, `XY`) return the correct error.
+/// - **`set_cell` / `get_cell`** — infallible round-trip; both panic when the
+///   position is out of bounds.
+/// - **`get_cell_mut_checked`** — mutation through a mutable reference; all
+///   three out-of-bounds variants return the correct error.
+/// - **`get_cell_mut`** — mutation round-trip; panics when out of bounds.
+/// - **Independence** — writes to distinct positions do not alias each other.
+/// - **Overwrite** — writing a second value to the same position replaces the
+///   first.
+/// - **`fill`** — every cell in the grid equals the fill value afterwards.
+/// - **`clear`** — every cell equals [`Cell::EMPTY`] after clearing.
+#[macro_export]
 macro_rules! buffer_tests {
     ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
         mod $module_name {
@@ -269,6 +296,7 @@ macro_rules! buffer_tests {
 /// Generates tests for any type implementing [`Buffer`] + [`Drawer`] that
 /// always emits every cell on every call to `draw()`, regardless of whether
 /// the cell changed since the last frame.
+#[macro_export]
 macro_rules! drawer_buffer_tests {
     ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
         mod $module_name {
@@ -393,6 +421,7 @@ macro_rules! drawer_buffer_tests {
 /// diffs frames and only emits cells that changed since the last `draw()`.
 ///
 /// The constructor receives `(size, inner_buf_1, inner_buf_2)`.
+#[macro_export]
 macro_rules! drawer_diffed_buffer_tests {
     ($module_name:ident, $constructor:tt, $buffer_type:ty, $inner_constructor:tt, $inner_type:ty) => {
         mod $module_name {
