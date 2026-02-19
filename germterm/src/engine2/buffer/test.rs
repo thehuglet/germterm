@@ -336,6 +336,7 @@ macro_rules! drawer_buffer_tests {
                     .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
                     .collect();
                 calls.sort();
+                buf.end_frame();
                 calls
             }
 
@@ -425,9 +426,11 @@ macro_rules! drawer_buffer_tests {
 /// The constructor receives `(size, inner_buf_1, inner_buf_2)`.
 #[macro_export]
 macro_rules! drawer_diffed_buffer_tests {
-    ($module_name:ident, $constructor:tt, $buffer_type:ty, $inner_constructor:tt, $inner_type:ty) => {
+    ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
-            use germterm::{
+    #[rustfmt::skip]
+            use super::{$buffer_type};
+            use $crate::{
                 cell::Cell,
                 engine2::{
                     buffer::{Buffer, Drawer},
@@ -438,9 +441,9 @@ macro_rules! drawer_diffed_buffer_tests {
             type Buf = $buffer_type;
 
             fn new_buf(size: Size) -> Buf {
-                let b1 = $inner_constructor(size);
-                let b2 = $inner_constructor(size);
-                $constructor(size, b1, b2)
+                let mut b = $constructor(size);
+                b.start_frame();
+                b
             }
 
             fn cell_a() -> Cell {
@@ -463,6 +466,7 @@ macro_rules! drawer_diffed_buffer_tests {
                     .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
                     .collect();
                 calls.sort();
+                buf.end_frame();
                 calls
             }
 
