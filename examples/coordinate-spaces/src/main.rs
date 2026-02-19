@@ -1,14 +1,18 @@
+mod big_block;
+
 use germterm::{
     color::Color,
     coord_space::{Position, native::NativePosition, octad::OctadPosition, twoxel::TwoxelPosition},
     crossterm::event::{Event, KeyCode, KeyEvent},
-    draw::{draw_blocktad, draw_octad, draw_text, draw_twoxel, fill_screen},
+    draw::{draw_octad, draw_text, draw_twoxel},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     input::poll_input,
     layer::create_layer,
 };
 
 use std::io;
+
+use crate::big_block::{BigBlockPosition, draw_big_block};
 
 pub const TERM_COLS: u16 = 40;
 pub const TERM_ROWS: u16 = 20;
@@ -35,9 +39,16 @@ fn main() -> io::Result<()> {
             }
         }
 
+        let mut shape_coords = [(1, 0), (0, 1), (2, 1), (1, 2)];
+
+        for pos in shape_coords.iter_mut() {
+            pos.0 += (engine.game_time * 3.0) as i16;
+            pos.1 += (engine.game_time * 3.0) as i16;
+        }
+
         // Drawing the same shape in different coordinate spaces,
         // spread evenly by the same NativePosition y value
-        for pos in [(1, 0), (0, 1), (2, 1), (1, 2)] {
+        for pos in shape_coords {
             // Native
             draw_text(&mut engine, layer, pos, "A");
 
@@ -63,6 +74,13 @@ fn main() -> io::Result<()> {
         draw_text(&mut engine, layer, top_right, "^");
         draw_text(&mut engine, layer, bottom_left, "^");
         draw_twoxel(&mut engine, layer, bottom_right.to_twoxel(), Color::GREEN);
+
+        // Custom drawing type and coordinate space
+        let pos = BigBlockPosition::new(5, 2);
+        draw_big_block(&mut engine, layer, pos, Color::PINK);
+        draw_big_block(&mut engine, layer, pos.offset_x(1), Color::CYAN);
+        draw_big_block(&mut engine, layer, pos.offset_x(2), Color::PINK);
+        draw_big_block(&mut engine, layer, pos.offset_xy(3, 1), Color::GREEN);
 
         end_frame(&mut engine)?;
     }

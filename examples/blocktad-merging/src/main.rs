@@ -36,13 +36,13 @@ fn main() -> io::Result<()> {
 
         fill_screen(&mut engine, layer, Color::BLACK);
 
-        draw_blocktad(&mut engine, layer, 0.0, 0.0, Color::RED);
-        draw_blocktad(&mut engine, layer, 0.5, 0.25, Color::RED);
-        draw_blocktad(&mut engine, layer, 0.5, 0.75, Color::RED);
+        draw_blocktad(&mut engine, layer, (0, 0), Color::RED);
+        draw_blocktad(&mut engine, layer, (1, 1), Color::RED);
+        draw_blocktad(&mut engine, layer, (1, 2), Color::RED);
 
-        draw_blocktad(&mut engine, layer, 1.0, 0.5, Color::CYAN);
+        draw_blocktad(&mut engine, layer, (3, 1), Color::CYAN);
 
-        draw_blocktad(&mut engine, layer, 2.5, 0.25, Color::GREEN);
+        draw_blocktad(&mut engine, layer, (3, 2), Color::GREEN);
 
         end_frame(&mut engine)?;
     }

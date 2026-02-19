@@ -30,8 +30,8 @@ fn main() -> io::Result<()> {
         }
 
         // Draw contents
-        draw_text(&mut engine, layer, 14, 9, "Hello, Ferris!");
-        draw_fps_counter(&mut engine, layer, 0, 0);
+        draw_text(&mut engine, layer, (14, 9), "Hello, Ferris!");
+        draw_fps_counter(&mut engine, layer, (0, 0));
 
         // End the frame
         end_frame(&mut engine)?;

@@ -4,13 +4,13 @@ use crate::coord_space::twoxel::{TwoxelPosition, TwoxelSize};
 use crate::coord_space::{Position, Size};
 use crate::{impl_coord_space_position_arithmetic, impl_coord_space_size_arithmetic};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct NativePosition {
     pub x: i16,
     pub y: i16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct NativeSize {
     pub width: i16,
     pub height: i16,
@@ -18,7 +18,7 @@ pub struct NativeSize {
 
 impl Position for NativePosition {
     fn new(x: i16, y: i16) -> Self {
-        Self { x, y }
+        Self::new(x, y)
     }
 
     fn x(&self) -> i16 {
@@ -32,7 +32,7 @@ impl Position for NativePosition {
 
 impl Size for NativeSize {
     fn new(width: i16, height: i16) -> Self {
-        Self { width, height }
+        Self::new(width, height)
     }
 
     fn width(&self) -> i16 {
@@ -57,6 +57,10 @@ impl From<(i16, i16)> for NativeSize {
 }
 
 impl NativePosition {
+    pub const fn new(x: i16, y: i16) -> Self {
+        Self { x, y }
+    }
+
     pub fn to_twoxel(self) -> TwoxelPosition {
         TwoxelPosition::new(self.x, self.y * 2)
     }
@@ -71,6 +75,10 @@ impl NativePosition {
 }
 
 impl NativeSize {
+    pub const fn new(width: i16, height: i16) -> Self {
+        Self { width, height }
+    }
+
     pub fn to_twoxel(self) -> TwoxelSize {
         TwoxelSize::new(self.width, self.height * 2)
     }
