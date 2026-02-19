@@ -34,7 +34,13 @@
 use crate::{
     cell::CellFormat,
     color::Color,
-    coord_space::{BlocktadPosition, NativePosition, NativeSize, OctadPosition, TwoxelPosition},
+    coord_space::{
+        Position,
+        blocktad::BlocktadPosition,
+        native::{NativePosition, NativeSize},
+        octad::OctadPosition,
+        twoxel::TwoxelPosition,
+    },
     engine::Engine,
     fps_counter::get_fps,
     frame::DrawCall,
@@ -83,7 +89,7 @@ pub fn draw_text(
 
     let layer = &mut engine.frame.layered_draw_queue[layer_index.0];
     let rich_text: RichText = text.into();
-    let (x, y) = position.as_tuple();
+    let (x, y) = position.to_tuple();
 
     layer.0.push(DrawCall { rich_text, x, y });
 }
@@ -205,8 +211,8 @@ pub fn draw_octad(
 ) {
     let position: OctadPosition = position.into();
 
-    let local_x = (position.x % 2) as u8;
-    let local_y = (position.y % 4) as u8;
+    let local_x = position.x.rem_euclid(2) as usize;
+    let local_y = position.y.rem_euclid(4) as usize;
 
     // Offsets for each of the braille chars
     #[rustfmt::skip]
@@ -215,18 +221,13 @@ pub fn draw_octad(
         [3, 4, 5, 7],
     ];
 
-    let offset = OFFSETS[local_x as usize][local_y as usize];
+    let offset = OFFSETS[local_x][local_y];
     let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
     let rich_text: RichText = RichText::new(braille_char.to_string())
         .with_fg(color)
         .with_cell_format(CellFormat::Octad);
 
-    draw_text(
-        engine,
-        layer_index,
-        NativePosition::from(position),
-        rich_text,
-    );
+    draw_text(engine, layer_index, position.to_native(), rich_text);
 }
 
 /// Draws a single blocktad at the specified sub-cell position.
@@ -265,13 +266,8 @@ pub fn draw_blocktad(
 ) {
     let position: BlocktadPosition = position.into();
 
-    // Native & local pos evaluation
-    const WIDTH_SUBCELL: i16 = 2;
-    const HEIGHT_SUBCELL: i16 = 4;
-    let native_x = position.x / WIDTH_SUBCELL;
-    let native_y = position.y / HEIGHT_SUBCELL;
-    let local_x = (position.x % WIDTH_SUBCELL) as usize;
-    let local_y = (position.y % HEIGHT_SUBCELL) as usize;
+    let local_x = position.x.rem_euclid(2) as usize;
+    let local_y = position.y.rem_euclid(4) as usize;
 
     let offset: usize = local_y * 2 + local_x;
     let mask: usize = 1 << offset;
@@ -280,12 +276,7 @@ pub fn draw_blocktad(
         .with_fg(color)
         .with_cell_format(CellFormat::Blocktad);
 
-    draw_text(
-        engine,
-        layer_index,
-        NativePosition::new(native_x, native_y),
-        rich_text,
-    );
+    draw_text(engine, layer_index, position.to_native(), rich_text);
 }
 
 /// Draws a single twoxel at the specified sub-cell position.
@@ -320,10 +311,7 @@ pub fn draw_twoxel(
 ) {
     let position: TwoxelPosition = position.into();
 
-    // Native & local pos evaluation
-    let native_x = position.x;
-    let native_y = position.y / 2;
-    let local_y = (position.y % 2) as usize;
+    let local_y = position.y.rem_euclid(2) as usize;
 
     const BLOCKS: [char; 2] = ['▀', '▄'];
     let half_block = BLOCKS[local_y];
@@ -332,12 +320,7 @@ pub fn draw_twoxel(
         .with_fg(color)
         .with_cell_format(CellFormat::Twoxel);
 
-    draw_text(
-        engine,
-        layer_index,
-        NativePosition::new(native_x, native_y),
-        rich_text,
-    )
+    draw_text(engine, layer_index, position.to_native(), rich_text)
 }
 
 /// Draws the current FPS.

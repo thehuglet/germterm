@@ -132,10 +132,8 @@ pub fn start_frame(engine: &mut Engine) {
     erase_rect(
         engine,
         lowest_layer_index,
-        0,
-        0,
-        engine.frame.width as i16,
-        engine.frame.height as i16,
+        (0, 0),
+        (engine.frame.width as i16, engine.frame.height as i16),
     );
 }
 

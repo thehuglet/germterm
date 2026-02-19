@@ -1,5 +1,6 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop},
+    coord_space::{Position, native::NativePosition, octad::OctadPosition},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
     draw::{draw_fps_counter, draw_text},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
@@ -60,33 +61,42 @@ fn main() -> io::Result<()> {
                     count: rng.random_range(25..200),
                 };
 
-                let x_a: f32 = TERM_COLS as f32 * 0.3;
-                let y_a: f32 = TERM_ROWS as f32 * 0.3;
-                let x_b: f32 = TERM_COLS as f32 * 0.7;
-                let y_b: f32 = TERM_ROWS as f32 * 0.7;
+                let x_a: i16 = (TERM_COLS as f32 * 0.3) as i16;
+                let x_b: i16 = (TERM_COLS as f32 * 0.7) as i16;
+                let y_a: i16 = (TERM_ROWS as f32 * 0.3) as i16;
+                let y_b: i16 = (TERM_ROWS as f32 * 0.7) as i16;
 
-                spawn_particles(
-                    &mut engine,
-                    main_layer,
-                    rng.random_range(x_a..=x_b),
-                    rng.random_range(y_a..=y_b),
-                    &spec,
-                    &emitter,
+                // Convert the corner points to Octad space
+                let corner_a = NativePosition::new(x_a, y_a).to_octad();
+                let corner_b = NativePosition::new(x_b, y_b).to_octad();
+
+                // Get min/max for x and y ranges
+                let min_x = corner_a.x.min(corner_b.x);
+                let max_x = corner_a.x.max(corner_b.x);
+                let min_y = corner_a.y.min(corner_b.y);
+                let max_y = corner_a.y.max(corner_b.y);
+
+                let pos = OctadPosition::new(
+                    rng.random_range(min_x..=max_x),
+                    rng.random_range(min_y..=max_y),
                 );
+
+                spawn_particles(&mut engine, main_layer, pos, &spec, &emitter);
+
+                spawn_particles(&mut engine, main_layer, pos, &spec, &emitter);
             }
         }
 
         draw_text(
             &mut engine,
             text_top_layer,
-            26,
-            (TERM_ROWS / 2) as i16,
+            (26, (TERM_ROWS / 2) as i16),
             RichText::new("Press W to spawn particles!")
                 .with_fg(Color::WHITE.with_alpha(100))
                 .with_attributes(Attributes::BOLD),
         );
 
-        draw_fps_counter(&mut engine, text_top_layer, 0, 0);
+        draw_fps_counter(&mut engine, text_top_layer, (0, 0));
 
         end_frame(&mut engine)?;
     }

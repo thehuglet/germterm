@@ -122,6 +122,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "coordinate-spaces"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+]
+
+[[package]]
 name = "criterion"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
