@@ -1,8 +1,11 @@
 use std::cmp::Ordering;
 
 use super::{Buffer, DrawCall, Drawer};
+#[cfg(test)]
+use crate::{buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests};
 use crate::{
-    buffer_tests, cell::Cell, drawer_diffed_buffer_tests, engine2::{Position, buffer::ResizableBuffer, draw::Size}
+    cell::Cell,
+    engine2::{Position, buffer::ResizableBuffer, draw::Size},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -175,6 +178,12 @@ buffer_tests! {
 #[cfg(test)]
 drawer_diffed_buffer_tests! {
     diffed_tests,
+    PairedBuffer::new,
+    PairedBuffer
+}
+#[cfg(test)]
+buffer_resizing_tests! {
+    resizing_tests,
     PairedBuffer::new,
     PairedBuffer
 }

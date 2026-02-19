@@ -379,7 +379,7 @@ macro_rules! drawer_buffer_tests {
                 let mut buf = new_buf(size);
                 buf.fill(cell_a());
                 let _ = draw_sorted(&mut buf); // first draw
-                                               // Nothing written to the buffer between draws.
+                // Nothing written to the buffer between draws.
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls.len(),
@@ -647,7 +647,8 @@ macro_rules! drawer_diffed_buffer_tests {
 macro_rules! buffer_resizing_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
-            use super::$buffer_type;
+    #[rustfmt::skip]
+            use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
                 engine2::{
