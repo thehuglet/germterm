@@ -162,262 +162,154 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
     }
 }
 
+// This section is kind of hacky.
+//
+// Rather than write a ton of tests that need to be updated with the buffer test macro we use a new
+// type a bit of unsafe to reduce duplication.
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::engine2::buffer::paired::PairedBuffer;
+    use crate::{
+        buffer_tests,
+        cell::Cell,
+        engine2::{
+            buffer::{paired::PairedBuffer, slice::SubBuffer, Buffer},
+            draw::{Position, Rect, Size},
+        },
+    };
 
-    #[test]
-    fn write_at_origin_translates_to_parent() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut cell = Cell::EMPTY;
-        cell.ch = 'X';
+    pub const SCALE: u16 = 2;
+    pub const TEST_CELL: Cell = Cell {
+        ch: '森',
+        ..Cell::EMPTY
+    };
 
-        {
-            let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(3, 4, 5, 5));
-            sub_buffer.set_cell(Position::new(0, 0), cell);
+    struct OwnedSubBuffer(SubBuffer<'static, PairedBuffer>);
+
+    impl OwnedSubBuffer {
+        fn new(sz: Size) -> Self {
+            let nsz = sz.scale(SCALE);
+            let inner = Box::leak(Box::new(PairedBuffer::new(nsz)));
+            inner.fill(TEST_CELL);
+
+            SubBuffer::new(inner, Rect::new(Position::ZERO, sz)).clear();
+            OwnedSubBuffer(SubBuffer::new(inner, Rect::new(Position::ZERO, sz)))
         }
-
-        assert_eq!(buf.get_cell(Position::new(3, 4)).ch, 'X');
     }
 
-    #[test]
-    fn write_with_offset_translates_correctly() {
-        let mut buf = PairedBuffer::new(Size::new(20, 20));
-        let mut cell = Cell::EMPTY;
-        cell.ch = 'A';
+    impl Drop for OwnedSubBuffer {
+        fn drop(&mut self) {
+            // Assert that every cell outside the SubBuffer's area (top-left
+            // quadrant) is still TEST_CELL, i.e. the SubBuffer never wrote
+            // outside its own bounds.
+            let inner = unsafe { Box::from_raw(self.0.inner) };
+            let sz = inner.size();
+            let mid_x = sz.width / SCALE;
+            let mid_y = sz.height / SCALE;
 
-        {
-            let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(5, 10, 10, 5));
-            sub_buffer.set_cell(Position::new(2, 3), cell);
-        }
+            // top-right: x >= mid_x, y < mid_y
+            for y in 0..mid_y {
+                for x in mid_x..sz.width {
+                    let pos = Position::new(x, y);
+                    assert_eq!(
+                        inner.get_cell(pos),
+                        &TEST_CELL,
+                        "Mismatch of cell in {pos:?}"
+                    );
+                }
+            }
 
-        // (5+2, 10+3) = (7, 13)
-        assert_eq!(buf.get_cell(Position::new(7, 13)).ch, 'A');
-        // Original local position should be untouched
-        assert_eq!(buf.get_cell(Position::new(2, 3)).ch, ' ');
-    }
+            // bottom-left: x < mid_x, y >= mid_y
+            for y in mid_y..sz.height {
+                for x in 0..mid_x {
+                    let pos = Position::new(x, y);
+                    assert_eq!(
+                        inner.get_cell(pos),
+                        &TEST_CELL,
+                        "Mismatch of cell in {pos:?}"
+                    );
+                }
+            }
 
-    #[test]
-    fn read_through_sub_buffer_reads_parent() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut cell = Cell::EMPTY;
-        cell.ch = 'Z';
-
-        buf.set_cell(Position::new(6, 7), cell);
-
-        let sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(4, 5, 5, 5));
-        // Local (2, 2) maps to parent (6, 7)
-        assert_eq!(sub_buffer.get_cell(Position::new(2, 2)).ch, 'Z');
-    }
-
-    #[test]
-    fn get_cell_mut_modifies_parent() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-
-        {
-            let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(1, 1, 5, 5));
-            let cell = sub_buffer.get_cell_mut(Position::new(0, 0));
-            cell.ch = 'M';
-        }
-
-        assert_eq!(buf.get_cell(Position::new(1, 1)).ch, 'M');
-    }
-
-    #[test]
-    fn sequential_sub_buffers_write_to_different_regions() {
-        let mut buf = PairedBuffer::new(Size::new(20, 10));
-        let mut cell_a = Cell::EMPTY;
-        cell_a.ch = 'A';
-        let mut cell_b = Cell::EMPTY;
-        cell_b.ch = 'B';
-
-        {
-            let mut left = SubBuffer::new(&mut buf, Rect::from_xywh(0, 0, 10, 10));
-            left.set_cell(Position::new(5, 5), cell_a);
-        }
-        {
-            let mut right = SubBuffer::new(&mut buf, Rect::from_xywh(10, 0, 10, 10));
-            right.set_cell(Position::new(5, 5), cell_b);
-        }
-
-        assert_eq!(buf.get_cell(Position::new(5, 5)).ch, 'A');
-        assert_eq!(buf.get_cell(Position::new(15, 5)).ch, 'B');
-    }
-
-    #[test]
-    fn nested_sub_buffers_compound_offsets() {
-        let mut buf = PairedBuffer::new(Size::new(20, 20));
-        let mut cell = Cell::EMPTY;
-        cell.ch = 'N';
-
-        {
-            let mut outer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 3, 15, 15));
-            {
-                let mut inner = SubBuffer::new(&mut outer, Rect::from_xywh(4, 5, 5, 5));
-                inner.set_cell(Position::new(1, 1), cell);
+            // bottom-right: x >= mid_x, y >= mid_y
+            for y in mid_y..sz.height {
+                for x in mid_x..sz.width {
+                    let pos = Position::new(x, y);
+                    assert_eq!(
+                        inner.get_cell(pos),
+                        &TEST_CELL,
+                        "Mismatch of cell in {pos:?}"
+                    );
+                }
             }
         }
-
-        // (2+4+1, 3+5+1) = (7, 9)
-        assert_eq!(buf.get_cell(Position::new(7, 9)).ch, 'N');
     }
 
-    #[test]
-    fn checked_write_uses_sub_buffer_size() {
-        let mut buf = PairedBuffer::new(Size::new(20, 20));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(0, 0, 5, 5));
-
-        // Within sub_buffer bounds
-        assert!(
-            sub_buffer
-                .set_cell_checked(Position::new(4, 4), Cell::EMPTY)
-                .is_ok()
-        );
-
-        // Outside sub_buffer bounds
-        assert!(
-            sub_buffer
-                .set_cell_checked(Position::new(5, 0), Cell::EMPTY)
-                .is_err()
-        );
-        assert!(
-            sub_buffer
-                .set_cell_checked(Position::new(0, 5), Cell::EMPTY)
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn size_and_origin_accessors() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(3, 4, 5, 6));
-
-        assert_eq!(sub_buffer.origin().x, 3);
-        assert_eq!(sub_buffer.origin().y, 4);
-        assert_eq!(sub_buffer.size().width, 5);
-        assert_eq!(sub_buffer.size().height, 6);
-    }
-
-    #[test]
-    fn shrink_left_adjusts_origin_and_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_left(2);
-        assert_eq!(sub_buffer.origin(), Position::new(4, 2));
-        assert_eq!(sub_buffer.size(), Size::new(6, 8));
-    }
-
-    #[test]
-    fn shrink_right_adjusts_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_right(2);
-        assert_eq!(sub_buffer.origin(), Position::new(2, 2));
-        assert_eq!(sub_buffer.size(), Size::new(6, 8));
-    }
-
-    #[test]
-    fn shrink_width_adjusts_origin_and_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_width(2);
-        assert_eq!(sub_buffer.origin(), Position::new(4, 2));
-        assert_eq!(sub_buffer.size(), Size::new(4, 8));
-    }
-
-    #[test]
-    fn shrink_top_adjusts_origin_and_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_top(2);
-        assert_eq!(sub_buffer.origin(), Position::new(2, 4));
-        assert_eq!(sub_buffer.size(), Size::new(8, 6));
-    }
-
-    #[test]
-    fn shrink_bottom_adjusts_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_bottom(2);
-        assert_eq!(sub_buffer.origin(), Position::new(2, 2));
-        assert_eq!(sub_buffer.size(), Size::new(8, 6));
-    }
-
-    #[test]
-    fn shrink_height_adjusts_origin_and_size() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 8, 8));
-        sub_buffer.shrink_height(2);
-        assert_eq!(sub_buffer.origin(), Position::new(2, 4));
-        assert_eq!(sub_buffer.size(), Size::new(8, 4));
-    }
-
-    #[test]
-    #[should_panic]
-    fn set_cell_panics_on_out_of_bounds() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 5, 5));
-        sub_buffer.set_cell(Position::new(5, 0), Cell::EMPTY);
-    }
-
-    #[test]
-    #[should_panic]
-    fn get_cell_panics_on_out_of_bounds() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 5, 5));
-        sub_buffer.get_cell(Position::new(0, 5));
-    }
-
-    #[test]
-    #[should_panic]
-    fn get_cell_mut_panics_on_out_of_bounds() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub_buffer = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 5, 5));
-        sub_buffer.get_cell_mut(Position::new(5, 5));
-    }
-
-    #[test]
-    fn fill_and_clear() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        {
-            let mut sub = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 3, 3));
-
-            let mut cell = Cell::EMPTY;
-            cell.ch = 'F';
-            sub.fill(cell);
-
-            // sub is still alive here, so we must access through sub or wait until it's dropped.
-            assert_eq!(sub.get_cell(Position::ZERO).ch, 'F');
+    impl Buffer for OwnedSubBuffer {
+        fn set_cell(&mut self, pos: Position, cell: crate::cell::Cell) {
+            self.0
+                .set_cell_checked(pos, cell)
+                .expect("out of bounds set_cell")
         }
 
-        assert_eq!(buf.get_cell(Position::new(2, 2)).ch, 'F');
-        assert_eq!(buf.get_cell(Position::new(4, 4)).ch, 'F');
-        assert_eq!(buf.get_cell(Position::new(1, 1)).ch, ' ');
-
-        {
-            let mut sub = SubBuffer::new(&mut buf, Rect::from_xywh(2, 2, 3, 3));
-            sub.clear();
+        fn get_cell(&self, pos: Position) -> &crate::cell::Cell {
+            self.0
+                .get_cell_checked(pos)
+                .expect("out of bounds get_cell")
         }
-        assert_eq!(buf.get_cell(Position::new(2, 2)).ch, ' ');
+
+        fn get_cell_mut(&mut self, pos: Position) -> &mut crate::cell::Cell {
+            self.0
+                .get_cell_mut_checked(pos)
+                .expect("out of bounds get_cell_mut")
+        }
+
+        fn fill(&mut self, cell: crate::cell::Cell) {
+            self.0.fill(cell);
+        }
+
+        fn clear(&mut self) {
+            self.0.fill(crate::cell::Cell::EMPTY);
+        }
+
+        fn start_frame(&mut self) {
+            self.0.start_frame();
+        }
+
+        fn end_frame(&mut self) {
+            self.0.end_frame();
+        }
+
+        fn size(&self) -> Size {
+            self.0.size()
+        }
+
+        fn set_cell_checked(
+            &mut self,
+            pos: Position,
+            cell: crate::cell::Cell,
+        ) -> Result<(), crate::engine2::buffer::ErrorOutOfBoundsAxises> {
+            self.0.set_cell_checked(pos, cell)
+        }
+
+        fn get_cell_checked(
+            &self,
+            pos: Position,
+        ) -> Result<&crate::cell::Cell, crate::engine2::buffer::ErrorOutOfBoundsAxises> {
+            self.0.get_cell_checked(pos)
+        }
+
+        fn get_cell_mut_checked(
+            &mut self,
+            pos: Position,
+        ) -> Result<&mut crate::cell::Cell, crate::engine2::buffer::ErrorOutOfBoundsAxises>
+        {
+            self.0.get_cell_mut_checked(pos)
+        }
     }
 
-    #[test]
-    fn inner_margin() {
-        let mut buf = PairedBuffer::new(Size::new(10, 10));
-        let mut sub = SubBuffer::new(&mut buf, Rect::from_xywh(0, 0, 10, 10));
-
-        {
-            let mut inner = sub.inner(2);
-            assert_eq!(inner.size(), Size::new(6, 6));
-            assert_eq!(inner.origin(), Position::new(2, 2));
-
-            let mut cell = Cell::EMPTY;
-            cell.ch = 'I';
-            inner.set_cell(Position::ZERO, cell);
-        }
-
-        // Inner is dropped, so we can access sub or buf.
-        assert_eq!(sub.get_cell(Position::new(2, 2)).ch, 'I');
+    buffer_tests! {
+        buffer_tests,
+        OwnedSubBuffer::new,
+        OwnedSubBuffer
     }
 }
