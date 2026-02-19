@@ -379,7 +379,7 @@ macro_rules! drawer_buffer_tests {
                 let mut buf = new_buf(size);
                 buf.fill(cell_a());
                 let _ = draw_sorted(&mut buf); // first draw
-                // Nothing written to the buffer between draws.
+                                               // Nothing written to the buffer between draws.
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls.len(),
@@ -614,6 +614,127 @@ macro_rules! drawer_diffed_buffer_tests {
                 buf.set_cell(Position::new(3, 3), cell_b());
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(calls, [(0, 0, 'A'), (3, 3, 'B')]);
+            }
+        }
+    };
+}
+
+/// Generates tests for any type implementing [`ResizableBuffer`].
+///
+/// # Parameters
+///
+/// - `$module_name` — the name of the generated `mod`.
+/// - `$constructor` — an expression that takes a [`Size`] and returns an
+///   instance of `$buffer_type`.
+/// - `$buffer_type` — the concrete type under test; must implement
+///   [`ResizableBuffer`].
+///
+/// # Tests generated
+///
+/// - **`size_after_resize`** — `size()` returns the new size after `resize()`.
+/// - **`resize_larger`** — resizing to a larger grid succeeds and the new cells
+///   are accessible without panic.
+/// - **`resize_smaller`** — resizing to a smaller grid succeeds; cells within
+///   the new bounds are still accessible.
+/// - **`resize_to_same_size`** — resizing to the same dimensions is a no-op;
+///   existing cell data is preserved.
+/// - **`resize_then_write`** — writing to the last valid position after resize
+///   round-trips correctly.
+/// - **`resize_multiple_times`** — the buffer can be resized repeatedly; only
+///   the final size is reported by `size()`.
+/// - **`resize_to_1x1`** — the buffer can shrink to a single cell.
+#[macro_export]
+macro_rules! buffer_resizing_tests {
+    ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
+        mod $module_name {
+            use super::$buffer_type;
+            use $crate::{
+                cell::Cell,
+                engine2::{
+                    buffer::{Buffer, ResizableBuffer},
+                    draw::{Position, Size},
+                },
+            };
+
+            type Buf = $buffer_type;
+
+            fn new_buf(size: Size) -> Buf {
+                $constructor(size)
+            }
+
+            fn cell_a() -> Cell {
+                Cell {
+                    ch: 'A',
+                    ..Cell::EMPTY
+                }
+            }
+
+            #[test]
+            fn size_after_resize() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let new_size = Size::new(8, 6);
+                buf.resize(new_size);
+                assert_eq!(buf.size(), new_size);
+            }
+
+            #[test]
+            fn resize_larger() {
+                let mut buf = new_buf(Size::new(2, 2));
+                buf.resize(Size::new(5, 5));
+                // Writing and reading the new last-valid position must not panic.
+                let pos = Position::new(4, 4);
+                buf.set_cell(pos, cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
+
+            #[test]
+            fn resize_smaller() {
+                let mut buf = new_buf(Size::new(6, 6));
+                buf.resize(Size::new(3, 3));
+                assert_eq!(buf.size(), Size::new(3, 3));
+                // Cells within the new bounds must still be accessible.
+                let pos = Position::new(2, 2);
+                buf.set_cell(pos, cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
+
+            #[test]
+            fn resize_to_same_size() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let pos = Position::new(1, 1);
+                buf.set_cell(pos, cell_a());
+                buf.resize(Size::new(4, 4));
+                assert_eq!(buf.size(), Size::new(4, 4));
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
+
+            #[test]
+            fn resize_then_write() {
+                let mut buf = new_buf(Size::new(2, 2));
+                let new_size = Size::new(7, 3);
+                buf.resize(new_size);
+                let pos = Position::new(new_size.width - 1, new_size.height - 1);
+                buf.set_cell(pos, cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
+
+            #[test]
+            fn resize_multiple_times() {
+                let mut buf = new_buf(Size::new(2, 2));
+                buf.resize(Size::new(10, 10));
+                buf.resize(Size::new(3, 3));
+                buf.resize(Size::new(6, 4));
+                assert_eq!(buf.size(), Size::new(6, 4));
+            }
+
+            #[test]
+            fn resize_to_1x1() {
+                let mut buf = new_buf(Size::new(5, 5));
+                buf.resize(Size::new(1, 1));
+                assert_eq!(buf.size(), Size::new(1, 1));
+                let pos = Position::new(0, 0);
+                buf.set_cell(pos, cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_a());
             }
         }
     };
