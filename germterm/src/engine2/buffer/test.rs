@@ -265,3 +265,321 @@ macro_rules! buffer_tests {
         }
     };
 }
+
+/// Generates tests for any type implementing [`Buffer`] + [`Drawer`] that
+/// always emits every cell on every call to `draw()`, regardless of whether
+/// the cell changed since the last frame.
+macro_rules! drawer_buffer_tests {
+    ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
+        mod $module_name {
+            use germterm::{
+                cell::Cell,
+                engine2::{
+                    buffer::{Buffer, Drawer},
+                    draw::{Position, Size},
+                },
+            };
+
+            type Buf = $buffer_type;
+
+            fn new_buf(size: Size) -> Buf {
+                $constructor(size)
+            }
+
+            fn cell_a() -> Cell {
+                Cell {
+                    ch: 'A',
+                    ..Cell::EMPTY
+                }
+            }
+
+            fn cell_b() -> Cell {
+                Cell {
+                    ch: 'B',
+                    ..Cell::EMPTY
+                }
+            }
+
+            fn draw_sorted(buf: &mut Buf) -> Vec<(u16, u16, char)> {
+                let mut calls: Vec<_> = buf
+                    .draw()
+                    .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
+                    .collect();
+                calls.sort();
+                calls
+            }
+
+            // draw() always emits every cell in the buffer as this buffer is not diffed
+
+            #[test]
+            fn draw_emits_all_cells() {
+                let size = Size::new(3, 2);
+                let mut buf = new_buf(size);
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(
+                    calls.len(),
+                    (size.width * size.height) as usize,
+                    "draw() must emit every cell"
+                );
+            }
+
+            // each position appears exactly once
+
+            #[test]
+            fn draw_emits_each_position_once() {
+                let size = Size::new(3, 2);
+                let mut buf = new_buf(size);
+                let calls = draw_sorted(&mut buf);
+                let mut positions: Vec<(u16, u16)> =
+                    calls.iter().map(|&(x, y, _)| (x, y)).collect();
+                positions.dedup();
+                assert_eq!(
+                    positions.len(),
+                    (size.width * size.height) as usize,
+                    "each position must appear exactly once"
+                );
+            }
+
+            // draw() still emits every cell even when nothing has changed
+
+            #[test]
+            fn draw_emits_all_cells_when_unchanged() {
+                let size = Size::new(3, 2);
+                let mut buf = new_buf(size);
+                buf.fill(cell_a());
+                let _ = draw_sorted(&mut buf); // first draw
+                                               // Nothing written to the buffer between draws.
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(
+                    calls.len(),
+                    (size.width * size.height) as usize,
+                    "draw() must emit every cell even when nothing changed"
+                );
+            }
+
+            // cell values in the output match what was written
+
+            #[test]
+            fn draw_output_matches_written_cells() {
+                let size = Size::new(2, 2);
+                let mut buf = new_buf(size);
+                buf.set_cell(Position::new(0, 0), cell_a());
+                buf.set_cell(Position::new(1, 1), cell_b());
+                let calls = draw_sorted(&mut buf);
+                let find = |x, y| calls.iter().find(|&&(cx, cy, _)| cx == x && cy == y);
+                assert_eq!(find(0, 0).map(|&(_, _, ch)| ch), Some('A'));
+                assert_eq!(find(1, 1).map(|&(_, _, ch)| ch), Some('B'));
+            }
+
+            // draw() covers the full grid even after a partial write
+
+            #[test]
+            fn draw_covers_full_grid_after_partial_write() {
+                let size = Size::new(4, 3);
+                let mut buf = new_buf(size);
+                buf.set_cell(Position::new(1, 1), cell_a());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(
+                    calls.len(),
+                    (size.width * size.height) as usize,
+                    "draw() must emit every cell, not just the written one"
+                );
+            }
+        }
+    };
+}
+
+/// Generates tests for any type implementing [`Buffer`] + [`Drawer`] that
+/// diffs frames and only emits cells that changed since the last `draw()`.
+///
+/// The constructor receives `(size, inner_buf_1, inner_buf_2)`.
+macro_rules! drawer_diffed_buffer_tests {
+    ($module_name:ident, $constructor:tt, $buffer_type:ty, $inner_constructor:tt, $inner_type:ty) => {
+        mod $module_name {
+            use germterm::{
+                cell::Cell,
+                engine2::{
+                    buffer::{Buffer, Drawer},
+                    draw::{Position, Size},
+                },
+            };
+
+            type Buf = $buffer_type;
+
+            fn new_buf(size: Size) -> Buf {
+                let b1 = $inner_constructor(size);
+                let b2 = $inner_constructor(size);
+                $constructor(size, b1, b2)
+            }
+
+            fn cell_a() -> Cell {
+                Cell {
+                    ch: 'A',
+                    ..Cell::EMPTY
+                }
+            }
+
+            fn cell_b() -> Cell {
+                Cell {
+                    ch: 'B',
+                    ..Cell::EMPTY
+                }
+            }
+
+            fn draw_sorted(buf: &mut Buf) -> Vec<(u16, u16, char)> {
+                let mut calls: Vec<_> = buf
+                    .draw()
+                    .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
+                    .collect();
+                calls.sort();
+                calls
+            }
+
+            // fresh buffer: both frames are EMPTY so nothing differs
+
+            #[test]
+            fn fresh_buffer_no_draw_calls() {
+                let mut buf = new_buf(Size::new(4, 4));
+                assert_eq!(
+                    draw_sorted(&mut buf).len(),
+                    0,
+                    "no cells differ on a fresh buffer"
+                );
+            }
+
+            // a written cell is emitted exactly once
+
+            #[test]
+            fn changed_cell_emitted_once() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf); // swap: new current frame is blank
+
+                buf.set_cell(Position::new(1, 2), cell_a());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(calls, [(1, 2, 'A')]);
+            }
+
+            // an unchanged cell is NOT emitted
+
+            #[test]
+            fn unchanged_cell_not_emitted() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf);
+
+                buf.set_cell(Position::new(0, 0), cell_a());
+                let _ = draw_sorted(&mut buf); // 'A' is now in the old frame
+
+                // Write the same value again — no diff.
+                buf.set_cell(Position::new(0, 0), cell_a());
+                assert_eq!(
+                    draw_sorted(&mut buf).len(),
+                    0,
+                    "identical cell must not produce a draw call"
+                );
+            }
+
+            // only the changed cells among many are emitted
+
+            #[test]
+            fn only_changed_cells_emitted() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf);
+
+                // Establish 'A' everywhere.
+                buf.fill(cell_a());
+                let _ = draw_sorted(&mut buf);
+
+                // Change only one cell.
+                buf.fill(cell_a());
+                buf.set_cell(Position::new(2, 2), cell_b());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(
+                    calls,
+                    [(2, 2, 'B')],
+                    "only the one changed cell should be emitted"
+                );
+            }
+
+            // overwriting a cell with a different value is emitted
+
+            #[test]
+            fn overwrite_with_different_value_emitted() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf);
+
+                buf.set_cell(Position::new(1, 1), cell_a());
+                let _ = draw_sorted(&mut buf); // 'A' is now old frame
+
+                buf.set_cell(Position::new(1, 1), cell_b());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(calls, [(1, 1, 'B')]);
+            }
+
+            // a cell that disappears (reverts to EMPTY) is emitted
+
+            #[test]
+            fn cleared_cell_emitted() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf);
+
+                buf.set_cell(Position::new(2, 2), cell_a());
+                let _ = draw_sorted(&mut buf); // 'A' is now old frame
+
+                // New current frame is blank at (2,2).
+                let calls = draw_sorted(&mut buf);
+                assert!(
+                    calls.iter().any(|&(x, y, _)| x == 2 && y == 2),
+                    "the cell that was cleared must produce a draw call"
+                );
+            }
+
+            // when nothing changes, draw() emits nothing
+
+            #[test]
+            fn stable_frame_no_draw_calls() {
+                let size = Size::new(3, 3);
+                let mut buf = new_buf(size);
+
+                let _ = draw_sorted(&mut buf);
+                buf.fill(cell_a());
+                let _ = draw_sorted(&mut buf); // old frame = all 'A'
+                buf.fill(cell_a()); // same content
+                assert_eq!(
+                    draw_sorted(&mut buf).len(),
+                    0,
+                    "no draw calls when the frame is identical to the previous one"
+                );
+            }
+
+            // first non-empty frame after a blank one emits all changed cells
+
+            #[test]
+            fn first_fill_emits_all_cells() {
+                let size = Size::new(3, 2);
+                let mut buf = new_buf(size);
+                let _ = draw_sorted(&mut buf); // old frame = EMPTY
+
+                buf.fill(cell_a());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(
+                    calls.len(),
+                    (size.width * size.height) as usize,
+                    "every cell differs from EMPTY so all must be emitted"
+                );
+            }
+
+            // two independent positions are each emitted independently
+
+            #[test]
+            fn two_changed_cells_both_emitted() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let _ = draw_sorted(&mut buf);
+
+                buf.set_cell(Position::new(0, 0), cell_a());
+                buf.set_cell(Position::new(3, 3), cell_b());
+                let calls = draw_sorted(&mut buf);
+                assert_eq!(calls, [(0, 0, 'A'), (3, 3, 'B')]);
+            }
+        }
+    };
+}
