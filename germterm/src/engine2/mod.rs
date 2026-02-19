@@ -5,8 +5,6 @@ pub mod renderer;
 pub mod timer;
 pub mod widget;
 
-use std::io;
-
 use crate::{
     cell::Cell,
     engine2::{
