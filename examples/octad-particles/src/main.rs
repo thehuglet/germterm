@@ -1,6 +1,6 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop},
-    coord_space::{Position, native::NativePosition, octad::OctadPosition},
+    coord_space::{native::NativePosition, octad::OctadPosition},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
     draw::{draw_fps_counter, draw_text},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},

@@ -1,12 +1,8 @@
 use germterm::{
     color::{Color, ColorGradient, GradientStop, sample_gradient},
-    coord_space::{
-        Position,
-        native::{NativePosition, NativeSize},
-        twoxel::TwoxelPosition,
-    },
+    coord_space::{Position, native::NativePosition, octad::OctadPosition, twoxel::TwoxelPosition},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
-    draw::{draw_octad, draw_rect, draw_text, draw_twoxel, fill_screen},
+    draw::{draw_octad, draw_text, draw_twoxel},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
     fps_counter::get_fps,
     input::poll_input,
@@ -122,79 +118,78 @@ fn main() -> io::Result<()> {
 
                 let head: TwoxelPosition = segments[0];
 
-                // let new_head = (
-                //     area_a.x + (head.0 + direction.0).rem_euclid(area_b.x),
-                //     area_a.y + (head.1 + direction.1).rem_euclid(area_b.y),
-                // );
+                let new_head_pos = TwoxelPosition::new(
+                    (head.x + direction.x - arena_area_a.x)
+                        .rem_euclid(arena_area_b.x - arena_area_a.x)
+                        + arena_area_a.x,
+                    (head.y + direction.y - arena_area_a.y)
+                        .rem_euclid(arena_area_b.y - arena_area_a.y)
+                        + arena_area_a.y,
+                );
 
-                let new_head = head + direction;
-
-                if segments.contains(&new_head) {
+                if segments.contains(&new_head_pos) {
                     game_state = GameState::GameOver;
-                    // spawn_death_explosion(
-                    //     &mut engine,
-                    //     layer_1,
-                    //     new_head.0 as f32 + 0.5,
-                    //     (new_head.1 as f32 + 0.5) * 0.5,
-                    // );
+                    spawn_death_explosion(&mut engine, layer_1, new_head_pos.to_octad());
                 }
-                segments.insert(0, new_head);
+                segments.insert(0, new_head_pos);
 
-                if new_head == apple_pos {
-                    // spawn_explosion(
-                    //     &mut engine,
-                    //     layer_0,
-                    //     apple_pos.0 as f32 + 0.5,
-                    //     (apple_pos.1 as f32 + 0.5) * 0.5,
-                    // );
+                if new_head_pos == apple_pos {
+                    spawn_explosion(&mut engine, layer_0, apple_pos.to_octad());
                     apple_pos = random_pos_in_area(arena_area_a, arena_area_b);
-                    // spawn_apple_create_particles(
-                    //     &mut engine,
-                    //     layer_0,
-                    //     (apple_pos.0 as f32) + 0.5,
-                    //     ((apple_pos.1 as f32) + 0.5) * 0.5,
-                    // );
+                    spawn_apple_create_particles(&mut engine, layer_0, apple_pos.to_octad());
                 } else {
                     segments.pop();
                 }
             }
         }
 
-        draw_rect(
-            &mut engine,
-            layer_2,
-            arena_area_a.to_native(),
-            (arena_area_b - arena_area_a).to_native().to_tuple(),
-            Color::BLACK.with_alpha(40),
-        );
+        // --- Draw border ---
+        {
+            let a = arena_area_a.offset_xy(-1, -1).to_octad();
+            let b = arena_area_b.offset_xy(1, 1).to_octad();
 
-        // let mut draw = |x: f32, y: f32| {
-        //     draw_octad(&mut engine, layer_2, x, y, bg_decoration_color);
-        // };
+            // top + bottom
+            for x in a.x..b.x {
+                let y_top = a.y;
+                let y_bottom = b.y - 1;
+                let p_top = (x + y_top) % 2;
+                let p_bottom = (x + y_bottom) % 2;
 
-        // // --- Horizontal borders ---
-        // for (dx, top, bottom, n) in [
-        //     (1.5, 0.99, (TERM_ROWS - 1) as f32, TERM_COLS - 3),
-        //     (1.0, 0.50, TERM_ROWS as f32 - 0.75, TERM_COLS - 2),
-        // ] {
-        //     for x in 0..n {
-        //         let xf = x as f32;
-        //         draw(xf + dx, top);
-        //         draw(xf + dx + 0.5, bottom);
-        //     }
-        // }
+                draw_octad(
+                    &mut engine,
+                    layer_2,
+                    (x, y_top + p_top),
+                    bg_decoration_color,
+                );
+                draw_octad(
+                    &mut engine,
+                    layer_2,
+                    (x, y_bottom - p_bottom),
+                    bg_decoration_color,
+                );
+            }
 
-        // // --- Vertical borders ---
-        // for (xl, xr, offl, offr, n) in [
-        //     (1.99, (TERM_COLS - 2) as f32, 0.99, 1.0, TERM_ROWS * 2 - 3),
-        //     (1.0, TERM_COLS as f32 - 1.5, 0.5, 0.75, TERM_ROWS * 2 - 2),
-        // ] {
-        //     for y in 0..n {
-        //         let yf = y as f32 * 0.5;
-        //         draw(xl, yf + offl);
-        //         draw(xr, yf + offr);
-        //     }
-        // }
+            // left + right
+            for y in a.y..b.y {
+                let x_left = a.x;
+                let x_right = b.x - 1;
+                let p_left = (x_left + y) % 2;
+                let p_right = (x_right + y) % 2;
+
+                draw_octad(
+                    &mut engine,
+                    layer_2,
+                    (x_left + p_left, y),
+                    bg_decoration_color,
+                );
+                draw_octad(
+                    &mut engine,
+                    layer_2,
+                    (x_right - p_right, y),
+                    bg_decoration_color,
+                );
+            }
+        }
 
         // --- Draw apple ---
         draw_twoxel(&mut engine, layer_2, apple_pos, Color::RED);
@@ -202,7 +197,6 @@ fn main() -> io::Result<()> {
         // --- Draw snake ---
         for (i, segment) in segments.iter().enumerate() {
             let t: f32 = i as f32 / segments.len() as f32;
-            // Multiplying the y axis by 0.5 here, as terminal cells usually have a 1:2 width to height ratio
             draw_twoxel(
                 &mut engine,
                 layer_2,
@@ -211,7 +205,7 @@ fn main() -> io::Result<()> {
             );
         }
 
-        // --- FPS Counter
+        // --- FPS Counter ---
         let fps_text: String = format!("UNCAPPED FPS: {:2.0}", get_fps(&engine));
         draw_text(
             &mut engine,
@@ -248,70 +242,67 @@ fn random_pos_in_area<T: Position>(a: T, b: T) -> T {
     )
 }
 
-// fn spawn_explosion(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
-//     spawn_particles(
-//         engine,
-//         layer,
-//         x,
-//         y,
-//         &ParticleSpec {
-//             gravity_scale: 0.1,
-//             speed: 20.0..=70.0,
-//             lifetime_sec: 2.0,
-//             color: ParticleColor::Gradient(ColorGradient::new(vec![
-//                 GradientStop::new(0.0, Color::WHITE),
-//                 GradientStop::new(0.05, Color::RED),
-//                 GradientStop::new(1.0, Color::VIOLET.with_alpha(0)),
-//             ])),
-//         },
-//         &ParticleEmitter {
-//             count: 30,
-//             ..Default::default()
-//         },
-//     );
-// }
+fn spawn_explosion(engine: &mut Engine, layer: LayerIndex, position: OctadPosition) {
+    spawn_particles(
+        engine,
+        layer,
+        position,
+        &ParticleSpec {
+            gravity_scale: 0.1,
+            speed: 20.0..=70.0,
+            lifetime_sec: 2.0,
+            color: ParticleColor::Gradient(ColorGradient::new(vec![
+                GradientStop::new(0.0, Color::WHITE),
+                GradientStop::new(0.05, Color::RED),
+                GradientStop::new(1.0, Color::VIOLET.with_alpha(0)),
+            ])),
+        },
+        &ParticleEmitter {
+            count: 30,
+            ..Default::default()
+        },
+    );
+}
 
-// fn spawn_apple_create_particles(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
-//     spawn_particles(
-//         engine,
-//         layer,
-//         x,
-//         y,
-//         &ParticleSpec {
-//             gravity_scale: 0.0,
-//             speed: 8.0..=10.0,
-//             lifetime_sec: 0.7,
-//             color: ParticleColor::Gradient(ColorGradient::new(vec![
-//                 GradientStop::new(0.0, Color::RED.with_alpha(100)),
-//                 GradientStop::new(1.0, Color::RED.with_alpha(0)),
-//             ])),
-//         },
-//         &ParticleEmitter {
-//             count: 70,
-//             ..Default::default()
-//         },
-//     );
-// }
+fn spawn_apple_create_particles(engine: &mut Engine, layer: LayerIndex, position: OctadPosition) {
+    spawn_particles(
+        engine,
+        layer,
+        position,
+        &ParticleSpec {
+            gravity_scale: 0.0,
+            speed: 8.0..=10.0,
+            lifetime_sec: 0.7,
+            color: ParticleColor::Gradient(ColorGradient::new(vec![
+                GradientStop::new(0.0, Color::RED.with_alpha(100)),
+                GradientStop::new(1.0, Color::RED.with_alpha(0)),
+            ])),
+        },
+        &ParticleEmitter {
+            count: 70,
+            ..Default::default()
+        },
+    );
+}
 
-// fn spawn_death_explosion(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
-//     spawn_particles(
-//         engine,
-//         layer,
-//         x,
-//         y,
-//         &ParticleSpec {
-//             gravity_scale: 0.5,
-//             speed: 10.0..=180.0,
-//             lifetime_sec: 2.5,
-//             color: ParticleColor::Gradient(ColorGradient::new(vec![
-//                 GradientStop::new(0.0, Color::WHITE),
-//                 GradientStop::new(0.05, Color::RED),
-//                 GradientStop::new(1.0, Color::YELLOW.with_alpha(0)),
-//             ])),
-//         },
-//         &ParticleEmitter {
-//             count: 500,
-//             ..Default::default()
-//         },
-//     );
-// }
+fn spawn_death_explosion(engine: &mut Engine, layer: LayerIndex, position: OctadPosition) {
+    spawn_particles(
+        engine,
+        layer,
+        position,
+        &ParticleSpec {
+            gravity_scale: 0.5,
+            speed: 10.0..=180.0,
+            lifetime_sec: 2.5,
+            color: ParticleColor::Gradient(ColorGradient::new(vec![
+                GradientStop::new(0.0, Color::WHITE),
+                GradientStop::new(0.05, Color::RED),
+                GradientStop::new(1.0, Color::YELLOW.with_alpha(0)),
+            ])),
+        },
+        &ParticleEmitter {
+            count: 500,
+            ..Default::default()
+        },
+    );
+}

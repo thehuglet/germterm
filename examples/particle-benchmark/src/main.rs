@@ -2,7 +2,7 @@ use std::io;
 
 use germterm::{
     color::Color,
-    coord_space::{Position, native::NativePosition, octad::OctadPosition},
+    coord_space::{native::NativePosition, octad::OctadPosition},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
     draw::draw_fps_counter,
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
