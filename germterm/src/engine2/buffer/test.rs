@@ -26,15 +26,16 @@
 /// - **`clear`** — every cell equals [`Cell::EMPTY`] after clearing.
 #[macro_export]
 macro_rules! buffer_tests {
-    ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
+    ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
-            use germterm::{
+            use $crate::{
                 cell::Cell,
                 engine2::{
                     buffer::{Buffer, ErrorOutOfBoundsAxises},
                     draw::{Position, Size},
                 },
             };
+            use super::{$buffer_type};
 
             type Buf = $buffer_type;
 
