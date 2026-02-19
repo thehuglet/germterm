@@ -1,6 +1,6 @@
 use crate::{color::Color, rich_text::Attributes};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CellFormat {
     Standard,
     Twoxel,
@@ -8,7 +8,7 @@ pub enum CellFormat {
     Blocktad,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Cell {
     pub ch: char,
     pub fg: Color,
