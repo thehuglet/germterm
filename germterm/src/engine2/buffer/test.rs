@@ -302,7 +302,7 @@ macro_rules! buffer_tests {
 macro_rules! drawer_buffer_tests {
     ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
         mod $module_name {
-            use germterm::{
+            use $crate::{
                 cell::Cell,
                 engine2::{
                     buffer::{Buffer, Drawer},
