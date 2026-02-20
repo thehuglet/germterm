@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 
 use super::{Buffer, DrawCall, Drawer};
+#[cfg(test)]
+use crate::{buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests};
 use crate::{
     cell::Cell,
     engine2::{Position, buffer::ResizableBuffer, draw::Size},
@@ -168,27 +170,20 @@ impl Drawer for PairedBuffer {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::PairedBuffer;
-    use crate::engine2::buffer::test::{
-        buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests,
-    };
-
-    buffer_tests! {
-        buffer_tests,
-        PairedBuffer::new,
-        PairedBuffer
-    }
-    #[cfg(test)]
-    drawer_diffed_buffer_tests! {
-        diffed_tests,
-        PairedBuffer::new,
-        PairedBuffer
-    }
-    #[cfg(test)]
-    buffer_resizing_tests! {
-        resizing_tests,
-        PairedBuffer::new,
-        PairedBuffer
-    }
+buffer_tests! {
+    buffer_tests,
+    PairedBuffer::new,
+    PairedBuffer
+}
+#[cfg(test)]
+drawer_diffed_buffer_tests! {
+    diffed_tests,
+    PairedBuffer::new,
+    PairedBuffer
+}
+#[cfg(test)]
+buffer_resizing_tests! {
+    resizing_tests,
+    PairedBuffer::new,
+    PairedBuffer
 }
