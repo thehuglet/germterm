@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 bitflags! {
     /// Attributes that can be applied to drawn text.
-    #[derive(Clone, Copy, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Attributes: u8 {
         const BOLD          = 0b_00000001;
         const ITALIC        = 0b_00000010;
