@@ -1,7 +1,9 @@
+use std::{cmp::Ordering, ptr};
+
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises, ResizableBuffer};
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Size},
+    engine2::{draw::Size, Position},
 };
 
 /// A flat buffer that stores every cell in a single `Vec<Cell>` in row-major
@@ -85,8 +87,70 @@ impl ResizableBuffer for FlatBuffer {
         if self.size == size {
             return;
         }
+
+        let old_w = self.size.width as usize;
+        let new_w = size.width as usize;
+        let old_h = self.size.height as usize;
+
+        // The grow-width path temporarily needs `new_w * old_h` elements
+        // before the height phase truncates/extends to `final_area`. Reserve
+        // for whichever is larger so `set_len` never exceeds capacity.
+        self.cells
+            .reserve_exact((size.area() as usize).saturating_sub(self.cells.len()));
+
+        // Width
+        match old_w.cmp(&new_w) {
+            // Grow case
+            Ordering::Less => {
+                let new_len = new_w * old_h;
+                let grow_by = new_w - old_w;
+
+                // SAFETY: Cell is Copy — no drop/clone concerns.
+                // `reserve_exact` above ensured capacity >= new_len.
+                // Every element in 0..new_len is written exactly once:
+                //   - existing row data is moved by `ptr::copy`
+                //   - new gap columns are filled via `slice::fill`
+                // `set_len` is called last, after all writes.
+                unsafe {
+                    let base = self.cells.as_mut_ptr();
+
+                    // Scatter rows from last to second. Row 0 is already at
+                    // offset 0 and doesn't need to move.
+                    for y in (1..old_h).rev() {
+                        let src = base.add(y * old_w);
+                        let dst = base.add(y * new_w);
+                        ptr::copy(src, dst, old_w);
+
+                        // Fill the new columns at the end of this row.
+                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by).fill(Cell::EMPTY);
+                    }
+
+                    // Row 0: just fill trailing gap.
+                    if old_h > 0 {
+                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
+                    }
+
+                    self.cells.set_len(new_len);
+                }
+            }
+            // Shrink case
+            Ordering::Greater => {
+                // SAFETY: Cell is Copy. All source/dest ranges lie within
+                // 0..old_w*h which is the current vec length.
+                unsafe {
+                    let base = self.cells.as_mut_ptr();
+                    for y in 1..old_h {
+                        ptr::copy(base.add(y * old_w), base.add(y * new_w), new_w);
+                    }
+                }
+            }
+            Ordering::Equal => {}
+        }
+
+        // Height
+        self.cells.resize(size.area() as usize, Cell::EMPTY);
+
         self.size = size;
-        self.cells = vec![Cell::EMPTY; size.area() as usize];
     }
 }
 
