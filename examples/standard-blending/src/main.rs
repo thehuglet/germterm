@@ -37,30 +37,24 @@ fn main() -> io::Result<()> {
         draw_rect(
             &mut engine,
             layer,
-            0,
-            0,
-            TERM_COLS as i16,
-            9,
+            (0, 0),
+            (TERM_COLS as i16, 9),
             Color::CYAN.with_alpha(170),
         );
-        erase_rect(&mut engine, layer, 0, 0, TERM_COLS as i16, 9);
+        erase_rect(&mut engine, layer, (0, 0), (TERM_COLS as i16, 9));
 
         draw_rect(
             &mut engine,
             layer,
-            0,
-            9,
-            TERM_COLS as i16,
-            8,
+            (0, 9),
+            (TERM_COLS as i16, 8),
             Color::DARK_GREEN.with_alpha(127),
         );
         draw_rect(
             &mut engine,
             layer,
-            0,
-            17,
-            TERM_COLS as i16,
-            8,
+            (0, 17),
+            (TERM_COLS as i16, 8),
             Color::DARK_GREEN,
         );
 
@@ -74,9 +68,9 @@ fn main() -> io::Result<()> {
         draw_test_cases(&mut engine, layer, 40, 17, game_time);
 
         // Should do nothing
-        draw_rect(&mut engine, layer, 40, 0, 40, 25, Color::CLEAR);
+        draw_rect(&mut engine, layer, (40, 0), (40, 25), Color::CLEAR);
 
-        draw_fps_counter(&mut engine, layer, 0, 0);
+        draw_fps_counter(&mut engine, layer, (0, 0));
         end_frame(&mut engine)?;
     }
 
@@ -87,25 +81,23 @@ fn main() -> io::Result<()> {
 fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_time: f32) {
     // --- Opaque drawing ---
     // Black square
-    draw_rect(engine, layer, x + 2, y + 2, 4, 2, Color::BLACK);
+    draw_rect(engine, layer, (x + 2, y + 2), (4, 2), Color::BLACK);
     draw_text(
         engine,
         layer,
-        x + 2,
-        y + 3,
+        (x + 2, y + 3),
         RichText::new("ab")
             .with_fg(Color::WHITE)
             .with_attributes(Attributes::BOLD),
     );
 
     // White square
-    draw_rect(engine, layer, x + 4, y + 1, 4, 2, Color::WHITE);
+    draw_rect(engine, layer, (x + 4, y + 1), (4, 2), Color::WHITE);
 
     draw_text(
         engine,
         layer,
-        x + 4,
-        y + 2,
+        (x + 4, y + 2),
         RichText::new("ab")
             .with_fg(Color::BLACK)
             .with_attributes(Attributes::BOLD),
@@ -115,61 +107,52 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_rect(
         engine,
         layer,
-        x + 10,
-        y + 2,
-        4,
-        2,
+        (x + 10, y + 2),
+        (4, 2),
         Color::CYAN.with_alpha(66),
     );
     draw_rect(
         engine,
         layer,
-        x + 12,
-        y + 1,
-        4,
-        2,
+        (x + 12, y + 1),
+        (4, 2),
         Color::RED.with_alpha(66),
     );
 
     // --- Background over text blending ---
-    draw_rect(engine, layer, x + 18, y + 2, 4, 2, Color::WHITE);
+    draw_rect(engine, layer, (x + 18, y + 2), (4, 2), Color::WHITE);
     draw_text(
         engine,
         layer,
-        x + 18,
-        y + 2,
+        (x + 18, y + 2),
         RichText::new("1234").with_fg(Color::RED),
     );
     draw_rect(
         engine,
         layer,
-        x + 20,
-        y + 1,
-        4,
-        2,
+        (x + 20, y + 1),
+        (4, 2),
         Color::BLACK.with_alpha(155),
     );
 
     // --- Opaque background covering text (letters "yz" here) ---
-    draw_rect(engine, layer, x + 26, y + 2, 4, 2, Color::RED);
+    draw_rect(engine, layer, (x + 26, y + 2), (4, 2), Color::RED);
     draw_text(
         engine,
         layer,
-        x + 26,
-        y + 2,
+        (x + 26, y + 2),
         RichText::new("wxyz")
             .with_fg(Color::GREEN)
             .with_attributes(Attributes::BOLD),
     );
-    draw_rect(engine, layer, x + 28, y + 1, 4, 2, Color::BLUE);
+    draw_rect(engine, layer, (x + 28, y + 1), (4, 2), Color::BLUE);
 
     // --- bottom red "abcd" fg should blend with the `bg` to form purple here as there's no `fg` to blend with ---
-    draw_rect(engine, layer, x + 34, y + 2, 4, 2, Color::BLUE);
+    draw_rect(engine, layer, (x + 34, y + 2), (4, 2), Color::BLUE);
     draw_text(
         engine,
         layer,
-        x + 34,
-        y + 2,
+        (x + 34, y + 2),
         RichText::new("abcd")
             .with_fg(Color::RED)
             .with_attributes(Attributes::BOLD),
@@ -177,8 +160,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 34,
-        y + 3,
+        (x + 34, y + 3),
         RichText::new("abcd")
             .with_fg(Color::RED.with_alpha(127))
             .with_attributes(Attributes::BOLD),
@@ -193,8 +175,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 2,
-        y + 6,
+        (x + 2, y + 6),
         RichText::new("xxxx")
             .with_fg(Color::RED)
             .with_attributes(Attributes::BOLD),
@@ -202,8 +183,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 2,
-        y + 6,
+        (x + 2, y + 6),
         RichText::new("o o")
             .with_fg(Color::GREEN.with_alpha(t_byte))
             .with_attributes(Attributes::BOLD),
@@ -213,8 +193,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 10,
-        y + 6,
+        (x + 10, y + 6),
         RichText::new("boop")
             .with_fg(Color::VIOLET.with_alpha(t_byte))
             .with_attributes(Attributes::BOLD),
@@ -224,8 +203,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 18,
-        y + 6,
+        (x + 18, y + 6),
         RichText::new("bonk")
             .with_fg(Color::GREEN.with_alpha(t_byte))
             .with_bg(Color::DARK_GREEN)
@@ -236,8 +214,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 26,
-        y + 6,
+        (x + 26, y + 6),
         RichText::new("bang")
             .with_fg(Color::RED.with_alpha(t_byte))
             .with_bg(Color::GREEN.with_alpha(30))
@@ -245,17 +222,16 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     );
 
     // --- Drawing a clear rect ---
-    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::CLEAR);
+    draw_rect(engine, layer, (x + 2, y + 10), (4, 2), Color::CLEAR);
 
     // --- Drawing a translucent rect + opaque text on top of it ---
-    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::CLEAR);
+    draw_rect(engine, layer, (x + 2, y + 10), (4, 2), Color::CLEAR);
 
     // --- Drawing a translucent fg on top of an oscillating alpha fg
     draw_text(
         engine,
         layer,
-        x + 34,
-        y + 6,
+        (x + 34, y + 6),
         RichText::new("xxxx")
             .with_fg(Color::RED.with_alpha(127))
             .with_attributes(Attributes::BOLD),
@@ -263,8 +239,7 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     draw_text(
         engine,
         layer,
-        x + 34,
-        y + 6,
+        (x + 34, y + 6),
         RichText::new("o o")
             .with_fg(Color::WHITE.with_alpha(t_byte))
             .with_attributes(Attributes::BOLD),

@@ -4,6 +4,7 @@ pub use crossterm;
 
 pub mod cell;
 pub mod color;
+pub mod coord_space;
 pub mod draw;
 pub mod engine;
 pub mod fps_counter;
