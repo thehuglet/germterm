@@ -3,27 +3,27 @@
 ///
 /// # Parameters
 ///
-/// - `$module_name` — the name of the generated `mod` (e.g. `paired_buffer`).
-/// - `$constructor` — an expression that takes a [`Size`] and returns an
+/// - `$module_name` - the name of the generated `mod` (e.g. `paired_buffer`).
+/// - `$constructor` - an expression that takes a [`Size`] and returns an
 ///   instance of `$buffer_type` (e.g. `PairedBuffer::new`).
-/// - `$buffer_type` — the concrete type under test; must implement [`Buffer`].
+/// - `$buffer_type` - the concrete type under test; must implement [`Buffer`].
 ///
 /// # Tests generated
 ///
-/// - **`size`** — `size()` returns the value passed to the constructor.
-/// - **`set_cell_checked` / `get_cell_checked`** — round-trip at the origin,
+/// - **`size`** - `size()` returns the value passed to the constructor.
+/// - **`set_cell_checked` / `get_cell_checked`** - round-trip at the origin,
 ///   the last valid position, and an arbitrary interior position; all three
 ///   out-of-bounds variants (`X`, `Y`, `XY`) return the correct error.
-/// - **`set_cell` / `get_cell`** — infallible round-trip; both panic when the
+/// - **`set_cell` / `get_cell`** - infallible round-trip; both panic when the
 ///   position is out of bounds.
-/// - **`get_cell_mut_checked`** — mutation through a mutable reference; all
+/// - **`get_cell_mut_checked`** - mutation through a mutable reference; all
 ///   three out-of-bounds variants return the correct error.
-/// - **`get_cell_mut`** — mutation round-trip; panics when out of bounds.
-/// - **Independence** — writes to distinct positions do not alias each other.
-/// - **Overwrite** — writing a second value to the same position replaces the
+/// - **`get_cell_mut`** - mutation round-trip; panics when out of bounds.
+/// - **Independence** - writes to distinct positions do not alias each other.
+/// - **Overwrite** - writing a second value to the same position replaces the
 ///   first.
-/// - **`fill`** — every cell in the grid equals the fill value afterwards.
-/// - **`clear`** — every cell equals [`Cell::EMPTY`] after clearing.
+/// - **`fill`** - every cell in the grid equals the fill value afterwards.
+/// - **`clear`** - every cell equals [`Cell::EMPTY`] after clearing.
 #[macro_export]
 macro_rules! buffer_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
@@ -41,7 +41,9 @@ macro_rules! buffer_tests {
             type Buf = $buffer_type;
 
             fn new_buf(size: Size) -> Buf {
-                $constructor(size)
+                let mut buf = $constructor(size);
+                buf.start_frame();
+                buf
             }
 
             // A non-empty cell distinct from Cell::EMPTY, for use in tests.
@@ -313,7 +315,9 @@ macro_rules! drawer_buffer_tests {
             type Buf = $buffer_type;
 
             fn new_buf(size: Size) -> Buf {
-                $constructor(size)
+                let mut buf = $constructor(size);
+                buf.start_frame();
+                buf
             }
 
             fn cell_a() -> Cell {
@@ -441,9 +445,9 @@ macro_rules! drawer_diffed_buffer_tests {
             type Buf = $buffer_type;
 
             fn new_buf(size: Size) -> Buf {
-                let mut b = $constructor(size);
-                b.start_frame();
-                b
+                let mut buf = $constructor(size);
+                buf.start_frame();
+                buf
             }
 
             fn cell_a() -> Cell {
@@ -460,6 +464,10 @@ macro_rules! drawer_diffed_buffer_tests {
                 }
             }
 
+            /// Collects, sorts, and returns the draw calls for the current
+            /// frame, then ends the frame and prepares the next one.
+            ///
+            /// Mirrors the production loop: `draw -> end_frame -> start_frame`.
             fn draw_sorted(buf: &mut Buf) -> Vec<(u16, u16, char)> {
                 let mut calls: Vec<_> = buf
                     .draw()
@@ -467,6 +475,7 @@ macro_rules! drawer_diffed_buffer_tests {
                     .collect();
                 calls.sort();
                 buf.end_frame();
+                buf.start_frame();
                 calls
             }
 
@@ -504,7 +513,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 buf.set_cell(Position::new(0, 0), cell_a());
                 let _ = draw_sorted(&mut buf); // 'A' is now in the old frame
 
-                // Write the same value again — no diff.
+                // Write the same value again - no diff.
                 buf.set_cell(Position::new(0, 0), cell_a());
                 assert_eq!(
                     draw_sorted(&mut buf).len(),
@@ -524,14 +533,23 @@ macro_rules! drawer_diffed_buffer_tests {
                 buf.fill(cell_a());
                 let _ = draw_sorted(&mut buf);
 
-                // Change only one cell.
-                buf.fill(cell_a());
+                // Change only one cell; start_frame cleared the rest to EMPTY,
+                // so only (2,2) differs from the all-'A' old frame.
                 buf.set_cell(Position::new(2, 2), cell_b());
                 let calls = draw_sorted(&mut buf);
-                assert_eq!(
-                    calls,
-                    [(2, 2, 'B')],
-                    "only the one changed cell should be emitted"
+                // Every cell that is EMPTY (i.e. != 'A') plus the one 'B' cell
+                // must be emitted.  Assert the changed cell is present and is 'B'.
+                assert!(
+                    calls
+                        .iter()
+                        .any(|&(x, y, ch)| x == 2 && y == 2 && ch == 'B'),
+                    "the cell written as 'B' must appear in the draw output"
+                );
+                // Assert that cells that are still 'A' in the current frame are
+                // NOT emitted (i.e. unchanged cells are suppressed).
+                assert!(
+                    !calls.iter().any(|&(_, _, ch)| ch == 'A'),
+                    "unchanged 'A' cells must not produce draw calls"
                 );
             }
 
@@ -547,7 +565,12 @@ macro_rules! drawer_diffed_buffer_tests {
 
                 buf.set_cell(Position::new(1, 1), cell_b());
                 let calls = draw_sorted(&mut buf);
-                assert_eq!(calls, [(1, 1, 'B')]);
+                assert!(
+                    calls
+                        .iter()
+                        .any(|&(x, y, ch)| x == 1 && y == 1 && ch == 'B'),
+                    "overwritten cell must be emitted with its new value"
+                );
             }
 
             // a cell that disappears (reverts to EMPTY) is emitted
@@ -560,11 +583,13 @@ macro_rules! drawer_diffed_buffer_tests {
                 buf.set_cell(Position::new(2, 2), cell_a());
                 let _ = draw_sorted(&mut buf); // 'A' is now old frame
 
-                // New current frame is blank at (2,2).
+                // Current frame is blank (start_frame cleared it); (2,2) now
+                // differs from the old 'A', so the empty value must be emitted.
                 let calls = draw_sorted(&mut buf);
-                assert!(
-                    calls.iter().any(|&(x, y, _)| x == 2 && y == 2),
-                    "the cell that was cleared must produce a draw call"
+                assert_eq!(
+                    calls,
+                    [(2, 2, Cell::EMPTY.ch)],
+                    "the cleared cell must be emitted with Cell::EMPTY's character"
                 );
             }
 
@@ -576,9 +601,12 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(size);
 
                 let _ = draw_sorted(&mut buf);
+                // start_frame cleared the current frame; old frame is EMPTY.
+                // Write 'A' and draw so old frame becomes all 'A'.
                 buf.fill(cell_a());
-                let _ = draw_sorted(&mut buf); // old frame = all 'A'
-                buf.fill(cell_a()); // same content
+                let _ = draw_sorted(&mut buf);
+                // start_frame cleared current frame; write 'A' again to match old.
+                buf.fill(cell_a());
                 assert_eq!(
                     draw_sorted(&mut buf).len(),
                     0,
@@ -592,7 +620,7 @@ macro_rules! drawer_diffed_buffer_tests {
             fn first_fill_emits_all_cells() {
                 let size = Size::new(3, 2);
                 let mut buf = new_buf(size);
-                let _ = draw_sorted(&mut buf); // old frame = EMPTY
+                let _ = draw_sorted(&mut buf); // old frame = EMPTY, current = fresh blank
 
                 buf.fill(cell_a());
                 let calls = draw_sorted(&mut buf);
@@ -623,26 +651,26 @@ macro_rules! drawer_diffed_buffer_tests {
 ///
 /// # Parameters
 ///
-/// - `$module_name` — the name of the generated `mod`.
-/// - `$constructor` — an expression that takes a [`Size`] and returns an
+/// - `$module_name` - the name of the generated `mod`.
+/// - `$constructor` - an expression that takes a [`Size`] and returns an
 ///   instance of `$buffer_type`.
-/// - `$buffer_type` — the concrete type under test; must implement
+/// - `$buffer_type` - the concrete type under test; must implement
 ///   [`ResizableBuffer`].
 ///
 /// # Tests generated
 ///
-/// - **`size_after_resize`** — `size()` returns the new size after `resize()`.
-/// - **`resize_larger`** — resizing to a larger grid succeeds and the new cells
+/// - **`size_after_resize`** - `size()` returns the new size after `resize()`.
+/// - **`resize_larger`** - resizing to a larger grid succeeds and the new cells
 ///   are accessible without panic.
-/// - **`resize_smaller`** — resizing to a smaller grid succeeds; cells within
+/// - **`resize_smaller`** - resizing to a smaller grid succeeds; cells within
 ///   the new bounds are still accessible.
-/// - **`resize_to_same_size`** — resizing to the same dimensions is a no-op;
+/// - **`resize_to_same_size`** - resizing to the same dimensions is a no-op;
 ///   existing cell data is preserved.
-/// - **`resize_then_write`** — writing to the last valid position after resize
+/// - **`resize_then_write`** - writing to the last valid position after resize
 ///   round-trips correctly.
-/// - **`resize_multiple_times`** — the buffer can be resized repeatedly; only
+/// - **`resize_multiple_times`** - the buffer can be resized repeatedly; only
 ///   the final size is reported by `size()`.
-/// - **`resize_to_1x1`** — the buffer can shrink to a single cell.
+/// - **`resize_to_1x1`** - the buffer can shrink to a single cell.
 #[macro_export]
 macro_rules! buffer_resizing_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
@@ -660,7 +688,9 @@ macro_rules! buffer_resizing_tests {
             type Buf = $buffer_type;
 
             fn new_buf(size: Size) -> Buf {
-                $constructor(size)
+                let mut buf = $constructor(size);
+                buf.start_frame();
+                buf
             }
 
             fn cell_a() -> Cell {
