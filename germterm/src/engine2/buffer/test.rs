@@ -769,6 +769,24 @@ macro_rules! buffer_resizing_tests {
                 buf.set_cell(pos, cell_a());
                 assert_eq!(buf.get_cell(pos), &cell_a());
             }
+
+            #[test]
+            fn content_preserved_after_grow() {
+                let mut buf = new_buf(Size::new(2, 2));
+                let pos = Position::new(0, 0);
+                buf.set_cell(pos, cell_a());
+                buf.resize(Size::new(4, 4));
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
+
+            #[test]
+            fn content_preserved_after_shrink() {
+                let mut buf = new_buf(Size::new(4, 4));
+                let pos = Position::new(0, 0);
+                buf.set_cell(pos, cell_a());
+                buf.resize(Size::new(2, 2));
+                assert_eq!(buf.get_cell(pos), &cell_a());
+            }
         }
     };
 }
