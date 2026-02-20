@@ -3,7 +3,7 @@ use std::{cmp::Ordering, ptr};
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises, ResizableBuffer};
 use crate::{
     cell::Cell,
-    engine2::{draw::Size, Position},
+    engine2::{Position, draw::Size},
 };
 
 /// A flat buffer that stores every cell in a single `Vec<Cell>` in row-major
@@ -102,7 +102,7 @@ impl ResizableBuffer for FlatBuffer {
         match old_w.cmp(&new_w) {
             // Grow case
             Ordering::Less => {
-                let new_len = new_w * old_h;
+                let new_len = size.area() as usize;
                 let grow_by = new_w - old_w;
 
                 // SAFETY: Cell is Copy — no drop/clone concerns.
@@ -114,6 +114,11 @@ impl ResizableBuffer for FlatBuffer {
                 unsafe {
                     let base = self.cells.as_mut_ptr();
 
+                    // Row 0: just fill trailing gap.
+                    if old_h > 0 {
+                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
+                    }
+
                     // Scatter rows from last to second. Row 0 is already at
                     // offset 0 and doesn't need to move.
                     for y in (1..old_h).rev() {
@@ -122,12 +127,7 @@ impl ResizableBuffer for FlatBuffer {
                         ptr::copy(src, dst, old_w);
 
                         // Fill the new columns at the end of this row.
-                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by).fill(Cell::EMPTY);
-                    }
-
-                    // Row 0: just fill trailing gap.
-                    if old_h > 0 {
-                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
+                        std::slice::from_raw_parts_mut(src, grow_by).fill(Cell::EMPTY);
                     }
 
                     self.cells.set_len(new_len);
