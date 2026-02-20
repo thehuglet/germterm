@@ -84,6 +84,11 @@ impl Drawer for FlatBuffer {
 
 impl ResizableBuffer for FlatBuffer {
     fn resize(&mut self, size: Size) {
+        // NOTE: The implementation is intended to perform the minimum number of copies needed to
+        // resize. This is technically possible to do with safe Rust with just a small overhead but
+        // the code becomes extremely verbose.
+        //
+        // This implementation is short simple and fast.
         if self.size == size {
             return;
         }
@@ -92,11 +97,15 @@ impl ResizableBuffer for FlatBuffer {
         let new_w = size.width as usize;
         let old_h = self.size.height as usize;
 
-        // The grow-width path temporarily needs `new_w * old_h` elements
-        // before the height phase truncates/extends to `final_area`. Reserve
-        // for whichever is larger so `set_len` never exceeds capacity.
         self.cells
             .reserve_exact((size.area() as usize).saturating_sub(self.cells.len()));
+
+        // NOTE: I have no idea why Cell would be unpin but if it somehow does this gives a compile error
+        // rather than UB.
+        #[allow(unused)]
+        fn is_copy<T: Unpin>(arg: &T) {
+            let _ = || is_copy::<Cell>(&Cell::EMPTY);
+        }
 
         // Width
         match old_w.cmp(&new_w) {
@@ -105,12 +114,10 @@ impl ResizableBuffer for FlatBuffer {
                 let new_len = size.area() as usize;
                 let grow_by = new_w - old_w;
 
-                // SAFETY: Cell is Copy — no drop/clone concerns.
-                // `reserve_exact` above ensured capacity >= new_len.
-                // Every element in 0..new_len is written exactly once:
-                //   - existing row data is moved by `ptr::copy`
-                //   - new gap columns are filled via `slice::fill`
-                // `set_len` is called last, after all writes.
+                // SAFETY: 
+                // - Enough capacity has been allocated.
+                // - New gaps (uninit Cell's) have been set to `Cell::EMPTY`
+                // - `Vec::set_len` is called last, after all writes.
                 unsafe {
                     let base = self.cells.as_mut_ptr();
 
@@ -135,8 +142,6 @@ impl ResizableBuffer for FlatBuffer {
             }
             // Shrink case
             Ordering::Greater => {
-                // SAFETY: Cell is Copy. All source/dest ranges lie within
-                // 0..old_w*h which is the current vec length.
                 unsafe {
                     let base = self.cells.as_mut_ptr();
                     for y in 1..old_h {
