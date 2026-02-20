@@ -24,7 +24,6 @@
 ///   first.
 /// - **`fill`** - every cell in the grid equals the fill value afterwards.
 /// - **`clear`** - every cell equals [`Cell::EMPTY`] after clearing.
-#[macro_export]
 macro_rules! buffer_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
@@ -296,11 +295,11 @@ macro_rules! buffer_tests {
         }
     };
 }
+pub(super) use buffer_tests;
 
 /// Generates tests for any type implementing [`Buffer`] + [`Drawer`] that
 /// always emits every cell on every call to `draw()`, regardless of whether
 /// the cell changed since the last frame.
-#[macro_export]
 macro_rules! drawer_buffer_tests {
     ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
         mod $module_name {
@@ -428,7 +427,6 @@ macro_rules! drawer_buffer_tests {
 /// diffs frames and only emits cells that changed since the last `draw()`.
 ///
 /// The constructor receives `(size, inner_buf_1, inner_buf_2)`.
-#[macro_export]
 macro_rules! drawer_diffed_buffer_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
@@ -646,6 +644,7 @@ macro_rules! drawer_diffed_buffer_tests {
         }
     };
 }
+pub(super) use drawer_diffed_buffer_tests;
 
 /// Generates tests for any type implementing [`ResizableBuffer`].
 ///
@@ -671,7 +670,6 @@ macro_rules! drawer_diffed_buffer_tests {
 /// - **`resize_multiple_times`** - the buffer can be resized repeatedly; only
 ///   the final size is reported by `size()`.
 /// - **`resize_to_1x1`** - the buffer can shrink to a single cell.
-#[macro_export]
 macro_rules! buffer_resizing_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
@@ -770,3 +768,4 @@ macro_rules! buffer_resizing_tests {
         }
     };
 }
+pub(super) use buffer_resizing_tests;

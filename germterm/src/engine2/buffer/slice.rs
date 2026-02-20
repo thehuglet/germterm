@@ -169,10 +169,9 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        buffer_tests,
         cell::Cell,
         engine2::{
-            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
+            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer, test::buffer_tests},
             draw::{Position, Rect, Size},
         },
     };
