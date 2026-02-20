@@ -172,7 +172,7 @@ mod tests {
         buffer_tests,
         cell::Cell,
         engine2::{
-            buffer::{paired::PairedBuffer, slice::SubBuffer, Buffer},
+            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
             draw::{Position, Rect, Size},
         },
     };
