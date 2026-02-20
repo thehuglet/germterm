@@ -1,4 +1,5 @@
 pub mod diffed;
+pub mod flat;
 pub mod paired;
 pub mod slice;
 pub mod test;

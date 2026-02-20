@@ -136,3 +136,35 @@ impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::DiffedBuffers;
+    use crate::{
+        buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests,
+        engine2::{buffer::flat::FlatBuffer, draw::Size},
+    };
+
+    type TestBuffer = DiffedBuffers<FlatBuffer>;
+
+    fn new_tb(sz: Size) -> TestBuffer {
+        TestBuffer::new(sz, FlatBuffer::new(sz), FlatBuffer::new(sz))
+    }
+    buffer_tests! {
+        buffer_tests,
+        super::new_tb,
+        TestBuffer
+    }
+
+    buffer_resizing_tests! {
+        resizing_tests,
+        super::new_tb,
+        TestBuffer
+    }
+
+    drawer_diffed_buffer_tests! {
+        diffed_tests,
+        super::new_tb,
+        TestBuffer
+    }
+}

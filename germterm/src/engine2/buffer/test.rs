@@ -302,8 +302,10 @@ macro_rules! buffer_tests {
 /// the cell changed since the last frame.
 #[macro_export]
 macro_rules! drawer_buffer_tests {
-    ($module_name:ident, $constructor:tt, $buffer_type:ty) => {
+    ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
+            #[rustfmt::skip]
+            use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
                 engine2::{
