@@ -1,3 +1,38 @@
+use crate::{
+    cell::{Cell, CellFormat},
+    color::Color,
+    engine2::{
+        buffer::{Buffer, Drawer},
+        draw::Position,
+    },
+    rich_text::Attributes,
+};
+
+#[doc(hidden)]
+pub fn cell_for_pos(pos: Position) -> Cell {
+    let [x1, x2] = pos.x.to_be_bytes();
+    let [y1, y2] = pos.y.to_be_bytes();
+    Cell {
+        ch: 'a',
+        fg: Color::new(x1, x2, y1, y2),
+        bg: Color::new(x2, x1, y2, y1),
+        attributes: Attributes::empty(),
+        format: CellFormat::Standard,
+    }
+}
+
+#[doc(hidden)]
+pub fn draw_sorted<Buf: Buffer + Drawer>(buf: &mut Buf) -> Vec<(u16, u16, char)> {
+    let mut calls: Vec<_> = buf
+        .draw()
+        .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
+        .collect();
+    calls.sort();
+    buf.end_frame();
+    buf.start_frame();
+    calls
+}
+
 /// Generates a test module exercising the [`Buffer`] contract for a concrete
 /// type.
 ///
@@ -32,6 +67,7 @@ macro_rules! buffer_tests {
             use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
+                engine2::buffer::test::cell_for_pos,
                 engine2::{
                     buffer::{Buffer, ErrorOutOfBoundsAxises},
                     draw::{Position, Size},
@@ -44,21 +80,6 @@ macro_rules! buffer_tests {
                 let mut buf = $constructor(size);
                 buf.start_frame();
                 buf
-            }
-
-            // A non-empty cell distinct from Cell::EMPTY, for use in tests.
-            fn cell_a() -> Cell {
-                Cell {
-                    ch: 'A',
-                    ..Cell::EMPTY
-                }
-            }
-
-            fn cell_b() -> Cell {
-                Cell {
-                    ch: 'B',
-                    ..Cell::EMPTY
-                }
             }
 
             // size
@@ -81,32 +102,32 @@ macro_rules! buffer_tests {
             #[test]
             fn set_and_get_cell_checked_origin() {
                 let mut buf = new_buf(Size::new(5, 5));
-                let pos = Position::new(0, 0);
-                buf.set_cell_checked(pos, cell_a()).unwrap();
-                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_a());
+                let pos = Position::ZERO;
+                buf.set_cell_checked(pos, cell_for_pos(pos)).unwrap();
+                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_for_pos(pos));
             }
 
             #[test]
             fn set_and_get_cell_checked_last_valid() {
                 let mut buf = new_buf(Size::new(5, 5));
                 let pos = Position::new(4, 4);
-                buf.set_cell_checked(pos, cell_a()).unwrap();
-                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_a());
+                buf.set_cell_checked(pos, cell_for_pos(pos)).unwrap();
+                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_for_pos(pos));
             }
 
             #[test]
             fn set_and_get_cell_checked_arbitrary() {
                 let mut buf = new_buf(Size::new(8, 6));
                 let pos = Position::new(3, 2);
-                buf.set_cell_checked(pos, cell_b()).unwrap();
-                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_b());
+                buf.set_cell_checked(pos, cell_for_pos(pos)).unwrap();
+                assert_eq!(buf.get_cell_checked(pos).unwrap(), &cell_for_pos(pos));
             }
 
             #[test]
             fn set_cell_checked_x_out_of_bounds() {
                 let mut buf = new_buf(Size::new(4, 4));
                 let err = buf
-                    .set_cell_checked(Position::new(4, 0), cell_a())
+                    .set_cell_checked(Position::new(4, 0), cell_for_pos(Position::ZERO))
                     .unwrap_err();
                 assert_eq!(err, ErrorOutOfBoundsAxises::X);
             }
@@ -115,7 +136,7 @@ macro_rules! buffer_tests {
             fn set_cell_checked_y_out_of_bounds() {
                 let mut buf = new_buf(Size::new(4, 4));
                 let err = buf
-                    .set_cell_checked(Position::new(0, 4), cell_a())
+                    .set_cell_checked(Position::new(0, 4), cell_for_pos(Position::ZERO))
                     .unwrap_err();
                 assert_eq!(err, ErrorOutOfBoundsAxises::Y);
             }
@@ -124,7 +145,7 @@ macro_rules! buffer_tests {
             fn set_cell_checked_xy_out_of_bounds() {
                 let mut buf = new_buf(Size::new(4, 4));
                 let err = buf
-                    .set_cell_checked(Position::new(4, 4), cell_a())
+                    .set_cell_checked(Position::new(4, 4), cell_for_pos(Position::ZERO))
                     .unwrap_err();
                 assert_eq!(err, ErrorOutOfBoundsAxises::XY);
             }
@@ -156,15 +177,15 @@ macro_rules! buffer_tests {
             fn set_and_get_cell_infallible() {
                 let mut buf = new_buf(Size::new(5, 5));
                 let pos = Position::new(2, 3);
-                buf.set_cell(pos, cell_a());
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
             #[should_panic]
             fn set_cell_panics_out_of_bounds() {
                 let mut buf = new_buf(Size::new(4, 4));
-                buf.set_cell(Position::new(10, 10), cell_a());
+                buf.set_cell(Position::new(10, 10), cell_for_pos(Position::ZERO));
             }
 
             #[test]
@@ -180,8 +201,8 @@ macro_rules! buffer_tests {
             fn get_cell_mut_checked_and_modify() {
                 let mut buf = new_buf(Size::new(5, 5));
                 let pos = Position::new(1, 1);
-                *buf.get_cell_mut_checked(pos).unwrap() = cell_a();
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                *buf.get_cell_mut_checked(pos).unwrap() = cell_for_pos(pos);
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
@@ -211,8 +232,8 @@ macro_rules! buffer_tests {
             fn get_cell_mut_infallible_and_modify() {
                 let mut buf = new_buf(Size::new(5, 5));
                 let pos = Position::new(2, 2);
-                *buf.get_cell_mut(pos) = cell_b();
-                assert_eq!(buf.get_cell(pos), &cell_b());
+                *buf.get_cell_mut(pos) = cell_for_pos(pos);
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
@@ -227,23 +248,26 @@ macro_rules! buffer_tests {
             #[test]
             fn writes_do_not_alias() {
                 let mut buf = new_buf(Size::new(4, 4));
-                let pos_a = Position::new(0, 0);
+                let pos_a = Position::ZERO;
                 let pos_b = Position::new(3, 3);
-                buf.set_cell(pos_a, cell_a());
-                buf.set_cell(pos_b, cell_b());
-                assert_eq!(buf.get_cell(pos_a), &cell_a());
-                assert_eq!(buf.get_cell(pos_b), &cell_b());
+                buf.set_cell(pos_a, cell_for_pos(pos_a));
+                buf.set_cell(pos_b, cell_for_pos(pos_b));
+                assert_eq!(buf.get_cell(pos_a), &cell_for_pos(pos_a));
+                assert_eq!(buf.get_cell(pos_b), &cell_for_pos(pos_b));
             }
 
             #[test]
             fn adjacent_cells_are_independent() {
                 let mut buf = new_buf(Size::new(3, 1));
-                buf.set_cell(Position::new(0, 0), cell_a());
-                buf.set_cell(Position::new(1, 0), cell_b());
-                buf.set_cell(Position::new(2, 0), cell_a());
-                assert_eq!(buf.get_cell(Position::new(0, 0)), &cell_a());
-                assert_eq!(buf.get_cell(Position::new(1, 0)), &cell_b());
-                assert_eq!(buf.get_cell(Position::new(2, 0)), &cell_a());
+                let pos0 = Position::ZERO;
+                let pos1 = Position::new(1, 0);
+                let pos2 = Position::new(2, 0);
+                buf.set_cell(pos0, cell_for_pos(pos0));
+                buf.set_cell(pos1, cell_for_pos(pos1));
+                buf.set_cell(pos2, cell_for_pos(pos2));
+                assert_eq!(buf.get_cell(pos0), &cell_for_pos(pos0));
+                assert_eq!(buf.get_cell(pos1), &cell_for_pos(pos1));
+                assert_eq!(buf.get_cell(pos2), &cell_for_pos(pos2));
             }
 
             // overwrite
@@ -252,9 +276,11 @@ macro_rules! buffer_tests {
             fn overwriting_a_cell_reflects_new_value() {
                 let mut buf = new_buf(Size::new(4, 4));
                 let pos = Position::new(1, 1);
-                buf.set_cell(pos, cell_a());
-                buf.set_cell(pos, cell_b());
-                assert_eq!(buf.get_cell(pos), &cell_b());
+                let first = cell_for_pos(Position::ZERO);
+                let second = cell_for_pos(Position::new(1, 0));
+                buf.set_cell(pos, first);
+                buf.set_cell(pos, second.clone());
+                assert_eq!(buf.get_cell(pos), &second);
             }
 
             // fill
@@ -263,13 +289,14 @@ macro_rules! buffer_tests {
             fn fill_sets_every_cell() {
                 let size = Size::new(4, 3);
                 let mut buf = new_buf(size);
-                buf.fill(cell_a());
+                let fill_cell = cell_for_pos(Position::ZERO);
+                buf.fill(fill_cell.clone());
                 for y in 0..size.height {
                     for x in 0..size.width {
                         assert_eq!(
                             buf.get_cell(Position::new(x, y)),
-                            &cell_a(),
-                            "cell at ({x},{y}) should be cell_a after fill"
+                            &fill_cell,
+                            "cell at ({x},{y}) should equal the fill cell after fill"
                         );
                     }
                 }
@@ -281,7 +308,7 @@ macro_rules! buffer_tests {
             fn clear_sets_every_cell_to_empty() {
                 let size = Size::new(4, 3);
                 let mut buf = new_buf(size);
-                buf.fill(cell_a());
+                buf.fill(cell_for_pos(Position::ZERO));
                 buf.clear();
                 for y in 0..size.height {
                     for x in 0..size.width {
@@ -308,6 +335,7 @@ macro_rules! drawer_buffer_tests {
             use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
+                engine2::buffer::test::{cell_for_pos, draw_sorted},
                 engine2::{
                     buffer::{Buffer, Drawer},
                     draw::{Position, Size},
@@ -320,30 +348,6 @@ macro_rules! drawer_buffer_tests {
                 let mut buf = $constructor(size);
                 buf.start_frame();
                 buf
-            }
-
-            fn cell_a() -> Cell {
-                Cell {
-                    ch: 'A',
-                    ..Cell::EMPTY
-                }
-            }
-
-            fn cell_b() -> Cell {
-                Cell {
-                    ch: 'B',
-                    ..Cell::EMPTY
-                }
-            }
-
-            fn draw_sorted(buf: &mut Buf) -> Vec<(u16, u16, char)> {
-                let mut calls: Vec<_> = buf
-                    .draw()
-                    .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
-                    .collect();
-                calls.sort();
-                buf.end_frame();
-                calls
             }
 
             // draw() always emits every cell in the buffer as this buffer is not diffed
@@ -383,7 +387,7 @@ macro_rules! drawer_buffer_tests {
             fn draw_emits_all_cells_when_unchanged() {
                 let size = Size::new(3, 2);
                 let mut buf = new_buf(size);
-                buf.fill(cell_a());
+                buf.fill(cell_for_pos(Position::ZERO));
                 let _ = draw_sorted(&mut buf); // first draw
                 // Nothing written to the buffer between draws.
                 let calls = draw_sorted(&mut buf);
@@ -400,12 +404,20 @@ macro_rules! drawer_buffer_tests {
             fn draw_output_matches_written_cells() {
                 let size = Size::new(2, 2);
                 let mut buf = new_buf(size);
-                buf.set_cell(Position::new(0, 0), cell_a());
-                buf.set_cell(Position::new(1, 1), cell_b());
+                let pos_a = Position::ZERO;
+                let pos_b = Position::new(1, 1);
+                buf.set_cell(pos_a, cell_for_pos(pos_a));
+                buf.set_cell(pos_b, cell_for_pos(pos_b));
                 let calls = draw_sorted(&mut buf);
                 let find = |x, y| calls.iter().find(|&&(cx, cy, _)| cx == x && cy == y);
-                assert_eq!(find(0, 0).map(|&(_, _, ch)| ch), Some('A'));
-                assert_eq!(find(1, 1).map(|&(_, _, ch)| ch), Some('B'));
+                assert_eq!(
+                    find(pos_a.x, pos_a.y).map(|&(_, _, ch)| ch),
+                    Some(cell_for_pos(pos_a).ch)
+                );
+                assert_eq!(
+                    find(pos_b.x, pos_b.y).map(|&(_, _, ch)| ch),
+                    Some(cell_for_pos(pos_b).ch)
+                );
             }
 
             // draw() covers the full grid even after a partial write
@@ -414,7 +426,8 @@ macro_rules! drawer_buffer_tests {
             fn draw_covers_full_grid_after_partial_write() {
                 let size = Size::new(4, 3);
                 let mut buf = new_buf(size);
-                buf.set_cell(Position::new(1, 1), cell_a());
+                let pos = Position::new(1, 1);
+                buf.set_cell(pos, cell_for_pos(pos));
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls.len(),
@@ -439,7 +452,10 @@ macro_rules! drawer_diffed_buffer_tests {
             use $crate::{
                 cell::Cell,
                 engine2::{
-                    buffer::{Buffer, Drawer},
+                    buffer::{
+                        Buffer,
+                        test::{cell_for_pos, draw_sorted},
+                    },
                     draw::{Position, Size},
                 },
             };
@@ -450,35 +466,6 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = $constructor(size);
                 buf.start_frame();
                 buf
-            }
-
-            fn cell_a() -> Cell {
-                Cell {
-                    ch: 'A',
-                    ..Cell::EMPTY
-                }
-            }
-
-            fn cell_b() -> Cell {
-                Cell {
-                    ch: 'B',
-                    ..Cell::EMPTY
-                }
-            }
-
-            /// Collects, sorts, and returns the draw calls for the current
-            /// frame, then ends the frame and prepares the next one.
-            ///
-            /// Mirrors the production loop: `draw -> end_frame -> start_frame`.
-            fn draw_sorted(buf: &mut Buf) -> Vec<(u16, u16, char)> {
-                let mut calls: Vec<_> = buf
-                    .draw()
-                    .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
-                    .collect();
-                calls.sort();
-                buf.end_frame();
-                buf.start_frame();
-                calls
             }
 
             // fresh buffer: both frames are EMPTY so nothing differs
@@ -500,9 +487,10 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(Size::new(4, 4));
                 let _ = draw_sorted(&mut buf); // swap: new current frame is blank
 
-                buf.set_cell(Position::new(1, 2), cell_a());
+                let pos = Position::new(1, 2);
+                buf.set_cell(pos, cell_for_pos(pos));
                 let calls = draw_sorted(&mut buf);
-                assert_eq!(calls, [(1, 2, 'A')]);
+                assert_eq!(calls, [(pos.x, pos.y, cell_for_pos(pos).ch)]);
             }
 
             // an unchanged cell is NOT emitted
@@ -512,11 +500,12 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(Size::new(4, 4));
                 let _ = draw_sorted(&mut buf);
 
-                buf.set_cell(Position::new(0, 0), cell_a());
-                let _ = draw_sorted(&mut buf); // 'A' is now in the old frame
+                let pos = Position::ZERO;
+                buf.set_cell(pos, cell_for_pos(pos));
+                let _ = draw_sorted(&mut buf); // cell_for_pos(pos) is now in the old frame
 
                 // Write the same value again - no diff.
-                buf.set_cell(Position::new(0, 0), cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
                 assert_eq!(
                     draw_sorted(&mut buf).len(),
                     0,
@@ -528,30 +517,39 @@ macro_rules! drawer_diffed_buffer_tests {
 
             #[test]
             fn only_changed_cells_emitted() {
-                let mut buf = new_buf(Size::new(4, 4));
+                let size = Size::new(4, 4);
+                let mut buf = new_buf(size);
                 let _ = draw_sorted(&mut buf);
 
-                // Establish 'A' everywhere.
-                buf.fill(cell_a());
+                // Establish cell_for_pos(x,y) at every position.
+                for y in 0..size.height {
+                    for x in 0..size.width {
+                        let pos = Position::new(x, y);
+                        buf.set_cell(pos, cell_for_pos(pos));
+                    }
+                }
                 let _ = draw_sorted(&mut buf);
 
-                // Change only one cell; start_frame cleared the rest to EMPTY,
-                // so only (2,2) differs from the all-'A' old frame.
-                buf.set_cell(Position::new(2, 2), cell_b());
+                // In the new frame, only write (2,2) — all other positions are EMPTY
+                // (start_frame cleared them), so every position except (2,2) differs
+                // from its old value.
+                let pos_changed = Position::new(2, 2);
+                buf.set_cell(pos_changed, cell_for_pos(pos_changed));
                 let calls = draw_sorted(&mut buf);
-                // Every cell that is EMPTY (i.e. != 'A') plus the one 'B' cell
-                // must be emitted.  Assert the changed cell is present and is 'B'.
+
+                // (2,2) is unchanged (same cell as old frame), so it must NOT appear.
                 assert!(
-                    calls
+                    !calls
                         .iter()
-                        .any(|&(x, y, ch)| x == 2 && y == 2 && ch == 'B'),
-                    "the cell written as 'B' must appear in the draw output"
+                        .any(|&(x, y, _)| x == pos_changed.x && y == pos_changed.y),
+                    "the cell identical to the previous frame must not produce a draw call"
                 );
-                // Assert that cells that are still 'A' in the current frame are
-                // NOT emitted (i.e. unchanged cells are suppressed).
-                assert!(
-                    !calls.iter().any(|&(_, _, ch)| ch == 'A'),
-                    "unchanged 'A' cells must not produce draw calls"
+                // Every other position changed (from cell_for_pos(x,y) to EMPTY),
+                // so the total number of emitted cells must be width*height - 1.
+                assert_eq!(
+                    calls.len(),
+                    (size.width * size.height - 1) as usize,
+                    "all cells except the unchanged one must be emitted"
                 );
             }
 
@@ -562,15 +560,17 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(Size::new(4, 4));
                 let _ = draw_sorted(&mut buf);
 
-                buf.set_cell(Position::new(1, 1), cell_a());
-                let _ = draw_sorted(&mut buf); // 'A' is now old frame
+                let pos_a = Position::new(1, 1);
+                let pos_b = Position::new(2, 1);
+                buf.set_cell(pos_a, cell_for_pos(pos_a));
+                let _ = draw_sorted(&mut buf); // cell_for_pos(pos_a) is now old frame
 
-                buf.set_cell(Position::new(1, 1), cell_b());
+                buf.set_cell(pos_a, cell_for_pos(pos_b));
                 let calls = draw_sorted(&mut buf);
                 assert!(
-                    calls
-                        .iter()
-                        .any(|&(x, y, ch)| x == 1 && y == 1 && ch == 'B'),
+                    calls.iter().any(|&(x, y, ch)| x == pos_a.x
+                        && y == pos_a.y
+                        && ch == cell_for_pos(pos_b).ch),
                     "overwritten cell must be emitted with its new value"
                 );
             }
@@ -582,15 +582,16 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(Size::new(4, 4));
                 let _ = draw_sorted(&mut buf);
 
-                buf.set_cell(Position::new(2, 2), cell_a());
-                let _ = draw_sorted(&mut buf); // 'A' is now old frame
+                let pos = Position::new(2, 2);
+                buf.set_cell(pos, cell_for_pos(pos));
+                let _ = draw_sorted(&mut buf); // cell_for_pos(pos) is now old frame
 
                 // Current frame is blank (start_frame cleared it); (2,2) now
-                // differs from the old 'A', so the empty value must be emitted.
+                // differs from the old value, so the empty value must be emitted.
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls,
-                    [(2, 2, Cell::EMPTY.ch)],
+                    [(pos.x, pos.y, Cell::EMPTY.ch)],
                     "the cleared cell must be emitted with Cell::EMPTY's character"
                 );
             }
@@ -604,11 +605,12 @@ macro_rules! drawer_diffed_buffer_tests {
 
                 let _ = draw_sorted(&mut buf);
                 // start_frame cleared the current frame; old frame is EMPTY.
-                // Write 'A' and draw so old frame becomes all 'A'.
-                buf.fill(cell_a());
+                // Write fill_cell and draw so old frame becomes fill_cell everywhere.
+                let fill_cell = cell_for_pos(Position::ZERO);
+                buf.fill(fill_cell.clone());
                 let _ = draw_sorted(&mut buf);
-                // start_frame cleared current frame; write 'A' again to match old.
-                buf.fill(cell_a());
+                // start_frame cleared current frame; write fill_cell again to match old.
+                buf.fill(fill_cell);
                 assert_eq!(
                     draw_sorted(&mut buf).len(),
                     0,
@@ -624,7 +626,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(size);
                 let _ = draw_sorted(&mut buf); // old frame = EMPTY, current = fresh blank
 
-                buf.fill(cell_a());
+                buf.fill(cell_for_pos(Position::ZERO));
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls.len(),
@@ -640,10 +642,18 @@ macro_rules! drawer_diffed_buffer_tests {
                 let mut buf = new_buf(Size::new(4, 4));
                 let _ = draw_sorted(&mut buf);
 
-                buf.set_cell(Position::new(0, 0), cell_a());
-                buf.set_cell(Position::new(3, 3), cell_b());
+                let pos_a = Position::ZERO;
+                let pos_b = Position::new(3, 3);
+                buf.set_cell(pos_a, cell_for_pos(pos_a));
+                buf.set_cell(pos_b, cell_for_pos(pos_b));
                 let calls = draw_sorted(&mut buf);
-                assert_eq!(calls, [(0, 0, 'A'), (3, 3, 'B')]);
+                assert_eq!(
+                    calls,
+                    [
+                        (pos_a.x, pos_a.y, cell_for_pos(pos_a).ch),
+                        (pos_b.x, pos_b.y, cell_for_pos(pos_b).ch),
+                    ]
+                );
             }
         }
     };
@@ -680,7 +690,7 @@ macro_rules! buffer_resizing_tests {
     #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
-                cell::Cell,
+                engine2::buffer::test::cell_for_pos,
                 engine2::{
                     buffer::{Buffer, ResizableBuffer},
                     draw::{Position, Size},
@@ -693,13 +703,6 @@ macro_rules! buffer_resizing_tests {
                 let mut buf = $constructor(size);
                 buf.start_frame();
                 buf
-            }
-
-            fn cell_a() -> Cell {
-                Cell {
-                    ch: 'A',
-                    ..Cell::EMPTY
-                }
             }
 
             #[test]
@@ -716,8 +719,8 @@ macro_rules! buffer_resizing_tests {
                 buf.resize(Size::new(5, 5));
                 // Writing and reading the new last-valid position must not panic.
                 let pos = Position::new(4, 4);
-                buf.set_cell(pos, cell_a());
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
@@ -727,18 +730,18 @@ macro_rules! buffer_resizing_tests {
                 assert_eq!(buf.size(), Size::new(3, 3));
                 // Cells within the new bounds must still be accessible.
                 let pos = Position::new(2, 2);
-                buf.set_cell(pos, cell_a());
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
             fn resize_to_same_size() {
                 let mut buf = new_buf(Size::new(4, 4));
                 let pos = Position::new(1, 1);
-                buf.set_cell(pos, cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
                 buf.resize(Size::new(4, 4));
                 assert_eq!(buf.size(), Size::new(4, 4));
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
@@ -747,8 +750,8 @@ macro_rules! buffer_resizing_tests {
                 let new_size = Size::new(7, 3);
                 buf.resize(new_size);
                 let pos = Position::new(new_size.width - 1, new_size.height - 1);
-                buf.set_cell(pos, cell_a());
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
@@ -765,27 +768,27 @@ macro_rules! buffer_resizing_tests {
                 let mut buf = new_buf(Size::new(5, 5));
                 buf.resize(Size::new(1, 1));
                 assert_eq!(buf.size(), Size::new(1, 1));
-                let pos = Position::new(0, 0);
-                buf.set_cell(pos, cell_a());
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                let pos = Position::ZERO;
+                buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
             fn content_preserved_after_grow() {
                 let mut buf = new_buf(Size::new(2, 2));
-                let pos = Position::new(0, 0);
-                buf.set_cell(pos, cell_a());
+                let pos = Position::ZERO;
+                buf.set_cell(pos, cell_for_pos(pos));
                 buf.resize(Size::new(4, 4));
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
             #[test]
             fn content_preserved_after_shrink() {
                 let mut buf = new_buf(Size::new(4, 4));
-                let pos = Position::new(0, 0);
-                buf.set_cell(pos, cell_a());
+                let pos = Position::ZERO;
+                buf.set_cell(pos, cell_for_pos(pos));
                 buf.resize(Size::new(2, 2));
-                assert_eq!(buf.get_cell(pos), &cell_a());
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
         }
     };
