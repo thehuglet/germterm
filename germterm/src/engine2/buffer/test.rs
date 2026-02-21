@@ -331,7 +331,7 @@ macro_rules! buffer_tests {
 macro_rules! drawer_buffer_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
         mod $module_name {
-            #[rustfmt::skip]
+    #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
