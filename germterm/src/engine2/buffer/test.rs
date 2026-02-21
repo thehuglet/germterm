@@ -579,7 +579,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 }
                 let _ = draw_sorted(&mut buf);
 
-                // In the new frame, only write (2,2) — all other positions are EMPTY
+                // In the new frame, only write (2,2) - all other positions are EMPTY
                 // (start_frame cleared them), so every position except (2,2) differs
                 // from its old value.
                 let pos_changed = Position::new(2, 2);
@@ -842,6 +842,41 @@ macro_rules! buffer_resizing_tests {
                 let mut buf = new_buf_possed(Size::new(4, 4));
                 buf.resize(Size::new(2, 2));
                 ensure_possness(&buf);
+            }
+
+            /// Chains grow -> fill -> shrink-past-original -> re-grow and checks
+            /// content at every step:
+            ///
+            /// 1. 4x4 filled with `cell_for_pos` values.
+            /// 2. Grow to 8x6 - the original 4x4 corner must survive.
+            /// 3. Fill the full 8x6 surface so every cell has a known value.
+            /// 4. Shrink to 3x3 (smaller than the original 4x4) - the overlap
+            ///    must still hold the correct values.
+            /// 5. Grow to 6x4 - the 3x3 corner that survived step 4 must still
+            ///    be intact after this second expansion.
+            #[test]
+            fn resize_interleaved_with_writes() {
+                // Step 1: 4x4, every cell filled with a deterministic value.
+                let base_sz = Size::new(4, 4);
+                let mut buf = new_buf_possed(base_sz);
+
+                // Step 2: grow to 8x6.
+                buf.resize(Size::new(8, 6));
+                ensure_possness_for(&mut buf, Rect::new(Position::ZERO, base_sz));
+
+                // Step 3: fill the entire 8x6 surface.
+                fill_buffer_cell_for_pos(&mut buf);
+                ensure_possness(&buf);
+
+                // Step 4: shrink to 3x3 - smaller than the original 4x4.
+                let small_sz = Size::new(3, 3);
+                buf.resize(small_sz);
+                assert_eq!(buf.size(), small_sz);
+                ensure_possness(&buf);
+
+                // Step 5: grow to 6x4 - the surviving 3x3 corner must still match.
+                buf.resize(Size::new(6, 4));
+                ensure_possness_for(&mut buf, Rect::new(Position::ZERO, small_sz));
             }
         }
     };
