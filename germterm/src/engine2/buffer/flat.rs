@@ -114,17 +114,12 @@ impl ResizableBuffer for FlatBuffer {
                 let new_len = size.area() as usize;
                 let grow_by = new_w - old_w;
 
-                // SAFETY: 
+                // SAFETY:
                 // - Enough capacity has been allocated.
                 // - New gaps (uninit Cell's) have been set to `Cell::EMPTY`
                 // - `Vec::set_len` is called last, after all writes.
                 unsafe {
                     let base = self.cells.as_mut_ptr();
-
-                    // Row 0: just fill trailing gap.
-                    if old_h > 0 {
-                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
-                    }
 
                     // Scatter rows from last to second. Row 0 is already at
                     // offset 0 and doesn't need to move.
@@ -134,21 +129,25 @@ impl ResizableBuffer for FlatBuffer {
                         ptr::copy(src, dst, old_w);
 
                         // Fill the new columns at the end of this row.
-                        std::slice::from_raw_parts_mut(src, grow_by).fill(Cell::EMPTY);
+                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by).fill(Cell::EMPTY);
+                    }
+
+                    // Row 0: fill trailing gap last, after all rows have been
+                    // scattered, so that row 1's old data is not overwritten.
+                    if old_h > 0 {
+                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
                     }
 
                     self.cells.set_len(new_len);
                 }
             }
             // Shrink case
-            Ordering::Greater => {
-                unsafe {
-                    let base = self.cells.as_mut_ptr();
-                    for y in 1..old_h {
-                        ptr::copy(base.add(y * old_w), base.add(y * new_w), new_w);
-                    }
+            Ordering::Greater => unsafe {
+                let base = self.cells.as_mut_ptr();
+                for y in 1..old_h {
+                    ptr::copy(base.add(y * old_w), base.add(y * new_w), new_w);
                 }
-            }
+            },
             Ordering::Equal => {}
         }
 
