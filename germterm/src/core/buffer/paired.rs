@@ -5,7 +5,7 @@ use super::{Buffer, DrawCall, Drawer};
 use crate::{buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests};
 use crate::{
     cell::Cell,
-    engine2::{Position, buffer::ResizableBuffer, draw::Size},
+    core::{Position, buffer::ResizableBuffer, draw::Size},
 };
 
 #[derive(Clone, Copy, Debug)]

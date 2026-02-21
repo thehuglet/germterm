@@ -8,7 +8,7 @@ pub mod utils;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Size},
+    core::{Position, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.

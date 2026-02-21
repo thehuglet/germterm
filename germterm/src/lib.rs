@@ -4,13 +4,5 @@ pub use crossterm;
 
 pub mod cell;
 pub mod color;
-pub mod draw;
-pub mod engine;
-pub mod engine2;
-pub mod fps_counter;
-mod fps_limiter;
-pub mod frame;
-pub mod input;
-pub mod layer;
-pub mod particle;
+pub mod core;
 pub mod rich_text;

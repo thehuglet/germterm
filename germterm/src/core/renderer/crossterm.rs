@@ -2,7 +2,10 @@ use std::io::Write;
 
 use crossterm::{cursor, event, execute, queue, style, terminal};
 
-use crate::{engine2::renderer::Renderer, rich_text::Attributes};
+use crate::{
+    core::{DrawCall, renderer::Renderer},
+    rich_text::Attributes,
+};
 
 struct CrosstermRenderer<W: Write> {
     out: W,
@@ -44,7 +47,7 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
 
     fn render<'a>(
         &mut self,
-        calls: impl Iterator<Item = crate::engine2::DrawCall<'a>>,
+        calls: impl Iterator<Item = DrawCall<'a>>,
     ) -> Result<(), Self::Error> {
         // TODO: Based on the crossterm source there are a few optimizations we can do here
         // specifically when writing fg/bg
@@ -55,7 +58,7 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
         let mut last_pos: Option<(u16, u16)> = None;
         let mut last_style: Option<style::ContentStyle> = None;
 
-        for crate::engine2::DrawCall { pos, cell } in calls {
+        for DrawCall { pos, cell } in calls {
             // Build the crossterm style from the cell's colors and attributes.
             let fg = if cell.attributes.contains(Attributes::NO_FG_COLOR) {
                 None

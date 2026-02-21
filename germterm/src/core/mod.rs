@@ -1,13 +1,12 @@
 pub mod buffer;
 pub mod draw;
-pub mod frame;
 pub mod renderer;
 pub mod timer;
 pub mod widget;
 
 use crate::{
     cell::Cell,
-    engine2::{
+    core::{
         buffer::{Buffer, slice::SubBuffer},
         draw::{Position, Rect},
         timer::{FrameTimer, Timer},

@@ -1,6 +1,6 @@
 use crate::{
     cell::Cell,
-    engine2::{
+    core::{
         buffer::{Buffer, ErrorOutOfBoundsAxises},
         draw::{Position, Rect, Size},
     },
@@ -13,7 +13,7 @@ use crate::{
 /// it were an independent buffer starting at `(0, 0)`.
 ///
 /// Implements [`Buffer`] itself, so it can be passed directly into
-/// [`FrameContext`](crate::engine2::widget::FrameContext) or any other
+/// [`FrameContext`](crate::core::widget::FrameContext) or any other
 /// context expecting a buffer without the callee knowing it operates on
 /// a sub-region.
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -170,7 +170,7 @@ mod tests {
     use crate::{
         buffer_tests,
         cell::Cell,
-        engine2::{
+        core::{
             buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
             draw::{Position, Rect, Size},
         },
@@ -286,21 +286,21 @@ mod tests {
             &mut self,
             pos: Position,
             cell: crate::cell::Cell,
-        ) -> Result<(), crate::engine2::buffer::ErrorOutOfBoundsAxises> {
+        ) -> Result<(), crate::core::buffer::ErrorOutOfBoundsAxises> {
             self.0.set_cell_checked(pos, cell)
         }
 
         fn get_cell_checked(
             &self,
             pos: Position,
-        ) -> Result<&crate::cell::Cell, crate::engine2::buffer::ErrorOutOfBoundsAxises> {
+        ) -> Result<&crate::cell::Cell, crate::core::buffer::ErrorOutOfBoundsAxises> {
             self.0.get_cell_checked(pos)
         }
 
         fn get_cell_mut_checked(
             &mut self,
             pos: Position,
-        ) -> Result<&mut crate::cell::Cell, crate::engine2::buffer::ErrorOutOfBoundsAxises>
+        ) -> Result<&mut crate::cell::Cell, crate::core::buffer::ErrorOutOfBoundsAxises>
         {
             self.0.get_cell_mut_checked(pos)
         }

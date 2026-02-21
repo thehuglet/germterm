@@ -1,6 +1,6 @@
 use crate::{
     cell::Cell,
-    engine2::{
+    core::{
         Position,
         buffer::{Drawer, ResizableBuffer},
         draw::Size,
@@ -141,7 +141,7 @@ mod tests {
     use super::DiffedBuffers;
     use crate::{
         buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests,
-        engine2::{buffer::flat::FlatBuffer, draw::Size},
+        core::{buffer::flat::FlatBuffer, draw::Size},
     };
 
     type TestBuffer = DiffedBuffers<FlatBuffer>;

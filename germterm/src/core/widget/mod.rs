@@ -1,6 +1,6 @@
 pub mod block;
 
-use crate::engine2::{
+use crate::core::{
     buffer::Buffer,
     timer::{Delta, NoDelta, TimerDelta},
 };

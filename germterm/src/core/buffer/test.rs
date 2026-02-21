@@ -1,7 +1,7 @@
 use crate::{
     cell::{Cell, CellFormat},
     color::Color,
-    engine2::{
+    core::{
         buffer::{Buffer, Drawer, slice::SubBuffer},
         draw::{Position, Rect},
     },
@@ -115,8 +115,8 @@ macro_rules! buffer_tests {
             use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
-                engine2::buffer::test::cell_for_pos,
-                engine2::{
+                core::buffer::test::cell_for_pos,
+                core::{
                     buffer::{Buffer, ErrorOutOfBoundsAxises},
                     draw::{Position, Size},
                 },
@@ -382,8 +382,8 @@ macro_rules! drawer_buffer_tests {
     #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
-                engine2::buffer::test::{cell_for_pos, draw_sorted},
-                engine2::{
+                core::buffer::test::{cell_for_pos, draw_sorted},
+                core::{
                     Cell,
                     buffer::Buffer,
                     draw::{Position, Size},
@@ -500,7 +500,7 @@ macro_rules! drawer_diffed_buffer_tests {
             use super::{$buffer_type};
             use $crate::{
                 cell::Cell,
-                engine2::{
+                core::{
                     buffer::{
                         Buffer,
                         test::{cell_for_pos, draw_sorted},
@@ -739,10 +739,10 @@ macro_rules! buffer_resizing_tests {
     #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
-                engine2::buffer::test::{
+                core::buffer::test::{
                     cell_for_pos, ensure_possness, ensure_possness_for, fill_buffer_cell_for_pos,
                 },
-                engine2::{
+                core::{
                     buffer::{Buffer, ResizableBuffer},
                     draw::{Position, Rect, Size},
                 },

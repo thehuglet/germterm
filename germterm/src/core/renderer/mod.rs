@@ -1,6 +1,6 @@
 pub mod crossterm;
 
-use crate::engine2::DrawCall;
+use crate::core::DrawCall;
 
 /// Consumes an iterator of [`DrawCall`]s and writes them to a physical display.
 ///

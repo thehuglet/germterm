@@ -3,7 +3,7 @@ use std::{cmp::Ordering, ptr};
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises, ResizableBuffer};
 use crate::{
     cell::Cell,
-    engine2::{Position, draw::Size},
+    core::{Position, draw::Size},
 };
 
 /// A flat buffer that stores every cell in a single `Vec<Cell>` in row-major

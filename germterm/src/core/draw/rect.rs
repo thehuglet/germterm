@@ -1,4 +1,4 @@
-use crate::engine2::draw::{Position, Size};
+use crate::core::draw::{Position, Size};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rect {

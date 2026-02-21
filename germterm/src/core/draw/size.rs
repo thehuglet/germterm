@@ -1,4 +1,4 @@
-use crate::engine2::buffer::ErrorOutOfBoundsAxises;
+use crate::core::buffer::ErrorOutOfBoundsAxises;
 
 use super::Position;
 
@@ -104,7 +104,7 @@ impl Size {
 
 #[cfg(test)]
 mod tests {
-    use crate::engine2::{buffer::ErrorOutOfBoundsAxises, draw::Position};
+    use crate::core::{buffer::ErrorOutOfBoundsAxises, draw::Position};
 
     use super::*;
 

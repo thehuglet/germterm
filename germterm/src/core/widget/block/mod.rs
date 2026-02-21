@@ -2,7 +2,7 @@ pub mod set;
 
 use std::marker::PhantomData;
 
-use crate::engine2::{
+use crate::core::{
     buffer::{Buffer, slice::SubBuffer},
     draw::{Position, Rect},
     timer::TimerDelta,
@@ -160,14 +160,14 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine2::buffer::paired::PairedBuffer;
-    use crate::engine2::draw::Size;
-    use crate::engine2::timer::{NoDelta, NoTimer};
-    use crate::engine2::widget::block::set::SimpleBorderSet;
+    use crate::core::{
+        buffer::paired::PairedBuffer, draw::Size, timer::NoDelta,
+        widget::block::set::SimpleBorderSet,
+    };
 
     struct EmptyWidget;
     impl Widget<NoDelta> for EmptyWidget {
-        fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, crate::engine2::timer::NoDelta>) {}
+        fn draw(&mut self, _ctx: FrameContext<'_, impl Buffer, NoDelta>) {}
     }
 
     #[test]

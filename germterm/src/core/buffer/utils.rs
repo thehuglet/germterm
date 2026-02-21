@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use super::Buffer;
-use crate::engine2::Position;
+use crate::core::Position;
 
 /// Dumps the contents of a buffer using a writer.
 ///
