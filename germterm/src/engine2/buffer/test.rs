@@ -24,7 +24,7 @@ pub fn cell_for_pos(pos: Position) -> Cell {
     const ASCII: &[u8] = [ASCII_LOWER, ASCII_UPPER].as_flattened();
 
     Cell {
-        ch: char::from(ASCII[(x1 + x2 + y1 + y2) as usize % ASCII.len()]),
+        ch: char::from(ASCII[(x1 ^ x2 ^ y1 ^ y2) as usize % ASCII.len()]),
         fg: Color::new(x1, x2, y1, y2),
         bg: Color::new(x2, x1, y2, y1),
         attributes: Attributes::empty(),
@@ -33,12 +33,9 @@ pub fn cell_for_pos(pos: Position) -> Cell {
 }
 
 #[doc(hidden)]
-pub fn draw_sorted<Buf: Buffer + Drawer>(buf: &mut Buf) -> Vec<(u16, u16, char)> {
-    let mut calls: Vec<_> = buf
-        .draw()
-        .map(|dc| (dc.pos.x, dc.pos.y, dc.cell.ch))
-        .collect();
-    calls.sort();
+pub fn draw_sorted<Buf: Buffer + Drawer>(buf: &mut Buf) -> Vec<(u16, u16, Cell)> {
+    let mut calls: Vec<_> = buf.draw().map(|dc| (dc.pos.x, dc.pos.y, *dc.cell)).collect();
+    calls.sort_by(|&(_, _, c1), &(_, _, c2)| c1.ch.cmp(&c2.ch));
     buf.end_frame();
     buf.start_frame();
     calls
@@ -347,6 +344,7 @@ macro_rules! drawer_buffer_tests {
             use $crate::{
                 engine2::buffer::test::{cell_for_pos, draw_sorted},
                 engine2::{
+                    Cell,
                     buffer::Buffer,
                     draw::{Position, Size},
                 },
@@ -367,6 +365,7 @@ macro_rules! drawer_buffer_tests {
                 let size = Size::new(3, 2);
                 let mut buf = new_buf(size);
                 let calls = draw_sorted(&mut buf);
+                assert!(calls.iter().all(|(_, _, c)| *c == Cell::EMPTY));
                 assert_eq!(
                     calls.len(),
                     (size.width * size.height) as usize,
@@ -422,11 +421,11 @@ macro_rules! drawer_buffer_tests {
                 let find = |x, y| calls.iter().find(|&&(cx, cy, _)| cx == x && cy == y);
                 assert_eq!(
                     find(pos_a.x, pos_a.y).map(|&(_, _, ch)| ch),
-                    Some(cell_for_pos(pos_a).ch)
+                    Some(cell_for_pos(pos_a))
                 );
                 assert_eq!(
                     find(pos_b.x, pos_b.y).map(|&(_, _, ch)| ch),
-                    Some(cell_for_pos(pos_b).ch)
+                    Some(cell_for_pos(pos_b))
                 );
             }
 
@@ -500,7 +499,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 let pos = Position::new(1, 2);
                 buf.set_cell(pos, cell_for_pos(pos));
                 let calls = draw_sorted(&mut buf);
-                assert_eq!(calls, [(pos.x, pos.y, cell_for_pos(pos).ch)]);
+                assert_eq!(calls, [(pos.x, pos.y, cell_for_pos(pos))]);
             }
 
             // an unchanged cell is NOT emitted
@@ -580,7 +579,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 assert!(
                     calls.iter().any(|&(x, y, ch)| x == pos_a.x
                         && y == pos_a.y
-                        && ch == cell_for_pos(pos_b).ch),
+                        && ch == cell_for_pos(pos_b)),
                     "overwritten cell must be emitted with its new value"
                 );
             }
@@ -601,7 +600,7 @@ macro_rules! drawer_diffed_buffer_tests {
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls,
-                    [(pos.x, pos.y, Cell::EMPTY.ch)],
+                    [(pos.x, pos.y, Cell::EMPTY)],
                     "the cleared cell must be emitted with Cell::EMPTY's character"
                 );
             }
@@ -660,8 +659,8 @@ macro_rules! drawer_diffed_buffer_tests {
                 assert_eq!(
                     calls,
                     [
-                        (pos_a.x, pos_a.y, cell_for_pos(pos_a).ch),
-                        (pos_b.x, pos_b.y, cell_for_pos(pos_b).ch),
+                        (pos_a.x, pos_a.y, cell_for_pos(pos_a)),
+                        (pos_b.x, pos_b.y, cell_for_pos(pos_b)),
                     ]
                 );
             }
