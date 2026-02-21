@@ -334,10 +334,9 @@ macro_rules! drawer_buffer_tests {
     #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
-                cell::Cell,
                 engine2::buffer::test::{cell_for_pos, draw_sorted},
                 engine2::{
-                    buffer::{Buffer, Drawer},
+                    buffer::Buffer,
                     draw::{Position, Size},
                 },
             };
