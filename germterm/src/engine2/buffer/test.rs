@@ -12,8 +12,19 @@ use crate::{
 pub fn cell_for_pos(pos: Position) -> Cell {
     let [x1, x2] = pos.x.to_be_bytes();
     let [y1, y2] = pos.y.to_be_bytes();
+
+    const ASCII_LOWER: [u8; 26] = [
+        b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
+        b'p', b'q', b'r', b's', b't', b'u', b'v', b'w', b'x', b'y', b'z',
+    ];
+    const ASCII_UPPER: [u8; 26] = [
+        b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J', b'K', b'L', b'M', b'N', b'O',
+        b'P', b'Q', b'R', b'S', b'T', b'U', b'V', b'W', b'X', b'Y', b'Z',
+    ];
+    const ASCII: &[u8] = [ASCII_LOWER, ASCII_UPPER].as_flattened();
+
     Cell {
-        ch: 'a',
+        ch: char::from(ASCII[(x1 + x2 + y1 + y2) as usize % ASCII.len()]),
         fg: Color::new(x1, x2, y1, y2),
         bg: Color::new(x2, x1, y2, y1),
         attributes: Attributes::empty(),
@@ -756,8 +767,11 @@ macro_rules! buffer_resizing_tests {
             #[test]
             fn resize_multiple_times() {
                 let mut buf = new_buf(Size::new(2, 2));
+                assert_eq!(buf.size(), Size::new(2, 2));
                 buf.resize(Size::new(10, 10));
+                assert_eq!(buf.size(), Size::new(10, 10));
                 buf.resize(Size::new(3, 3));
+                assert_eq!(buf.size(), Size::new(3, 3));
                 buf.resize(Size::new(6, 4));
                 assert_eq!(buf.size(), Size::new(6, 4));
             }
@@ -769,6 +783,8 @@ macro_rules! buffer_resizing_tests {
                 assert_eq!(buf.size(), Size::new(1, 1));
                 let pos = Position::ZERO;
                 buf.set_cell(pos, cell_for_pos(pos));
+                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                buf.resize(Size::new(3, 3));
                 assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
             }
 
