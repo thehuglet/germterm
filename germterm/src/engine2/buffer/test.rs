@@ -2,11 +2,48 @@ use crate::{
     cell::{Cell, CellFormat},
     color::Color,
     engine2::{
-        buffer::{Buffer, Drawer},
-        draw::Position,
+        buffer::{Buffer, Drawer, slice::SubBuffer},
+        draw::{Position, Rect},
     },
     rich_text::Attributes,
 };
+
+#[doc(hidden)]
+pub fn fill_buffer_cell_for_pos<Buf: Buffer>(buf: &mut Buf) {
+    let sz = buf.size();
+    for y in 0..sz.height {
+        for x in 0..sz.width {
+            let pos = Position::new(x, y);
+            buf.set_cell(pos, cell_for_pos(pos));
+        }
+    }
+}
+
+#[doc(hidden)]
+#[track_caller]
+pub fn ensure_possness<Buf: Buffer>(buf: &Buf) {
+    let sz = buf.size();
+    for y in 0..sz.height {
+        for x in 0..sz.width {
+            let pos = Position::new(x, y);
+            let expected = cell_for_pos(pos);
+            let found = buf.get_cell(pos);
+            assert_eq!(
+                *found,
+                cell_for_pos(pos),
+                "failed to match cells at position {pos:?} expected: {expected:?} - found: {found:?}"
+            );
+        }
+    }
+}
+
+#[doc(hidden)]
+#[track_caller]
+pub fn ensure_possness_for<Buf: Buffer>(buf: &mut Buf, area: Rect) {
+    let sb = SubBuffer::new(buf, area);
+    ensure_possness(&sb);
+    // TODO: check if remaining area is empty
+}
 
 #[doc(hidden)]
 pub fn cell_for_pos(pos: Position) -> Cell {
@@ -24,7 +61,7 @@ pub fn cell_for_pos(pos: Position) -> Cell {
     const ASCII: &[u8] = [ASCII_LOWER, ASCII_UPPER].as_flattened();
 
     Cell {
-        ch: char::from(ASCII[(x1 ^ x2 ^ y1 ^ y2) as usize % ASCII.len()]),
+        ch: char::from(ASCII[(x1 ^ x2 ^ y1 ^ y2 ^ 47) as usize % ASCII.len()]),
         fg: Color::new(x1, x2, y1, y2),
         bg: Color::new(x2, x1, y2, y1),
         attributes: Attributes::empty(),
@@ -34,7 +71,10 @@ pub fn cell_for_pos(pos: Position) -> Cell {
 
 #[doc(hidden)]
 pub fn draw_sorted<Buf: Buffer + Drawer>(buf: &mut Buf) -> Vec<(u16, u16, Cell)> {
-    let mut calls: Vec<_> = buf.draw().map(|dc| (dc.pos.x, dc.pos.y, *dc.cell)).collect();
+    let mut calls: Vec<_> = buf
+        .draw()
+        .map(|dc| (dc.pos.x, dc.pos.y, *dc.cell))
+        .collect();
     calls.sort_by(|&(_, _, c1), &(_, _, c2)| c1.ch.cmp(&c2.ch));
     buf.end_frame();
     buf.start_frame();
@@ -699,10 +739,12 @@ macro_rules! buffer_resizing_tests {
     #[rustfmt::skip]
             use super::{$buffer_type};
             use $crate::{
-                engine2::buffer::test::cell_for_pos,
+                engine2::buffer::test::{
+                    cell_for_pos, ensure_possness, ensure_possness_for, fill_buffer_cell_for_pos,
+                },
                 engine2::{
                     buffer::{Buffer, ResizableBuffer},
-                    draw::{Position, Size},
+                    draw::{Position, Rect, Size},
                 },
             };
 
@@ -714,9 +756,15 @@ macro_rules! buffer_resizing_tests {
                 buf
             }
 
+            fn new_buf_possed(sz: Size) -> Buf {
+                let mut buf = new_buf(sz);
+                fill_buffer_cell_for_pos(&mut buf);
+                buf
+            }
+
             #[test]
             fn size_after_resize() {
-                let mut buf = new_buf(Size::new(4, 4));
+                let mut buf = new_buf_possed(Size::new(4, 4));
                 let new_size = Size::new(8, 6);
                 buf.resize(new_size);
                 assert_eq!(buf.size(), new_size);
@@ -724,33 +772,29 @@ macro_rules! buffer_resizing_tests {
 
             #[test]
             fn resize_larger() {
-                let mut buf = new_buf(Size::new(2, 2));
-                buf.resize(Size::new(5, 5));
-                // Writing and reading the new last-valid position must not panic.
-                let pos = Position::new(4, 4);
-                buf.set_cell(pos, cell_for_pos(pos));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                let old_sz = Size::new(2, 2);
+                let mut buf = new_buf_possed(old_sz);
+                let new_sz = Size::new(5, 5);
+                buf.resize(new_sz);
+                ensure_possness_for(&mut buf, Rect::new(Position::ZERO, old_sz));
             }
 
             #[test]
             fn resize_smaller() {
-                let mut buf = new_buf(Size::new(6, 6));
+                let mut buf = new_buf_possed(Size::new(6, 6));
                 buf.resize(Size::new(3, 3));
                 assert_eq!(buf.size(), Size::new(3, 3));
-                // Cells within the new bounds must still be accessible.
-                let pos = Position::new(2, 2);
-                buf.set_cell(pos, cell_for_pos(pos));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                ensure_possness(&buf);
             }
 
             #[test]
             fn resize_to_same_size() {
-                let mut buf = new_buf(Size::new(4, 4));
-                let pos = Position::new(1, 1);
-                buf.set_cell(pos, cell_for_pos(pos));
-                buf.resize(Size::new(4, 4));
-                assert_eq!(buf.size(), Size::new(4, 4));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                let sz = Size::new(4, 4);
+                let mut buf = new_buf_possed(Size::new(4, 4));
+                assert_eq!(buf.size(), sz);
+                buf.resize(sz);
+                assert_eq!(buf.size(), sz);
+                ensure_possness(&buf);
             }
 
             #[test]
@@ -777,32 +821,27 @@ macro_rules! buffer_resizing_tests {
 
             #[test]
             fn resize_to_1x1() {
-                let mut buf = new_buf(Size::new(5, 5));
+                let mut buf = new_buf_possed(Size::new(5, 5));
                 buf.resize(Size::new(1, 1));
                 assert_eq!(buf.size(), Size::new(1, 1));
-                let pos = Position::ZERO;
-                buf.set_cell(pos, cell_for_pos(pos));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                ensure_possness(&mut buf);
                 buf.resize(Size::new(3, 3));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                ensure_possness_for(&mut buf, Rect::new(Position::ZERO, Size::new(1, 1)));
             }
 
             #[test]
             fn content_preserved_after_grow() {
-                let mut buf = new_buf(Size::new(2, 2));
-                let pos = Position::ZERO;
-                buf.set_cell(pos, cell_for_pos(pos));
+                let old_sz = Size::new(2, 2);
+                let mut buf = new_buf_possed(old_sz);
                 buf.resize(Size::new(4, 4));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                ensure_possness_for(&mut buf, Rect::new(Position::ZERO, old_sz));
             }
 
             #[test]
             fn content_preserved_after_shrink() {
-                let mut buf = new_buf(Size::new(4, 4));
-                let pos = Position::ZERO;
-                buf.set_cell(pos, cell_for_pos(pos));
+                let mut buf = new_buf_possed(Size::new(4, 4));
                 buf.resize(Size::new(2, 2));
-                assert_eq!(buf.get_cell(pos), &cell_for_pos(pos));
+                ensure_possness(&buf);
             }
         }
     };
