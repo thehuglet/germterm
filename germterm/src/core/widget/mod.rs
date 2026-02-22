@@ -1,4 +1,5 @@
 pub mod block;
+pub mod text;
 
 use crate::core::{
     buffer::Buffer,

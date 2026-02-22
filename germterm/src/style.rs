@@ -12,15 +12,19 @@ pub struct Style {
 
 impl Default for Style {
     fn default() -> Self {
-        Style {
-            fg: MaybeUninit::uninit(),
-            bg: MaybeUninit::uninit(),
-            attributes: Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR,
-        }
+        Self::EMPTY
     }
 }
 
 impl Style {
+    pub const EMPTY: Self = Style {
+        fg: MaybeUninit::uninit(),
+        bg: MaybeUninit::uninit(),
+        attributes: Attributes::from_bits_truncate(
+            Attributes::NO_FG_COLOR.bits() | Attributes::NO_BG_COLOR.bits(),
+        ),
+    };
+
     #[inline]
     pub fn set_fg(mut self, fg: impl Into<Option<Color>>) -> Self {
         let c: Option<Color> = fg.into();
@@ -76,9 +80,16 @@ impl Style {
     #[inline]
     pub fn set_attributes(mut self, attributes: Attributes) -> Self {
         // We don't need to actually mask the bits for safety but it can be a bit confusing if
-        // theres a bug in user code that unsets fg/bg bits.
-        self.attributes |= attributes & Attributes::KNOWN;
+        // theres a bug in user code that sets no fg/bg bits.
+        self.attributes = attributes & Attributes::KNOWN;
         self
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        Self::EMPTY
+            .set_fg(other.fg().or(self.fg()))
+            .set_bg(other.bg().or(self.bg()))
+            .set_attributes(other.attributes() | self.attributes())
     }
 }
 
@@ -86,7 +97,7 @@ impl Style {
 mod tests {
     use super::*;
 
-    // Default  
+    // Default
 
     #[test]
     fn default_has_no_fg() {
@@ -108,7 +119,7 @@ mod tests {
         assert_eq!(style.attributes(), Attributes::empty());
     }
 
-    // set_fg / fg / has_fg  
+    // set_fg / fg / has_fg
 
     #[test]
     fn set_fg_with_color_enables_fg() {
@@ -144,7 +155,7 @@ mod tests {
         assert!(style.bg().is_none());
     }
 
-    // set_bg / bg / has_bg  
+    // set_bg / bg / has_bg
 
     #[test]
     fn set_bg_with_color_enables_bg() {
@@ -180,7 +191,7 @@ mod tests {
         assert!(style.fg().is_none());
     }
 
-    // set_attributes / attributes  
+    // set_attributes / attributes
 
     #[test]
     fn set_attributes_bold_is_reflected() {
@@ -204,14 +215,6 @@ mod tests {
     fn set_attributes_hidden_is_reflected() {
         let style = Style::default().set_attributes(Attributes::HIDDEN);
         assert_eq!(style.attributes(), Attributes::HIDDEN);
-    }
-
-    #[test]
-    fn set_attributes_accumulates_across_calls() {
-        let style = Style::default()
-            .set_attributes(Attributes::BOLD)
-            .set_attributes(Attributes::ITALIC);
-        assert_eq!(style.attributes(), Attributes::BOLD | Attributes::ITALIC);
     }
 
     #[test]
@@ -244,7 +247,7 @@ mod tests {
         assert!(attrs.contains(Attributes::BOLD));
     }
 
-    // combined usage  
+    // combined usage
 
     #[test]
     fn builder_chain_fg_bg_and_attributes() {
