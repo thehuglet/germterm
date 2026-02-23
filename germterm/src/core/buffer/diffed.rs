@@ -140,8 +140,9 @@ impl<Buf: Buffer> Drawer for DiffedBuffers<Buf> {
 mod tests {
     use super::DiffedBuffers;
     use crate::{
-        buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests,
+        buffer_resizing_tests, buffer_tests,
         core::{buffer::flat::FlatBuffer, draw::Size},
+        drawer_diffed_buffer_tests,
     };
 
     type TestBuffer = DiffedBuffers<FlatBuffer>;
