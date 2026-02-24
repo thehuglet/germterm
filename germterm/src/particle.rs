@@ -16,7 +16,6 @@ use rand::{Rng, rngs::ThreadRng};
 
 use crate::{
     color::{Color, ColorGradient, sample_gradient},
-    coord_space::octad::OctadPosition,
     draw::draw_octad,
     engine::Engine,
     layer::LayerIndex,

@@ -1,51 +1,41 @@
-use std::{marker, ops};
+use std::ops;
 
-use crate::coord_space::CoordinateSpace;
-
-#[derive(Copy, Clone)]
-pub struct Size<S: CoordinateSpace> {
-    pub width: S::X,
-    pub height: S::Y,
-    _coord_space: marker::PhantomData<S>,
+#[derive(Debug, Copy, Clone)]
+pub struct Size<T = i16> {
+    pub width: T,
+    pub height: T,
 }
 
-impl<S: CoordinateSpace> Size<S> {
-    pub const fn new(x: S::X, y: S::Y) -> Self {
-        Self {
-            width: x,
-            height: y,
-            _coord_space: marker::PhantomData,
-        }
+impl<T> Size<T> {
+    pub const fn new(width: T, height: T) -> Self {
+        Self { width, height }
     }
 
-    pub fn offset_x(self, dx: S::X) -> Self {
-        Self::new(self.width + dx, self.height)
-    }
-
-    pub fn offset_y(self, dy: S::Y) -> Self {
-        Self::new(self.width, self.height + dy)
-    }
-
-    pub fn offset_xy(self, dx: S::X, dy: S::Y) -> Self {
-        Self::new(self.width + dx, self.height + dy)
-    }
-
-    pub fn to_tuple(self) -> (S::X, S::Y) {
+    pub fn to_tuple(self) -> (T, T) {
         (self.width, self.height)
     }
 }
 
-impl<S: CoordinateSpace> From<(S::X, S::Y)> for Size<S> {
-    fn from(t: (S::X, S::Y)) -> Self {
-        Self::new(t.0, t.1)
+impl<T> Size<T>
+where
+    T: ops::Add<Output = T>,
+{
+    pub fn offset_w(self, dw: T) -> Self {
+        Self::new(self.width + dw, self.height)
+    }
+
+    pub fn offset_h(self, dh: T) -> Self {
+        Self::new(self.width, self.height + dh)
+    }
+
+    pub fn offset_wh(self, dw: T, dh: T) -> Self {
+        Self::new(self.width + dw, self.height + dh)
     }
 }
 
-impl<S> ops::Add for Size<S>
+impl<T> ops::Add for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::Add<Output = S::X>,
-    S::Y: ops::Add<Output = S::Y>,
+    T: ops::Add<Output = T>,
 {
     type Output = Self;
 
@@ -54,11 +44,9 @@ where
     }
 }
 
-impl<S> ops::AddAssign for Size<S>
+impl<T> ops::AddAssign for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::AddAssign,
-    S::Y: ops::AddAssign,
+    T: ops::AddAssign,
 {
     fn add_assign(&mut self, rhs: Self) {
         self.width += rhs.width;
@@ -66,11 +54,9 @@ where
     }
 }
 
-impl<S> ops::Sub for Size<S>
+impl<T> ops::Sub for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::Sub<Output = S::X>,
-    S::Y: ops::Sub<Output = S::Y>,
+    T: ops::Sub<Output = T>,
 {
     type Output = Self;
 
@@ -79,11 +65,9 @@ where
     }
 }
 
-impl<S> ops::SubAssign for Size<S>
+impl<T> ops::SubAssign for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::SubAssign,
-    S::Y: ops::SubAssign,
+    T: ops::SubAssign,
 {
     fn sub_assign(&mut self, rhs: Self) {
         self.width -= rhs.width;
@@ -91,82 +75,70 @@ where
     }
 }
 
-impl<S, T> ops::Mul<T> for Size<S>
+impl<T, S> ops::Mul<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::Mul<T, Output = S::X>,
-    S::Y: ops::Mul<T, Output = S::Y>,
-    T: Copy,
+    T: ops::Mul<S, Output = T>,
+    S: Copy,
 {
     type Output = Self;
 
-    fn mul(self, rhs: T) -> Self::Output {
-        Self::new(self.width * rhs, self.height * rhs)
+    fn mul(self, rhs: S) -> Self::Output {
+        Size::new(self.width * rhs, self.height * rhs)
     }
 }
 
-impl<S, T> ops::MulAssign<T> for Size<S>
+impl<T, S> ops::MulAssign<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::MulAssign<T>,
-    S::Y: ops::MulAssign<T>,
-    T: Copy,
+    T: ops::MulAssign<S>,
+    S: Copy,
 {
-    fn mul_assign(&mut self, rhs: T) {
+    fn mul_assign(&mut self, rhs: S) {
         self.width *= rhs;
         self.height *= rhs;
     }
 }
 
-impl<S, T> ops::Div<T> for Size<S>
+impl<T, S> ops::Div<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::Div<T, Output = S::X>,
-    S::Y: ops::Div<T, Output = S::Y>,
-    T: Copy,
+    T: ops::Div<S, Output = T>,
+    S: Copy,
 {
     type Output = Self;
 
-    fn div(self, rhs: T) -> Self::Output {
+    fn div(self, rhs: S) -> Self::Output {
         Self::new(self.width / rhs, self.height / rhs)
     }
 }
 
-impl<S, T> ops::DivAssign<T> for Size<S>
+impl<T, S> ops::DivAssign<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::DivAssign<T>,
-    S::Y: ops::DivAssign<T>,
-    T: Copy,
+    T: ops::DivAssign<S>,
+    S: Copy,
 {
-    fn div_assign(&mut self, rhs: T) {
+    fn div_assign(&mut self, rhs: S) {
         self.width /= rhs;
         self.height /= rhs;
     }
 }
 
-impl<S, T> ops::Rem<T> for Size<S>
+impl<T, S> ops::Rem<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::Rem<T, Output = S::X>,
-    S::Y: ops::Rem<T, Output = S::Y>,
-    T: Copy,
+    T: ops::Rem<S, Output = T>,
+    S: Copy,
 {
     type Output = Self;
 
-    fn rem(self, rhs: T) -> Self::Output {
+    fn rem(self, rhs: S) -> Self::Output {
         Self::new(self.width % rhs, self.height % rhs)
     }
 }
 
-impl<S, T> ops::RemAssign<T> for Size<S>
+impl<T, S> ops::RemAssign<S> for Size<T>
 where
-    S: CoordinateSpace,
-    S::X: ops::RemAssign<T>,
-    S::Y: ops::RemAssign<T>,
-    T: Copy,
+    T: ops::RemAssign<S>,
+    S: Copy,
 {
-    fn rem_assign(&mut self, rhs: T) {
+    fn rem_assign(&mut self, rhs: S) {
         self.width %= rhs;
         self.height %= rhs;
     }

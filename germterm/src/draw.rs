@@ -34,13 +34,7 @@
 use crate::{
     cell::CellFormat,
     color::Color,
-    coord_space::{
-        Position,
-        blocktad::BlocktadPosition,
-        native::{NativePosition, NativeSize},
-        octad::OctadPosition,
-        twoxel::TwoxelPosition,
-    },
+    coord_space::{Position, Size, twoxel_to_native},
     engine::Engine,
     fps_counter::get_fps,
     frame::DrawCall,
@@ -82,11 +76,9 @@ pub(crate) static BLOCKTAD_CHAR_LUT: [char; 256] = [
 pub fn draw_text(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    position: impl Into<NativePosition>,
+    position: Position,
     text: impl Into<RichText>,
 ) {
-    let position: NativePosition = position.into();
-
     let layer = &mut engine.frame.layered_draw_queue[layer_index.0];
     let rich_text: RichText = text.into();
     let (x, y) = position.to_tuple();
@@ -107,7 +99,13 @@ pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
     let width: i16 = engine.frame.width as i16;
     let height: i16 = engine.frame.height as i16;
 
-    draw_rect(engine, layer_index, (0, 0), (width, height), color);
+    draw_rect(
+        engine,
+        layer_index,
+        Position::new(0, 0),
+        Size::new(width, height),
+        color,
+    );
 }
 
 /// Erases a rect area, restoring the default bg color and deleting the characters.
@@ -119,15 +117,7 @@ pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
 /// let layer = create_layer(&mut engine, 0);
 /// erase_rect(&mut engine, layer, 2, 2, 6, 3);
 /// ```
-pub fn erase_rect(
-    engine: &mut Engine,
-    layer_index: LayerIndex,
-    position: impl Into<NativePosition>,
-    size: impl Into<NativeSize>,
-) {
-    let position: NativePosition = position.into();
-    let size: NativeSize = size.into();
-
+pub fn erase_rect(engine: &mut Engine, layer_index: LayerIndex, position: Position, size: Size) {
     let row_text: String = " ".repeat(size.width as usize);
     let row_rich_text = RichText::new(row_text)
         .with_fg(Color::CLEAR)
@@ -156,13 +146,10 @@ pub fn erase_rect(
 pub fn draw_rect(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    position: impl Into<NativePosition>,
-    size: impl Into<NativeSize>,
+    position: Position,
+    size: Size,
     color: Color,
 ) {
-    let position: NativePosition = position.into();
-    let size: NativeSize = size.into();
-
     let row_text: String = " ".repeat(size.width as usize);
     let row_rich_text: RichText = RichText::new(&row_text)
         .with_fg(Color::CLEAR)
@@ -203,14 +190,7 @@ pub fn draw_rect(
 /// draw_octad(&mut engine, layer, 3.0, 4.0, Color::YELLOW);
 /// draw_octad(&mut engine, layer, 3.0, 4.5, Color::YELLOW);
 /// ```
-pub fn draw_octad(
-    engine: &mut Engine,
-    layer_index: LayerIndex,
-    position: impl Into<OctadPosition>,
-    color: Color,
-) {
-    let position: OctadPosition = position.into();
-
+pub fn draw_octad(engine: &mut Engine, layer_index: LayerIndex, position: Position, color: Color) {
     let local_x = position.x.rem_euclid(2) as usize;
     let local_y = position.y.rem_euclid(4) as usize;
 
@@ -261,10 +241,10 @@ pub fn draw_octad(
 pub fn draw_blocktad(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    position: impl Into<BlocktadPosition>,
+    position: impl Into<Position>,
     color: Color,
 ) {
-    let position: BlocktadPosition = position.into();
+    let position: Position = position.into();
 
     let local_x = position.x.rem_euclid(2) as usize;
     let local_y = position.y.rem_euclid(4) as usize;
@@ -303,14 +283,7 @@ pub fn draw_blocktad(
 /// draw_twoxel(&mut engine, layer, 3.0, 4.0, Color::RED);
 /// draw_twoxel(&mut engine, layer, 3.0, 4.5, Color::CYAN);
 /// ```
-pub fn draw_twoxel(
-    engine: &mut Engine,
-    layer_index: LayerIndex,
-    position: impl Into<TwoxelPosition>,
-    color: Color,
-) {
-    let position: TwoxelPosition = position.into();
-
+pub fn draw_twoxel(engine: &mut Engine, layer_index: LayerIndex, position: Position, color: Color) {
     let local_y = position.y.rem_euclid(2) as usize;
 
     const BLOCKS: [char; 2] = ['▀', '▄'];
@@ -320,7 +293,7 @@ pub fn draw_twoxel(
         .with_fg(color)
         .with_cell_format(CellFormat::Twoxel);
 
-    draw_text(engine, layer_index, position.to_native(), rich_text)
+    draw_text(engine, layer_index, twoxel_to_native(position), rich_text)
 }
 
 /// Draws the current FPS.
@@ -340,7 +313,7 @@ pub fn draw_twoxel(
 pub fn draw_fps_counter(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    position: impl Into<NativePosition>,
+    position: impl Into<Position>,
 ) {
     let text: String = format!("FPS: {:2.0}", get_fps(engine));
     draw_text(engine, layer_index, position, text);
