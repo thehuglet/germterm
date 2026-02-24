@@ -49,6 +49,7 @@ macro_rules! bbq_inner {
     ($first:literal $($rest:tt)*) => {{
         #[allow(unused)]
         use ::core::{concat as c, assert as a};
+        #[allow(unused)]
         const L: usize = $first.len();
         b!([$first, "\n"] $($rest)*)
     }};
