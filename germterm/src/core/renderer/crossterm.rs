@@ -3,12 +3,18 @@ use std::io::Write;
 use crossterm::{cursor, event, execute, queue, style, terminal};
 
 use crate::{
-    core::{DrawCall, renderer::Renderer},
+    core::{renderer::Renderer, DrawCall},
     style::Attributes,
 };
 
-struct CrosstermRenderer<W: Write> {
+pub struct CrosstermRenderer<W: Write> {
     out: W,
+}
+
+impl<W: Write> CrosstermRenderer<W> {
+    pub fn new(out: W) -> Self {
+        Self { out }
+    }
 }
 
 // TODO: make the init/restore customizable
