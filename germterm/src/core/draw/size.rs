@@ -33,6 +33,11 @@ impl Size {
         Err(err)
     }
 
+    /// Checks wether a [`Rect`] fits within the bounds of this size.
+    pub fn area_is_within(self, area: Rect) -> bool {
+        self.width < area.right() || self.height < area.bottom()
+    }
+
     /// Returns `true` if the position is strictly within bounds.
     ///
     /// This is a boolean convenience alternative to [`contains`](Self::contains).
