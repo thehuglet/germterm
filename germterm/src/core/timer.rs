@@ -10,6 +10,14 @@ pub struct DefaultTimer {
     prev: Instant,
 }
 
+impl DefaultTimer {
+    pub fn new() -> Self {
+        Self {
+            prev: Instant::now(),
+        }
+    }
+}
+
 impl FrameTimer for DefaultTimer {
     type Delta = f32;
     fn delta(&mut self) -> Self::Delta {
