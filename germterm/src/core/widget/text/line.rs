@@ -18,23 +18,23 @@ use crate::{
 /// * `'s` — the borrow of the span slice.
 /// * `'c` — the lifetime of the text content inside each [`Span`].
 #[derive(Debug)]
-pub struct Line<'s, 'c, Spans: ?Sized = [Span<'c>]>
+pub struct Line<'s, Spans: ?Sized = [Span<'s>]>
 where
-    for<'b> &'b mut Spans: IntoIterator<Item = &'b mut Span<'c>>,
+    for<'b> &'s mut Spans: IntoIterator<Item = &'s mut Span<'s>>,
 {
     spans: &'s mut Spans,
     style: Style,
 }
 
-impl<'s, 'c> Line<'s, 'c> {
+impl<'s> Line<'s> {
     /// Creates a new `Line` from a mutable slice of [`Span`]s and an
     /// optional base [`Style`].
-    pub fn new(spans: &'s mut [Span<'c>], style: Style) -> Self {
+    pub fn new(spans: &'s mut [Span<'s>], style: Style) -> Self {
         Self { spans, style }
     }
 }
 
-impl Widget<NoDelta> for Line<'_, '_> {
+impl Widget<NoDelta> for Line<'_> {
     fn draw(&mut self, ctx: &mut FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
         let buf = ctx.buffer_mut();
         let sz = buf.size();
