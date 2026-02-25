@@ -1,7 +1,12 @@
 use std::borrow::Cow;
 
 use crate::{
-    core::{buffer::Buffer, draw::Position, timer::NoDelta, widget::Widget},
+    core::{
+        buffer::Buffer,
+        draw::{Position, gfx::text::draw_string},
+        timer::NoDelta,
+        widget::Widget,
+    },
     style::Style,
 };
 
@@ -72,6 +77,8 @@ impl<'a> Span<'a> {
             for x in 0..sz.width {
                 let c = buf.get_cell_mut(Position::new(x, y));
                 written = sz.width as u32 * y as u32 + x as u32;
+                // TODO: add cell merging once cell styling is stored
+                todo!();
                 if let Some(ch) = chars.next() {
                     c.ch = ch;
                     if written >= limit {
