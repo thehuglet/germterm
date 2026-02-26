@@ -111,9 +111,9 @@ impl Style {
 
     #[inline]
     pub fn set_attributes(mut self, attributes: Attributes) -> Self {
-        // We don't need to actually mask the bits for safety but it can be a bit confusing if
-        // theres a bug in user code that sets no fg/bg bits.
-        self.attributes = attributes & Attributes::KNOWN;
+        // Only replace the user-visible attribute bits; preserve the internal
+        let color_bits = self.attributes & !Attributes::KNOWN;
+        self.attributes = (attributes & Attributes::KNOWN) | color_bits;
         self
     }
 
