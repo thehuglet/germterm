@@ -4,13 +4,13 @@
 
 - Added a new **Blocktad** drawing format. It works similarly to **Octads**, but uses blocks instead of braille characters
 
-### 🛠 Changed
+### ⚒️ Changed
 
 - Reworked the layer API into a more memory safe form
 - Improved stability and performance of the diffing step ([@airblast-dev](https://github.com/airblast-dev))
 - Removed unnecessary allocations ([@airblast-dev](https://github.com/airblast-dev))
 
-### ⚠ Breaking
+### 💥 Breaking
 
 - `Layer` is now reserved for internal use, the new public API uses `LayerIndex` and the `create_layer()` factory
 - Changed drawing function first args from `&mut Layer` to `&mut Engine` and `LayerIndex`
@@ -27,12 +27,12 @@
 - Added `override_blending_color` function, which overrides the default auto-detected terminal background color used for alpha blending
 - Added `get_fps` function
 
-### 🛠 Changed
+### ⚒️ Changed
 
 - Improved performance of alpha blending by switching to a LUT-based approach instead of floating-point arithmetic
 - Terminal line wrapping now gets restored upon calling `exit_cleanup`
 
-### ⚠ Breaking
+### 💥 Breaking
 
 - Moved `draw_fps_counter` function from the `fps_counter` module to `draw`
 - Changed visibility of `FpsCounter` from `pub` to `pub(crate)`. Please use the new `get_fps` function if you need to read the current FPS
