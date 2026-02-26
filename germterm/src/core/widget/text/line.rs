@@ -20,16 +20,19 @@ use crate::{
 #[derive(Debug)]
 pub struct Line<'s, Spans: ?Sized = [Span<'s>]>
 where
-    for<'b> &'s mut Spans: IntoIterator<Item = &'s mut Span<'s>>,
+    &'s mut Spans: IntoIterator<Item = &'s mut Span<'s>>,
 {
     spans: &'s mut Spans,
     style: Style,
 }
 
-impl<'s> Line<'s> {
+impl<'s, Spans: ?Sized> Line<'s, Spans>
+where
+    &'s mut Spans: IntoIterator<Item = &'s mut Span<'s>>,
+{
     /// Creates a new `Line` from a mutable slice of [`Span`]s and an
     /// optional base [`Style`].
-    pub fn new(spans: &'s mut [Span<'s>], style: Style) -> Self {
+    pub fn new(spans: &'s mut Spans, style: Style) -> Self {
         Self { spans, style }
     }
 }
