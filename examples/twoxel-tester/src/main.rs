@@ -1,5 +1,6 @@
 use germterm::{
     color::Color,
+    coord_space::{Position, twoxel::TwoxelPosition},
     crossterm::event::{Event, KeyCode, KeyEvent},
     draw::{draw_fps_counter, draw_rect, draw_text, draw_twoxel},
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
@@ -34,19 +35,23 @@ fn main() -> io::Result<()> {
         draw_rect(
             &mut engine,
             layer,
-            0,
-            9,
-            TERM_COLS as i16,
-            9,
+            (0, 9),
+            (TERM_COLS as i16, 9),
             Color::BLACK.with_alpha(127),
         );
-        draw_rect(&mut engine, layer, 0, 18, TERM_COLS as i16, 9, Color::BLACK);
+        draw_rect(
+            &mut engine,
+            layer,
+            (0, 18),
+            (TERM_COLS as i16, 9),
+            Color::BLACK,
+        );
 
-        draw_test_case(&mut engine, layer, 15.0, 1.0);
-        draw_test_case(&mut engine, layer, 15.0, 10.0);
-        draw_test_case(&mut engine, layer, 15.0, 19.0);
+        draw_test_case(&mut engine, layer, TwoxelPosition::new(15, 2));
+        draw_test_case(&mut engine, layer, TwoxelPosition::new(15, 20));
+        draw_test_case(&mut engine, layer, TwoxelPosition::new(15, 38));
 
-        draw_fps_counter(&mut engine, layer, 0, 0);
+        draw_fps_counter(&mut engine, layer, (0, 0));
         end_frame(&mut engine)?;
     }
 
@@ -54,25 +59,23 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
+fn draw_test_case(engine: &mut Engine, layer: LayerIndex, pos: TwoxelPosition) {
     let alpha_value: u8 = 60;
 
     // 1. Single twoxel (top)
     draw_text(
         engine,
         layer,
-        x as i16,
-        y as i16,
+        pos.to_native(),
         RichText::new("1").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x, y + 2.0, Color::RED);
+    draw_twoxel(engine, layer, pos.offset_y(4), Color::RED);
 
     draw_twoxel(
         engine,
         layer,
-        x,
-        y + 4.0,
+        pos.offset_y(8),
         Color::RED.with_alpha(alpha_value),
     );
 
@@ -80,18 +83,16 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 2,
-        y as i16,
+        pos.to_native().offset_x(2),
         RichText::new("2").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 2.0, y + 2.5, Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(2, 5), Color::GREEN);
 
     draw_twoxel(
         engine,
         layer,
-        x + 2.0,
-        y + 4.5,
+        pos.offset_xy(2, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
 
@@ -99,26 +100,23 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 4,
-        y as i16,
+        pos.to_native().offset_x(4),
         RichText::new("3").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 4.0, y + 2.0, Color::RED);
-    draw_twoxel(engine, layer, x + 4.0, y + 2.5, Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(4, 4), Color::RED);
+    draw_twoxel(engine, layer, pos.offset_xy(4, 5), Color::GREEN);
 
     draw_twoxel(
         engine,
         layer,
-        x + 4.0,
-        y + 4.0,
+        pos.offset_xy(4, 8),
         Color::RED.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 4.0,
-        y + 4.5,
+        pos.offset_xy(4, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
 
@@ -126,34 +124,30 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 6,
-        y as i16,
+        pos.to_native().offset_x(6),
         RichText::new("4").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 6.0, y + 2.0, Color::RED);
-    draw_twoxel(engine, layer, x + 6.0, y + 2.5, Color::GREEN);
-    draw_twoxel(engine, layer, x + 6.0, y + 2.0, Color::LIGHT_GRAY);
+    draw_twoxel(engine, layer, pos.offset_xy(6, 4), Color::RED);
+    draw_twoxel(engine, layer, pos.offset_xy(6, 5), Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(6, 4), Color::LIGHT_GRAY);
 
     draw_twoxel(
         engine,
         layer,
-        x + 6.0,
-        y + 4.0,
+        pos.offset_xy(6, 8),
         Color::RED.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 6.0,
-        y + 4.5,
+        pos.offset_xy(6, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 6.0,
-        y + 4.0,
+        pos.offset_xy(6, 8),
         Color::LIGHT_GRAY.with_alpha(alpha_value),
     );
 
@@ -161,34 +155,30 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 8,
-        y as i16,
+        pos.to_native().offset_x(8),
         RichText::new("5").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 8.0, y + 2.0, Color::RED);
-    draw_twoxel(engine, layer, x + 8.0, y + 2.5, Color::GREEN);
-    draw_twoxel(engine, layer, x + 8.0, y + 2.5, Color::LIGHT_GRAY);
+    draw_twoxel(engine, layer, pos.offset_xy(8, 4), Color::RED);
+    draw_twoxel(engine, layer, pos.offset_xy(8, 5), Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(8, 5), Color::LIGHT_GRAY);
 
     draw_twoxel(
         engine,
         layer,
-        x + 8.0,
-        y + 4.0,
+        pos.offset_xy(8, 8),
         Color::RED.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 8.0,
-        y + 4.5,
+        pos.offset_xy(8, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 8.0,
-        y + 4.5,
+        pos.offset_xy(8, 9),
         Color::LIGHT_GRAY.with_alpha(alpha_value),
     );
 
@@ -196,34 +186,30 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 10,
-        y as i16,
+        pos.to_native().offset_x(10),
         RichText::new("6").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 10.0, y + 2.5, Color::GREEN);
-    draw_twoxel(engine, layer, x + 10.0, y + 2.0, Color::RED);
-    draw_twoxel(engine, layer, x + 10.0, y + 2.0, Color::LIGHT_GRAY);
+    draw_twoxel(engine, layer, pos.offset_xy(10, 5), Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(10, 4), Color::RED);
+    draw_twoxel(engine, layer, pos.offset_xy(10, 4), Color::LIGHT_GRAY);
 
     draw_twoxel(
         engine,
         layer,
-        x + 10.0,
-        y + 4.5,
+        pos.offset_xy(10, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 10.0,
-        y + 4.0,
+        pos.offset_xy(10, 8),
         Color::RED.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 10.0,
-        y + 4.0,
+        pos.offset_xy(10, 8),
         Color::LIGHT_GRAY.with_alpha(alpha_value),
     );
 
@@ -231,34 +217,30 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 12,
-        y as i16,
+        pos.to_native().offset_x(12),
         RichText::new("7").with_fg(Color::DARK_GRAY),
     );
 
-    draw_twoxel(engine, layer, x + 12.0, y + 2.5, Color::GREEN);
-    draw_twoxel(engine, layer, x + 12.0, y + 2.0, Color::RED);
-    draw_twoxel(engine, layer, x + 12.0, y + 2.5, Color::LIGHT_GRAY);
+    draw_twoxel(engine, layer, pos.offset_xy(12, 5), Color::GREEN);
+    draw_twoxel(engine, layer, pos.offset_xy(12, 4), Color::RED);
+    draw_twoxel(engine, layer, pos.offset_xy(12, 5), Color::LIGHT_GRAY);
 
     draw_twoxel(
         engine,
         layer,
-        x + 12.0,
-        y + 4.5,
+        pos.offset_xy(12, 9),
         Color::GREEN.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 12.0,
-        y + 4.0,
+        pos.offset_xy(12, 8),
         Color::RED.with_alpha(alpha_value),
     );
     draw_twoxel(
         engine,
         layer,
-        x + 12.0,
-        y + 4.5,
+        pos.offset_xy(12, 9),
         Color::LIGHT_GRAY.with_alpha(alpha_value),
     );
 
@@ -266,64 +248,56 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 - 10,
-        y as i16 + 2,
+        pos.to_native().offset_xy(-10, 2),
         RichText::new("Composed:").with_fg(Color::DARK_GRAY),
     );
 
     draw_text(
         engine,
         layer,
-        x as i16 - 11,
-        y as i16 + 4,
+        pos.to_native().offset_xy(-11, 4),
         RichText::new("Low alpha:").with_fg(Color::DARK_GRAY),
     );
 
     draw_text(
         engine,
         layer,
-        x as i16 - 10,
-        y as i16 + 6,
+        pos.to_native().offset_xy(-10, 6),
         RichText::new("Expected:").with_fg(Color::DARK_GRAY),
     );
 
     draw_text(
         engine,
         layer,
-        x as i16 - 2,
-        y as i16 + 5,
+        pos.to_native().offset_xy(-2, 5),
         RichText::new("-----------------").with_fg(Color::DARK_GRAY),
     );
     // 1.
     draw_text(
         engine,
         layer,
-        x as i16,
-        y as i16 + 6,
+        pos.to_native().offset_y(6),
         RichText::new("▀").with_fg(Color::RED),
     );
     // 2.
     draw_text(
         engine,
         layer,
-        x as i16 + 2,
-        y as i16 + 6,
+        pos.to_native().offset_xy(2, 6),
         RichText::new("▄").with_fg(Color::GREEN),
     );
     // 3.
     draw_text(
         engine,
         layer,
-        x as i16 + 4,
-        y as i16 + 6,
+        pos.to_native().offset_xy(4, 6),
         RichText::new("▀").with_fg(Color::RED).with_bg(Color::GREEN),
-        // 4.
     );
+    // 4.
     draw_text(
         engine,
         layer,
-        x as i16 + 6,
-        y as i16 + 6,
+        pos.to_native().offset_xy(6, 6),
         RichText::new("▀")
             .with_fg(Color::LIGHT_GRAY)
             .with_bg(Color::GREEN),
@@ -332,8 +306,7 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 8,
-        y as i16 + 6,
+        pos.to_native().offset_xy(8, 6),
         RichText::new("▀")
             .with_fg(Color::RED)
             .with_bg(Color::LIGHT_GRAY),
@@ -342,8 +315,7 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 10,
-        y as i16 + 6,
+        pos.to_native().offset_xy(10, 6),
         RichText::new("▄")
             .with_fg(Color::GREEN)
             .with_bg(Color::LIGHT_GRAY),
@@ -352,8 +324,7 @@ fn draw_test_case(engine: &mut Engine, layer: LayerIndex, x: f32, y: f32) {
     draw_text(
         engine,
         layer,
-        x as i16 + 12,
-        y as i16 + 6,
+        pos.to_native().offset_xy(12, 6),
         RichText::new("▄")
             .with_fg(Color::LIGHT_GRAY)
             .with_bg(Color::RED),

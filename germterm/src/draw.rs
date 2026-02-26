@@ -34,6 +34,7 @@
 use crate::{
     cell::CellFormat,
     color::Color,
+    coord_space::{Position, Size, twoxel_to_native},
     engine::Engine,
     fps_counter::get_fps,
     frame::DrawCall,
@@ -75,12 +76,12 @@ pub(crate) static BLOCKTAD_CHAR_LUT: [char; 256] = [
 pub fn draw_text(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    x: i16,
-    y: i16,
+    position: Position,
     text: impl Into<RichText>,
 ) {
     let layer = &mut engine.frame.layered_draw_queue[layer_index.0];
     let rich_text: RichText = text.into();
+    let (x, y) = position.to_tuple();
 
     layer.0.push(DrawCall { rich_text, x, y });
 }
@@ -98,7 +99,13 @@ pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
     let width: i16 = engine.frame.width as i16;
     let height: i16 = engine.frame.height as i16;
 
-    draw_rect(engine, layer_index, 0, 0, width, height, color);
+    draw_rect(
+        engine,
+        layer_index,
+        Position::new(0, 0),
+        Size::new(width, height),
+        color,
+    );
 }
 
 /// Erases a rect area, restoring the default bg color and deleting the characters.
@@ -110,22 +117,20 @@ pub fn fill_screen(engine: &mut Engine, layer_index: LayerIndex, color: Color) {
 /// let layer = create_layer(&mut engine, 0);
 /// erase_rect(&mut engine, layer, 2, 2, 6, 3);
 /// ```
-pub fn erase_rect(
-    engine: &mut Engine,
-    layer_index: LayerIndex,
-    x: i16,
-    y: i16,
-    width: i16,
-    height: i16,
-) {
-    let row_text: String = " ".repeat(width as usize);
+pub fn erase_rect(engine: &mut Engine, layer_index: LayerIndex, position: Position, size: Size) {
+    let row_text: String = " ".repeat(size.width as usize);
     let row_rich_text = RichText::new(row_text)
         .with_fg(Color::CLEAR)
         .with_bg(Color::CLEAR)
         .with_attributes(Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR);
 
-    for row in 0..height {
-        draw_text(engine, layer_index, x, y + row, row_rich_text.clone())
+    for row in 0..size.height {
+        draw_text(
+            engine,
+            layer_index,
+            position.offset_y(row),
+            row_rich_text.clone(),
+        )
     }
 }
 
@@ -141,20 +146,23 @@ pub fn erase_rect(
 pub fn draw_rect(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    x: i16,
-    y: i16,
-    width: i16,
-    height: i16,
+    position: Position,
+    size: Size,
     color: Color,
 ) {
-    let row_text: String = " ".repeat(width as usize);
+    let row_text: String = " ".repeat(size.width as usize);
     let row_rich_text: RichText = RichText::new(&row_text)
         .with_fg(Color::CLEAR)
         .with_bg(color)
         .with_attributes(Attributes::NO_FG_COLOR);
 
-    for row in 0..height {
-        draw_text(engine, layer_index, x, y + row, row_rich_text.clone())
+    for row in 0..size.height {
+        draw_text(
+            engine,
+            layer_index,
+            position.offset_y(row),
+            row_rich_text.clone(),
+        )
     }
 }
 
@@ -182,31 +190,24 @@ pub fn draw_rect(
 /// draw_octad(&mut engine, layer, 3.0, 4.0, Color::YELLOW);
 /// draw_octad(&mut engine, layer, 3.0, 4.5, Color::YELLOW);
 /// ```
-pub fn draw_octad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
-    let cell_x: i16 = x.floor() as i16;
-    let cell_y: i16 = y.floor() as i16;
+pub fn draw_octad(engine: &mut Engine, layer_index: LayerIndex, position: Position, color: Color) {
+    let local_x = position.x.rem_euclid(2) as usize;
+    let local_y = position.y.rem_euclid(4) as usize;
 
-    let sub_x: u8 = ((x - cell_x as f32) * 2.0).clamp(0.0, 1.0) as u8;
-    let sub_y_float: f32 = (y - cell_y as f32) * 4.0;
-    let sub_y: usize = sub_y_float.floor().clamp(0.0, 3.0) as usize;
-    let offset: usize = match (sub_x, sub_y) {
-        (0, 0) => 0,
-        (0, 1) => 1,
-        (0, 2) => 2,
-        (0, 3) => 6,
-        (1, 0) => 3,
-        (1, 1) => 4,
-        (1, 2) => 5,
-        (1, 3) => 7,
-        _ => panic!("Octad sub-position ({sub_x}, {sub_y}) falls out of range."),
-    };
+    // Offsets for each of the braille chars
+    #[rustfmt::skip]
+    const OFFSETS: [[usize; 4]; 2] = [
+        [0, 1, 2, 6],
+        [3, 4, 5, 7],
+    ];
 
+    let offset = OFFSETS[local_x][local_y];
     let braille_char: char = std::char::from_u32(0x2800 + (1 << offset)).unwrap();
     let rich_text: RichText = RichText::new(braille_char.to_string())
         .with_fg(color)
         .with_cell_format(CellFormat::Octad);
 
-    draw_text(engine, layer_index, cell_x, cell_y, rich_text);
+    draw_text(engine, layer_index, position.to_native(), rich_text);
 }
 
 /// Draws a single blocktad at the specified sub-cell position.
@@ -237,21 +238,25 @@ pub fn draw_octad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, 
 /// /// # Notes
 /// The characters may not show up on all fonts, as the [Symbols for Legacy Computing Supplement](https://en.wikipedia.org/wiki/Symbols_for_Legacy_Computing_Supplement)
 /// Unicode block is a relatively recent addition. Use with caution.
-pub fn draw_blocktad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
-    let cell_x: i16 = x.floor() as i16;
-    let cell_y: i16 = y.floor() as i16;
+pub fn draw_blocktad(
+    engine: &mut Engine,
+    layer_index: LayerIndex,
+    position: impl Into<Position>,
+    color: Color,
+) {
+    let position: Position = position.into();
 
-    let sub_x: usize = (((x - cell_x as f32) * 2.0).floor().clamp(0.0, 1.0)) as usize;
-    let sub_y: usize = (((y - cell_y as f32) * 4.0).floor().clamp(0.0, 3.0)) as usize;
-    let offset: usize = sub_y * 2 + sub_x;
+    let local_x = position.x.rem_euclid(2) as usize;
+    let local_y = position.y.rem_euclid(4) as usize;
+
+    let offset: usize = local_y * 2 + local_x;
     let mask: usize = 1 << offset;
-
     let blocktad_char: char = BLOCKTAD_CHAR_LUT[mask];
     let rich_text: RichText = RichText::new(blocktad_char.to_string())
         .with_fg(color)
         .with_cell_format(CellFormat::Blocktad);
 
-    draw_text(engine, layer_index, cell_x, cell_y, rich_text);
+    draw_text(engine, layer_index, position.to_native(), rich_text);
 }
 
 /// Draws a single twoxel at the specified sub-cell position.
@@ -278,23 +283,17 @@ pub fn draw_blocktad(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f3
 /// draw_twoxel(&mut engine, layer, 3.0, 4.0, Color::RED);
 /// draw_twoxel(&mut engine, layer, 3.0, 4.5, Color::CYAN);
 /// ```
-pub fn draw_twoxel(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32, color: Color) {
-    let cell_x: i16 = x.floor() as i16;
-    let cell_y: i16 = y.floor() as i16;
+pub fn draw_twoxel(engine: &mut Engine, layer_index: LayerIndex, position: Position, color: Color) {
+    let local_y = position.y.rem_euclid(2) as usize;
 
-    let sub_y_float: f32 = (y - cell_y as f32) * 2.0;
-    let sub_y: usize = sub_y_float.floor().clamp(0.0, 1.0) as usize;
+    const BLOCKS: [char; 2] = ['▀', '▄'];
+    let half_block = BLOCKS[local_y];
 
-    let half_block: char = match sub_y {
-        0 => '▀',
-        1 => '▄',
-        _ => panic!("Twoxel 'sub_y': {sub_y} falls out of range."),
-    };
     let rich_text: RichText = RichText::new(half_block.to_string())
         .with_fg(color)
         .with_cell_format(CellFormat::Twoxel);
 
-    draw_text(engine, layer_index, cell_x, cell_y, rich_text)
+    draw_text(engine, layer_index, twoxel_to_native(position), rich_text)
 }
 
 /// Draws the current FPS.
@@ -311,7 +310,11 @@ pub fn draw_twoxel(engine: &mut Engine, layer_index: LayerIndex, x: f32, y: f32,
 /// let layer = create_layer(&mut engine, 0);
 /// draw_fps_counter(&mut engine, layer, 0, 0);
 /// ```
-pub fn draw_fps_counter(engine: &mut Engine, layer_index: LayerIndex, x: i16, y: i16) {
+pub fn draw_fps_counter(
+    engine: &mut Engine,
+    layer_index: LayerIndex,
+    position: impl Into<Position>,
+) {
     let text: String = format!("FPS: {:2.0}", get_fps(engine));
-    draw_text(engine, layer_index, x, y, text);
+    draw_text(engine, layer_index, position, text);
 }

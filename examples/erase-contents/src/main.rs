@@ -41,14 +41,13 @@ fn main() -> io::Result<()> {
             draw_text(
                 &mut engine,
                 layer,
-                0,
-                y_offset as i16,
+                (0, y_offset as i16),
                 RichText::new(text.repeat(TERM_COLS as usize / 2))
                     .with_fg(Color::new(80, 80, 80, 255)),
             );
         }
 
-        erase_rect(&mut engine, layer, 10, 5, 20, 10);
+        erase_rect(&mut engine, layer, (10, 5), (20, 10));
 
         end_frame(&mut engine)?;
     }
