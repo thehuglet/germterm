@@ -19,10 +19,7 @@ It renders in real time, adds support for the alpha channel, adds multiple drawi
 - Full alpha blending support with true color RGBA encoded colors
 - A performance-first rendering pipeline with minimal allocations, especially optimized around CPU cache and LLVM Auto-Vectorization
 - Supports drawing with depth using layers
-- Supports multiple drawing formats
-  - Standard - Full control over the `char`, `fg`, `bg` and `attributes`
-  - Twoxel - Allows drawing 2 independent pixels inside a single terminal cell
-  - Octad - Allows drawing in 8 distinct sub-pixel positions using braille characters
+- Supports multiple drawing formats, including subpixel drawing
 - Built-in particle system with approximated physics
 - Built-in FPS limiter with support for delta timing
 - Crossplatform (through a [crossterm](https://github.com/crossterm-rs/crossterm) backend)
