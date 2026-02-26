@@ -4,12 +4,15 @@ pub mod renderer;
 pub mod timer;
 pub mod widget;
 
+use std::{io::Write, ops::ControlFlow};
+
 use crate::{
     cell::Cell,
     core::{
-        buffer::{Buffer, slice::SubBuffer},
-        draw::{Position, Rect},
-        timer::{FrameTimer, Timer},
+        buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
+        draw::{Position, Rect, Size},
+        renderer::crossterm::CrosstermRenderer,
+        timer::{DefaultTimer, FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
 };
@@ -71,61 +74,77 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
     /// Runs the engine loop.
     ///
-    /// Initializes the terminal, then repeatedly calls `update` until it returns `true`,
-    /// at which point the loop breaks and the terminal is restored.
+    /// Initializes the terminal, then repeatedly calls `update` until it returns
+    /// [`ControlFlow::Break`], at which point the loop exits, the terminal is
+    /// restored, and the break value is returned.
     ///
     /// Each iteration follows this order:
     /// 1. `Buffer::start_frame` - clear/prepare the buffer for new draw commands.
-    /// 2. `update(&mut engine)` - caller draws into the buffer; return `true` to stop.
-    /// 3. `Renderer::start_frame` -> `Renderer::render(draw_calls)` - diff the buffer
-    ///    and emit only changed cells to the renderer.
+    /// 2. `update(&mut engine)` - caller draws into the buffer; return
+    ///    `ControlFlow::Break(value)` to stop.
+    /// 3. `Renderer::start_frame` -> `Renderer::render(draw_calls)` - diff the
+    ///    buffer and emit only changed cells to the renderer.
     /// 4. `Buffer::end_frame` - swap the current and previous frames so the
     ///    just-rendered frame becomes the baseline for the next diff.
     /// 5. `Renderer::end_frame` - flush/complete the rendered frame.
     ///
     /// # Errors
     ///
-    /// Returns an [`io::Error`] if terminal initialization, rendering, or cleanup fails.
-    pub fn run<R, F>(&mut self, renderer: &mut R, mut update: F) -> Result<(), R::Error>
+    /// Returns a renderer error if terminal initialization, rendering, or cleanup
+    /// fails.
+    pub fn run<R, Bre>(
+        &mut self,
+        renderer: &mut R,
+        mut update: impl FnMut(&mut Self) -> ControlFlow<Bre>,
+    ) -> Result<Bre, R::Error>
     where
         R: renderer::Renderer,
-        F: FnMut(&mut Self) -> bool,
     {
         renderer.init()?;
 
-        // Ideally we would catch panics and restore but that means [`std::panic::catch_unwind`]
-        // must be used.
+        // Ideally we would catch panics and restore but that means
+        // [`std::panic::catch_unwind`] must be used.
         //
-        // Since this is intended to be in the core of the library pefer to use core features
-        let res = || -> Result<(), R::Error> {
+        // Since this is intended to be in the core of the library prefer to use
+        // core features.
+        let res = || -> Result<Bre, R::Error> {
             loop {
                 self.buffer.start_frame();
 
                 let should_exit = update(self);
 
-                if let err @ Err(_) = renderer.start_frame() {
-                    return err;
-                }
-                if let err @ Err(_) = renderer.render(self.buffer.draw()) {
-                    return err;
-                }
+                renderer.start_frame()?;
+                renderer.render(self.buffer.draw())?;
 
                 self.buffer.end_frame();
-                if let err @ Err(_) = renderer.end_frame() {
-                    return err;
-                }
+                renderer.end_frame()?;
 
                 self.timer.update();
-                if should_exit {
-                    break;
+
+                if let ControlFlow::Break(bre) = should_exit {
+                    break Ok(bre);
                 }
             }
-
-            Ok(())
         }();
 
-        res.and(renderer.restore())?;
-
-        Ok(())
+        match renderer.restore() {
+            Ok(()) => res,
+            Err(err) => res.map_err(|_| err),
+        }
     }
+}
+
+pub fn run(
+    w: &mut impl Write,
+    size: Size,
+    update: impl FnMut(
+        &mut Engine<DefaultTimer, DiffedBuffers<FlatBuffer>>,
+    ) -> ControlFlow<std::io::Result<()>>,
+) -> std::io::Result<()> {
+    let mut eng = Engine::new(
+        DefaultTimer::new(),
+        DiffedBuffers::new(size, FlatBuffer::new(size), FlatBuffer::new(size)),
+    );
+
+    eng.run(&mut CrosstermRenderer::new(w), update)?
 }
