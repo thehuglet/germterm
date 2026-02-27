@@ -1,21 +1,7 @@
 //! Stylized text.
 
-use crate::{cell::CellFormat, color::Color};
-use bitflags::bitflags;
+use crate::{cell::CellFormat, color::Color, style::Attributes};
 use std::sync::Arc;
-
-bitflags! {
-    /// Attributes that can be applied to drawn text.
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Attributes: u8 {
-        const BOLD          = 0b_00000001;
-        const ITALIC        = 0b_00000010;
-        const UNDERLINED    = 0b_00000100;
-        const HIDDEN        = 0b_00001000;
-        const NO_FG_COLOR   = 0b_00010000;
-        const NO_BG_COLOR   = 0b_00100000;
-    }
-}
 
 /// Stylized text representation.
 ///
