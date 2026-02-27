@@ -1,5 +1,12 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use germterm::{cell::Cell, color::Color, frame::FramePair};
+use germterm::{
+    cell::Cell,
+    color::Color,
+    core::{
+        buffer::{Buffer, Drawer, paired::PairedBuffer},
+        draw::{Position, Size},
+    },
+};
 
 fn full_cell() -> Cell {
     let mut cell = Cell::EMPTY;
@@ -22,11 +29,11 @@ fn bench_frame_diff(c: &mut Criterion) {
     for (width, height) in dimensions {
         group.bench_with_input(
             BenchmarkId::new("No Changes", format!("{}x{}", width, height)),
-            &(width, height),
-            |b, &(w, h)| {
-                let frame = FramePair::new(w as u16, h as u16);
+            &Size::new(width, height),
+            |b, &sz| {
+                let mut buf = PairedBuffer::new(sz);
                 b.iter(|| {
-                    for d in black_box(&frame).diff() {
+                    for d in black_box(&mut buf).draw() {
                         black_box(d);
                     }
                 })
@@ -35,17 +42,18 @@ fn bench_frame_diff(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::new("Full Changes", format!("{}x{}", width, height)),
-            &(width, height),
-            |b, &(w, h)| {
-                let mut frame = FramePair::new(w as u16, h as u16);
+            &Size::new(width, height),
+            |b, &sz| {
+                let mut buf = PairedBuffer::new(sz);
 
-                let mut current = frame.current_mut();
-                for i in 0..(w as usize * h as usize) {
-                    current[i] = full_cell();
+                for y in 0..sz.height {
+                    for x in 0..sz.width {
+                        buf.set_cell(Position::new(x, y), full_cell());
+                    }
                 }
 
                 b.iter(|| {
-                    for d in black_box(&frame).diff() {
+                    for d in black_box(&mut buf).draw() {
                         black_box(d);
                     }
                 })
@@ -54,20 +62,21 @@ fn bench_frame_diff(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::new("Alternating Changes", format!("{}x{}", width, height)),
-            &(width, height),
-            |b, &(w, h)| {
-                let mut frame = FramePair::new(w as u16, h as u16);
+            &Size::new(width, height),
+            |b, &sz| {
+                let mut buf = PairedBuffer::new(sz);
 
                 // Change every other cell
-                let mut current = frame.current_mut();
-                for i in 0..(w as usize * h as usize) {
-                    if i % 2 == 0 {
-                        current[i] = full_cell();
+                for y in 0..sz.height {
+                    for x in 0..sz.width {
+                        if x * y % 2 == 0 {
+                            buf.set_cell(Position::new(x, y), full_cell());
+                        }
                     }
                 }
 
                 b.iter(|| {
-                    for d in black_box(&frame).diff() {
+                    for d in black_box(&mut buf).draw() {
                         black_box(d);
                     }
                 })
