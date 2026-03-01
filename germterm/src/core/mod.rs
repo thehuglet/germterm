@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod compositor;
 pub mod draw;
 pub mod renderer;
 pub mod timer;
