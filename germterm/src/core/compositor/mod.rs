@@ -1,16 +1,25 @@
 use crate::{
     cell::{Cell, CellFormat},
-    color::Color,
-    style::Attributes,
+    color::{Color, blend_source_over},
+    style::{Attributes, Style},
 };
 
 pub trait Compositor {}
 
 pub struct DefaultCompositor {}
 
+impl Compositor for DefaultCompositor {}
+
 impl DefaultCompositor {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     #[inline]
-    fn compose_cell(old: Cell, new: Cell) -> Cell {
+    pub fn compose_frame_buffer()
+
+    #[inline]
+    fn compose_cell(old: Cell, new: Cell, default_blending_color: Color) -> Cell {
         let both_ch_equal: bool = old.ch == new.ch;
 
         // Cell format related
@@ -47,7 +56,7 @@ impl DefaultCompositor {
         let new_bg: Color = new.style.bg().unwrap_or(Color::CLEAR);
         let old_bg: Color = old.style.bg().unwrap_or(Color::CLEAR);
 
-        let (ch, style, format, mut attributes, fg, no_fg_color, bg, no_bg_color) = if new_twoxel {
+        let (ch, format, mut attributes, fg, no_fg_color, bg, no_bg_color) = if new_twoxel {
             let (ch, format, attributes) = if old_twoxel && !new_fg_no_color {
                 (old.ch, old.format, old.style.attributes())
             } else {
@@ -55,31 +64,31 @@ impl DefaultCompositor {
             };
 
             let (fg, no_fg_color) = if old_twoxel && both_ch_equal {
-                (blend_source_over(old.fg, new.fg), false)
+                (blend_source_over(old_fg, new_fg), false)
             } else if old_twoxel {
-                (old.fg, false)
+                (old_fg, false)
             } else if !old_bg_no_color {
-                (blend_source_over(old.bg, new.fg), false)
+                (blend_source_over(old_bg, new_fg), false)
             } else if new_fg_invisible {
                 (default_blending_color, true)
             } else {
-                (blend_source_over(default_blending_color, new.fg), false)
+                (blend_source_over(default_blending_color, new_fg), false)
             };
 
             let (bg, no_bg_color) = if old_twoxel && both_ch_equal {
-                (old.bg, false)
+                (old_bg, false)
             } else if old_twoxel && old_bg_no_color {
                 if new_fg_invisible {
                     (default_blending_color, true)
                 } else {
-                    (blend_source_over(default_blending_color, new.fg), false)
+                    (blend_source_over(default_blending_color, new_fg), false)
                 }
             } else if old_twoxel {
-                (blend_source_over(old.bg, new.fg), false)
+                (blend_source_over(old_bg, new_fg), false)
             } else if old_bg_no_color {
-                (old.bg, true)
+                (old_bg, true)
             } else {
-                (old.bg, false)
+                (old_bg, false)
             };
 
             (ch, format, attributes, fg, no_fg_color, bg, no_bg_color)
@@ -87,61 +96,69 @@ impl DefaultCompositor {
             // This branch handles the following cell formats: [Standard, Octad, Blocktad]
             let (ch, format, attributes) = if new_fg_no_color && new_bg_opaque && !old_ch_invisible
             {
-                (new.ch, new.format, new.attributes)
+                (new.ch, new.format, new.style.attributes())
             } else if new_blocktad && old_blocktad {
-                (merge_blocktad(old.ch, new.ch), new.format, new.attributes)
+                (
+                    merge_blocktad(old.ch, new.ch),
+                    new.format,
+                    new.style.attributes(),
+                )
             } else if new_octad && old_octad {
-                (merge_octad(old.ch, new.ch), new.format, new.attributes)
+                (
+                    merge_octad(old.ch, new.ch),
+                    new.format,
+                    new.style.attributes(),
+                )
             } else if new_ch_invisible && !new_bg_no_color {
-                (old.ch, old.format, old.attributes)
+                (old.ch, old.format, old.style.attributes())
             } else {
-                (new.ch, new.format, new.attributes)
+                (new.ch, new.format, new.style.attributes())
             };
 
             let (fg, no_fg_color) = if new_ch_invisible && new_bg_opaque {
                 (Color::CLEAR, true)
             } else if new_ch_invisible {
                 if new_bg_invisible && old_bg_no_color {
-                    (old.fg, false)
+                    (old_fg, false)
                 } else if new_bg_translucent {
-                    (blend_source_over(old.fg, new.bg), false)
+                    (blend_source_over(old_fg, new_bg), false)
                 } else {
-                    (old.fg, old_fg_no_color)
+                    (old_fg, old_fg_no_color)
                 }
             } else if new_ch_translucent {
                 let bottom_color = if !old_ch_invisible {
-                    old.fg
+                    old_fg
                 } else if old_bg_no_color && new_bg_invisible {
                     default_blending_color
                 } else if old_bg_no_color && new_bg_translucent {
-                    blend_source_over(default_blending_color, new.bg)
+                    blend_source_over(default_blending_color, new_bg)
                 } else if new_bg_opaque {
-                    new.bg
+                    new_bg
                 } else if old_bg_opaque && new_bg_translucent {
-                    blend_source_over(old.bg, new.bg)
+                    blend_source_over(old_bg, new_bg)
                 } else if old_bg_opaque {
-                    old.bg
+                    old_bg
                 } else {
                     Color::CLEAR
                 };
-                (blend_source_over(bottom_color, new.fg), new_fg_no_color)
+                (blend_source_over(bottom_color, new_fg), new_fg_no_color)
             } else {
-                (new.fg, new_fg_no_color)
+                (new_fg, new_fg_no_color)
             };
 
             let (bg, no_bg_color) = if new_bg_no_color || (old_bg_no_color && new_bg_invisible) {
                 (Color::CLEAR, true)
             } else if new_bg_invisible {
-                (old.bg, false)
+                (old_bg, false)
             } else if new_bg_translucent {
                 let bottom_color = if old_bg_no_color {
                     default_blending_color
                 } else {
-                    old.bg
+                    old_bg
                 };
-                (blend_source_over(bottom_color, new.bg), false)
+                (blend_source_over(bottom_color, new_bg), false)
             } else {
-                (new.bg, false)
+                (new_bg, false)
             };
 
             (ch, format, attributes, fg, no_fg_color, bg, no_bg_color)
@@ -160,6 +177,34 @@ impl DefaultCompositor {
                 Attributes::empty()
             });
 
-        Cell { ch, style, format }
+        Cell {
+            ch,
+            style: Style::new(fg, bg, attributes),
+            format,
+        }
     }
+}
+
+#[inline]
+fn merge_octad(a: char, b: char) -> char {
+    let mask_a = (a as u32) - 0x2800;
+    let mask_b = (b as u32) - 0x2800;
+    std::char::from_u32(0x2800 + (mask_a | mask_b)).unwrap()
+}
+
+#[inline]
+fn merge_blocktad(a: char, b: char) -> char {
+    todo!();
+    // let mask_a = BLOCKTAD_CHAR_LUT
+    //     .iter()
+    //     .position(|&c| c == a)
+    //     .expect("char not in BLOCKTAD LUT") as u8;
+    // let mask_b = BLOCKTAD_CHAR_LUT
+    //     .iter()
+    //     .position(|&c| c == b)
+    //     .expect("char not in BLOCKTAD LUT") as u8;
+
+    // let merged_mask = mask_a | mask_b;
+
+    // BLOCKTAD_CHAR_LUT[merged_mask as usize]
 }

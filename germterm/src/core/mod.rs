@@ -11,7 +11,7 @@ use crate::{
     cell::Cell,
     core::{
         buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
-        compositor::Compositor,
+        compositor::{Compositor, DefaultCompositor},
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, FrameTimer, Timer},
@@ -67,7 +67,7 @@ impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> 
     }
 }
 
-impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
+impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> {
     pub fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
         let mut fc = FrameContext {
             total_time: self.timer.total_time,
