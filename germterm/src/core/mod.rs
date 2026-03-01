@@ -11,6 +11,7 @@ use crate::{
     cell::Cell,
     core::{
         buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
+        compositor::Compositor,
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, FrameTimer, Timer},
@@ -23,14 +24,15 @@ pub struct DrawCall<'a> {
     pub cell: &'a Cell,
 }
 
-pub struct Engine<Timed: FrameTimer, Buf> {
+pub struct Engine<Timed: FrameTimer, Buf, Comp> {
     timer: Timer<Timed>,
     buffer: Buf,
+    compositor: Comp,
 }
 
-impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
+impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> {
     /// Creates a new `Engine` with the given timer and buffer.
-    pub fn new(timer: Timed, buffer: Buf) -> Self
+    pub fn new(timer: Timed, buffer: Buf, compositor: Comp) -> Self
     where
         Timed::Delta: Default,
     {
@@ -41,6 +43,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
                 delta: Default::default(),
             },
             buffer,
+            compositor,
         }
     }
 
@@ -76,7 +79,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     }
 }
 
-impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
+impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer, Comp: Compositor> Engine<Timed, Buf, Comp> {
     /// Runs the engine loop.
     ///
     /// Initializes the terminal, then repeatedly calls `update` until it returns
@@ -143,12 +146,13 @@ pub fn run(
     w: &mut impl Write,
     size: Size,
     update: impl FnMut(
-        &mut Engine<DefaultTimer, DiffedBuffers<FlatBuffer>>,
+        &mut Engine<DefaultTimer, DiffedBuffers<FlatBuffer>, DefaultCompositor>,
     ) -> ControlFlow<std::io::Result<()>>,
 ) -> std::io::Result<()> {
     let mut eng = Engine::new(
         DefaultTimer::new(),
         DiffedBuffers::new(size, FlatBuffer::new(size), FlatBuffer::new(size)),
+        DefaultCompositor::new(),
     );
 
     eng.run(&mut CrosstermRenderer::new(w), update)?
