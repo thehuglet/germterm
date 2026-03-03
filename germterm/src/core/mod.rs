@@ -6,13 +6,15 @@ pub mod widget;
 
 use std::{io::Write, ops::ControlFlow};
 
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
 use crate::{
     cell::Cell,
     core::{
         buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
-        timer::{DefaultTimer, FrameTimer, Timer},
+        timer::{DefaultTimer, FrameTimer, Timer, TimerDelta},
         widget::{FrameContext, Widget},
     },
 };
@@ -22,14 +24,42 @@ pub struct DrawCall<'a> {
     pub cell: &'a Cell,
 }
 
+#[derive(Clone, Copy, Debug, Hash)]
+pub struct DisplayWidth {
+    char_width: fn(char) -> u16,
+    str_width: fn(&str) -> u16,
+}
+
+impl DisplayWidth {
+    #[inline(always)]
+    pub fn char_width(self, ch: char) -> u16 {
+        (self.char_width)(ch)
+    }
+
+    #[inline(always)]
+    pub fn str_width(self, s: &str) -> u16 {
+        (self.str_width)(s)
+    }
+}
+
+impl Default for DisplayWidth {
+    fn default() -> Self {
+        Self {
+            char_width: |c| UnicodeWidthChar::width(c).unwrap_or(0) as u16,
+            str_width: |s| UnicodeWidthStr::width(s) as u16,
+        }
+    }
+}
+
 pub struct Engine<Timed: FrameTimer, Buf> {
     timer: Timer<Timed>,
     buffer: Buf,
+    display_width: DisplayWidth,
 }
 
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     /// Creates a new `Engine` with the given timer and buffer.
-    pub fn new(timer: Timed, buffer: Buf) -> Self
+    pub fn new(timer: Timed, buffer: Buf, display_width: DisplayWidth) -> Self
     where
         Timed::Delta: Default,
     {
@@ -40,6 +70,7 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
                 delta: Default::default(),
             },
             buffer,
+            display_width,
         }
     }
 
@@ -64,11 +95,12 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 }
 
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
-    pub fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
+    pub fn draw(&mut self, area: Rect, widget: impl Widget<Timed::Delta>) {
         let mut fc = FrameContext {
             total_time: self.timer.total_time,
             delta: self.timer.delta,
             buffer: &mut SubBuffer::new(&mut self.buffer, area),
+            display_width: self.display_width,
         };
 
         widget.draw(&mut fc);
@@ -148,6 +180,7 @@ pub fn run(
     let mut eng = Engine::new(
         DefaultTimer::new(),
         DiffedBuffers::new(size, FlatBuffer::new(size), FlatBuffer::new(size)),
+        Default::default(),
     );
 
     eng.run(&mut CrosstermRenderer::new(w), update)?
