@@ -1,14 +1,23 @@
 pub mod set;
+pub mod title;
 
 use std::marker::PhantomData;
 
 use bitflags::bitflags;
 
 use crate::core::{
+    DisplayWidth,
     buffer::{Buffer, slice::SubBuffer},
-    draw::{Position, Rect},
+    draw::{Position, Rect, Size},
     timer::TimerDelta,
-    widget::{FrameContext, Widget, block::set::BlockSet},
+    widget::{
+        FrameContext, Widget,
+        block::{
+            set::BlockSet,
+            title::{Title, TitleAlignment, TitlePosition},
+        },
+        text::{LineWidth, line::Line},
+    },
 };
 
 bitflags! {
@@ -20,43 +29,127 @@ bitflags! {
     }
 }
 
-pub struct Block<D: TimerDelta, W: Widget<D>, B> {
-    widget: W,
+pub struct Block<'a, D, B, T = Line<'a>> {
     set: B,
     sides: BorderSides,
+    titles: &'a [Title<T>],
     _timer: PhantomData<D>,
 }
 
-impl<D: TimerDelta, W: Widget<D>, B> Block<D, W, B> {
-    pub fn new(widget: W, set: B) -> Self {
+impl<'a, D, B> Block<'a, D, B> {
+    pub fn new(set: B) -> Self {
         Self {
-            widget,
             set,
             sides: BorderSides::all(),
+            titles: &[],
             _timer: PhantomData,
+        }
+    }
+
+    pub fn with_titles(mut self, titles: &'a [Title<Line<'a>>]) -> Self {
+        self.titles = titles;
+        self
+    }
+}
+
+impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T> {
+    pub fn inner_area(&self, sz: Size, display_width: &DisplayWidth) -> Rect {
+        let set = &self.set;
+        let left_offset =
+            self.sides.contains(BorderSides::LEFT) as u16 * set.left_width(display_width) as u16;
+        let right_offset =
+            self.sides.contains(BorderSides::RIGHT) as u16 * set.right_width(display_width) as u16;
+        let top_offset = self.sides.contains(BorderSides::TOP) as u16;
+        let bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
+
+        // just return the whole area if the area will just be filled with borders
+        //
+        // the content inside takes priority over the border if needed
+        if (sz.width <= left_offset + right_offset) || sz.height <= top_offset + bottom_offset {
+            return Rect::new(Position::ZERO, sz);
+        }
+
+        Rect::new(
+            Position::new(left_offset, top_offset),
+            Size::new(sz.width - right_offset, sz.height - bottom_offset),
+        )
+    }
+
+    fn render_titles<Buf: Buffer>(
+        &self,
+        ctx: &mut FrameContext<'_, Buf, D>,
+        titles: impl Iterator<Item = &'a Title<T>>,
+        y_pos: u16,
+        left_offset: u16,
+        right_offset: u16,
+    ) {
+        let size = ctx.buffer().size();
+        let free_width = size
+            .width
+            .saturating_sub(left_offset)
+            .saturating_sub(right_offset);
+        if free_width == 0 {
+            return;
+        }
+        for title in titles {
+            let title_width = title.inner().width(&ctx.display_width);
+            let total_time = ctx.total_time;
+            let delta = ctx.delta;
+            let display_width = ctx.display_width;
+            match title.alignment() {
+                TitleAlignment::Left => {
+                    let mut sub = SubBuffer::new(
+                        ctx.buffer_mut(),
+                        Rect::new(
+                            Position::new(left_offset, y_pos),
+                            Size::new(title_width.min(free_width), 1),
+                        ),
+                    );
+                    title.inner().draw(&mut FrameContext {
+                        total_time,
+                        delta,
+                        display_width,
+                        buffer: &mut sub,
+                    });
+                }
+                TitleAlignment::Center => {
+                    let mut sub = SubBuffer::new(
+                        ctx.buffer_mut(),
+                        Rect::new(
+                            Position::new(size.width.saturating_sub(title_width / 2), y_pos),
+                            Size::new(title_width.min(free_width), 1),
+                        ),
+                    );
+
+                    title.inner().draw(&mut FrameContext {
+                        total_time,
+                        delta,
+                        display_width,
+                        buffer: &mut sub,
+                    });
+                }
+                TitleAlignment::Right => todo!(),
+            }
         }
     }
 }
 
-impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
-    fn draw(&mut self, ctx: &mut FrameContext<'_, impl Buffer, D>) {
+impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Block<'a, D, B, T> {
+    fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, D>) {
         let size = ctx.buffer().size();
         if size.area() == 0 {
             return;
         }
 
-        let delta = ctx.delta;
-        let total_time = ctx.total_time;
-        let buf = ctx.buffer_mut();
         let x_end = size.width.saturating_sub(1).max(1);
         let left_offset = self.sides.contains(BorderSides::LEFT) as u16;
         let right_offset = self.sides.contains(BorderSides::RIGHT) as u16;
         let top_offset = self.sides.contains(BorderSides::TOP) as u16;
-        let bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
+        let _bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
 
         // top left corner
         if self.sides.contains(BorderSides::LEFT) && self.sides.contains(BorderSides::TOP) {
-            let cur = buf.get_cell_mut(Position::ZERO);
+            let cur = ctx.buffer_mut().get_cell_mut(Position::ZERO);
             cur.ch = self
                 .set
                 .top_left(&cur.ch.to_string())
@@ -67,8 +160,8 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
 
         // top side
         if self.sides.contains(BorderSides::TOP) && size.width > 2 {
-            for x in 1..x_end {
-                let cur = buf.get_cell_mut(Position { x, y: 0 });
+            for x in left_offset..x_end {
+                let cur = ctx.buffer_mut().get_cell_mut(Position { x, y: 0 });
                 cur.ch = self
                     .set
                     .top(&cur.ch.to_string())
@@ -76,6 +169,14 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
                     .next()
                     .unwrap_or_default();
             }
+
+            // Draw the top titles
+            let top_titles = self
+                .titles
+                .as_ref()
+                .iter()
+                .filter(|title| title.position() == TitlePosition::Top);
+            self.render_titles(ctx, top_titles, 0, left_offset, right_offset);
         }
 
         // top right corner
@@ -83,7 +184,7 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
             && self.sides.contains(BorderSides::TOP)
             && size.width > 1
         {
-            let cur = buf.get_cell_mut(Position {
+            let cur = ctx.buffer_mut().get_cell_mut(Position {
                 x: size.width - 1,
                 y: 0,
             });
@@ -100,8 +201,8 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
             let h_end = size.height.saturating_sub(1).max(1);
             // Left side
             if self.sides.contains(BorderSides::LEFT) {
-                for y in 1..h_end {
-                    let cur = buf.get_cell_mut(Position { x: 0, y });
+                for y in top_offset..h_end {
+                    let cur = ctx.buffer_mut().get_cell_mut(Position { x: 0, y });
                     cur.ch = self
                         .set
                         .left(&cur.ch.to_string())
@@ -113,8 +214,8 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
 
             // Right side
             if self.sides.contains(BorderSides::RIGHT) {
-                for y in 1..h_end {
-                    let cur = buf.get_cell_mut(Position {
+                for y in top_offset..h_end {
+                    let cur = ctx.buffer_mut().get_cell_mut(Position {
                         x: size.width - 1,
                         y,
                     });
@@ -133,7 +234,7 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
             && self.sides.contains(BorderSides::LEFT)
             && size.height > 1
         {
-            let cur = buf.get_cell_mut(Position {
+            let cur = ctx.buffer_mut().get_cell_mut(Position {
                 x: 0,
                 y: size.height - 1,
             });
@@ -148,8 +249,8 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
         // bottom
         if self.sides.contains(BorderSides::BOTTOM) && size.width > 2 {
             let y = size.height - 1;
-            for x in 1..x_end {
-                let cur = buf.get_cell_mut(Position { x, y });
+            for x in left_offset..x_end {
+                let cur = ctx.buffer_mut().get_cell_mut(Position { x, y });
                 cur.ch = self
                     .set
                     .bottom(&cur.ch.to_string())
@@ -164,7 +265,7 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
             && self.sides.contains(BorderSides::RIGHT)
             && size.width > 1
         {
-            let cur = buf.get_cell_mut(Position {
+            let cur = ctx.buffer_mut().get_cell_mut(Position {
                 x: size.width - 1,
                 y: size.height - 1,
             });
@@ -175,22 +276,6 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
                 .next()
                 .unwrap_or_default();
         }
-
-        if size.width > 2 && size.height > 2 {
-            self.widget.draw(&mut FrameContext {
-                total_time,
-                delta,
-                buffer: &mut SubBuffer::new(
-                    buf,
-                    Rect::from_xywh(
-                        left_offset,
-                        top_offset,
-                        size.width - (left_offset + right_offset),
-                        size.height - (top_offset + bottom_offset),
-                    ),
-                ),
-            });
-        }
     }
 }
 
@@ -198,23 +283,19 @@ impl<D: TimerDelta, W: Widget<D>, B: BlockSet> Widget<D> for Block<D, W, B> {
 mod tests {
     use super::*;
     use crate::core::{
-        buffer::paired::PairedBuffer, draw::Size, timer::NoDelta,
+        DisplayWidth, buffer::paired::PairedBuffer, draw::Size, timer::NoDelta,
         widget::block::set::SimpleBorderSet,
     };
-
-    struct EmptyWidget;
-    impl Widget<NoDelta> for EmptyWidget {
-        fn draw(&mut self, _ctx: &mut FrameContext<'_, impl Buffer, NoDelta>) {}
-    }
 
     #[test]
     fn test_block_draw_borders() {
         let mut buf = PairedBuffer::new(Size::new(3, 3));
-        let mut block = Block::new(EmptyWidget, SimpleBorderSet::ASCII);
+        let block = Block::new(SimpleBorderSet::ASCII);
         let mut ctx = FrameContext {
             total_time: NoDelta::new(),
             delta: NoDelta::new(),
             buffer: &mut buf,
+            display_width: DisplayWidth::default(),
         };
 
         block.draw(&mut ctx);
@@ -236,25 +317,14 @@ mod tests {
         use std::cell::Cell;
         use std::rc::Rc;
 
-        struct SpyWidget {
-            drawn: Rc<Cell<bool>>,
-        }
-        impl Widget<NoDelta> for SpyWidget {
-            fn draw(&mut self, _ctx: &mut FrameContext<'_, impl Buffer, NoDelta>) {
-                self.drawn.set(true);
-            }
-        }
-
         let mut buf = PairedBuffer::new(Size::new(5, 5));
         let drawn = Rc::new(Cell::new(false));
-        let spy = SpyWidget {
-            drawn: drawn.clone(),
-        };
-        let mut block = Block::new(spy, SimpleBorderSet::ASCII);
+        let block = Block::new(SimpleBorderSet::ASCII);
         let mut ctx = FrameContext {
             total_time: NoDelta::new(),
             delta: NoDelta::new(),
             buffer: &mut buf,
+            display_width: DisplayWidth::default(),
         };
 
         block.draw(&mut ctx);

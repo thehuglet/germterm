@@ -1,3 +1,5 @@
+use crate::core::DisplayWidth;
+
 /// Common border styles for block widgets.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub enum BorderStyle {
@@ -19,10 +21,12 @@ pub trait BlockSet {
     fn top_left(&self, cur: &str) -> &str;
     fn top_right(&self, cur: &str) -> &str;
     fn right(&self, cur: &str) -> &str;
+    fn right_width(&self, display_width: &DisplayWidth) -> u8;
     fn bottom(&self, cur: &str) -> &str;
     fn bottom_left(&self, cur: &str) -> &str;
     fn bottom_right(&self, cur: &str) -> &str;
     fn left(&self, cur: &str) -> &str;
+    fn left_width(&self, display_width: &DisplayWidth) -> u8;
 }
 
 /// A UTF-8 border glyph stored inline as a byte array.
@@ -202,5 +206,13 @@ impl BlockSet for SimpleBorderSet {
     }
     fn bottom_right(&self, _cur: &str) -> &str {
         self.bottom_right.as_str()
+    }
+
+    fn right_width(&self, _display_width: &DisplayWidth) -> u8 {
+        1
+    }
+
+    fn left_width(&self, _display_width: &DisplayWidth) -> u8 {
+        1
     }
 }
