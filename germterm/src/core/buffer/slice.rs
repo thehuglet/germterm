@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
 use crate::{
     cell::Cell,
     core::{
-        buffer::{Buffer, ErrorOutOfBoundsAxises},
+        buffer::{Buffer, ErrorOutOfBoundsAxises, flat::FlatBuffer},
         draw::{Position, Rect, Size},
     },
 };
@@ -16,18 +18,23 @@ use crate::{
 /// [`FrameContext`](crate::core::widget::FrameContext) or any other
 /// context expecting a buffer without the callee knowing it operates on
 /// a sub-region.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
     inner: &'a mut Buf,
     // Never make this public as we never want a widget to grow its area.
     area: Rect,
+    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     /// Creates a new `SubBuffer` viewing into `inner` at the given
     /// `origin` with the given drawable `size`.
     pub fn new(inner: &'a mut Buf, area: Rect) -> Self {
-        Self { inner, area }
+        Self {
+            inner,
+            area,
+            layers: BTreeMap::new(),
+        }
     }
 
     /// The top-left corner of this subbuffer in the parent buffer's
@@ -181,6 +188,10 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
         };
         self.inner.get_cell_mut_checked(translated)
     }
+
+    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
+        &mut self.layers
+    }
 }
 
 // This section is kind of hacky.
@@ -189,11 +200,13 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
 // type a bit of unsafe to reduce duplication.
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use crate::{
         buffer_tests,
         cell::Cell,
         core::{
-            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
+            buffer::{Buffer, flat::FlatBuffer, paired::PairedBuffer, slice::SubBuffer},
             draw::{Position, Rect, Size},
         },
     };
@@ -204,7 +217,10 @@ mod tests {
         ..Cell::EMPTY
     };
 
-    struct OwnedSubBuffer(SubBuffer<'static, PairedBuffer>);
+    struct OwnedSubBuffer(
+        SubBuffer<'static, PairedBuffer>,
+        BTreeMap<isize, FlatBuffer>,
+    );
 
     impl OwnedSubBuffer {
         fn new(sz: Size) -> Self {
@@ -213,7 +229,10 @@ mod tests {
             inner.fill(TEST_CELL);
 
             SubBuffer::new(inner, Rect::new(Position::ZERO, sz)).clear();
-            OwnedSubBuffer(SubBuffer::new(inner, Rect::new(Position::ZERO, sz)))
+            OwnedSubBuffer(
+                SubBuffer::new(inner, Rect::new(Position::ZERO, sz)),
+                BTreeMap::new(),
+            )
         }
     }
 
@@ -324,6 +343,12 @@ mod tests {
             pos: Position,
         ) -> Result<&mut crate::cell::Cell, crate::core::buffer::ErrorOutOfBoundsAxises> {
             self.0.get_cell_mut_checked(pos)
+        }
+
+        fn layers(
+            &mut self,
+        ) -> &mut std::collections::BTreeMap<isize, crate::core::buffer::flat::FlatBuffer> {
+            &mut self.1
         }
     }
 

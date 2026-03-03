@@ -1,11 +1,15 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::BTreeMap};
 
 use super::{Buffer, DrawCall, Drawer};
 #[cfg(test)]
 use crate::{buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests};
 use crate::{
     cell::Cell,
-    core::{Position, buffer::ResizableBuffer, draw::Size},
+    core::{
+        Position,
+        buffer::{ResizableBuffer, flat::FlatBuffer},
+        draw::Size,
+    },
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -32,6 +36,7 @@ pub struct PairedBuffer {
     size: Size,
     frames: Vec<[Cell; 2]>,
     order: FrameOrder,
+    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl PairedBuffer {
@@ -43,6 +48,7 @@ impl PairedBuffer {
             size,
             frames: vec![[Cell::EMPTY; 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
+            layers: BTreeMap::new(),
         }
     }
 
@@ -125,6 +131,10 @@ impl Buffer for PairedBuffer {
 
     fn end_frame(&mut self) {
         self.swap_frames();
+    }
+
+    fn layers(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
+        &mut self.layers
     }
 }
 

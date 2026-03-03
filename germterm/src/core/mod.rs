@@ -8,15 +8,17 @@ pub mod widget;
 use std::{io::Write, ops::ControlFlow};
 
 use crate::{
-    cell::Cell,
+    cell::{Cell, CellFormat},
+    color::Color,
     core::{
-        buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
-        compositor::{Compositor, DefaultCompositor},
+        buffer::{Buffer, Drawer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
+        compositor::compose_buffers,
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
+    style::{Attributes, Style},
 };
 
 pub struct DrawCall<'a> {
@@ -24,15 +26,14 @@ pub struct DrawCall<'a> {
     pub cell: &'a Cell,
 }
 
-pub struct Engine<Timed: FrameTimer, Buf, Comp> {
+pub struct Engine<Timed: FrameTimer, Buf> {
     timer: Timer<Timed>,
     buffer: Buf,
-    compositor: Comp,
 }
 
-impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> {
+impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     /// Creates a new `Engine` with the given timer and buffer.
-    pub fn new(timer: Timed, buffer: Buf, compositor: Comp) -> Self
+    pub fn new(timer: Timed, buffer: Buf) -> Self
     where
         Timed::Delta: Default,
     {
@@ -43,7 +44,6 @@ impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> 
                 delta: Default::default(),
             },
             buffer,
-            compositor,
         }
     }
 
@@ -67,7 +67,7 @@ impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> 
     }
 }
 
-impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> {
+impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     pub fn draw(&mut self, area: Rect, mut widget: impl Widget<Timed::Delta>) {
         let mut fc = FrameContext {
             total_time: self.timer.total_time,
@@ -79,7 +79,7 @@ impl<Timed: FrameTimer, Buf: Buffer, Comp: Compositor> Engine<Timed, Buf, Comp> 
     }
 }
 
-impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer, Comp: Compositor> Engine<Timed, Buf, Comp> {
+impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
     /// Runs the engine loop.
     ///
     /// Initializes the terminal, then repeatedly calls `update` until it returns
@@ -121,8 +121,25 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer, Comp: Compositor> Engine<T
 
                 let should_exit = update(self);
 
+                // At this point we already have pre-composed layers,
+                // now the goal is to compose them to one flat buffer
+                let mut layers = std::mem::take(self.buffer.layers());
+                //     let color_zero = Color::new(0, 0, 0, 0);
+                //     let cell_zero = Cell {
+                //         ch: ' ',
+                //         style: Style::new(color_zero, color_zero, Attributes::empty()),
+                //         format: CellFormat::Standard,
+                //     };
+                //     let mut acc = FlatBuffer::new_with_cell(self.buffer.size(), cell_zero);
+
+                // for (_, buffer) in layers.into_iter() {
+                //         compose_buffers(&mut acc, &buffer);
+                //     }
+
                 renderer.start_frame()?;
-                renderer.render(self.buffer.draw())?;
+                // renderer.render(self.buffer.draw())?;
+                let buf_foo = layers.iter_mut().last().unwrap().1;
+                renderer.render(buf_foo.draw())?;
 
                 self.buffer.end_frame();
                 renderer.end_frame()?;
@@ -146,13 +163,12 @@ pub fn run(
     w: &mut impl Write,
     size: Size,
     update: impl FnMut(
-        &mut Engine<DefaultTimer, DiffedBuffers<FlatBuffer>, DefaultCompositor>,
+        &mut Engine<DefaultTimer, DiffedBuffers<FlatBuffer>>,
     ) -> ControlFlow<std::io::Result<()>>,
 ) -> std::io::Result<()> {
     let mut eng = Engine::new(
         DefaultTimer::new(),
         DiffedBuffers::new(size, FlatBuffer::new(size), FlatBuffer::new(size)),
-        DefaultCompositor::new(),
     );
 
     eng.run(&mut CrosstermRenderer::new(w), update)?

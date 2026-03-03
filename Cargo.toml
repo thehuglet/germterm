@@ -12,6 +12,7 @@ members = [
     "examples/particle-benchmark",
     "examples/erase-contents",
     "examples/line-spans",
+    "examples/modular-engine-blending",
 ]
 
 [workspace.package]

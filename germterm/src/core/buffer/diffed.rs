@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
+
 use crate::{
     cell::Cell,
     core::{
         Position,
-        buffer::{Drawer, ResizableBuffer},
+        buffer::{Drawer, ResizableBuffer, flat::FlatBuffer},
+        compositor::compose_cell,
         draw::Size,
     },
 };
@@ -30,6 +33,7 @@ pub struct DiffedBuffers<Buf: Buffer> {
     size: Size,
     cells: [Buf; 2],
     frame_order: FrameOrder,
+    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl<Buf: Buffer> DiffedBuffers<Buf> {
@@ -42,6 +46,7 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
             size,
             cells: [buf1, buf2],
             frame_order: FrameOrder::CurrentOld,
+            layers: BTreeMap::new(),
         }
     }
 
@@ -98,6 +103,10 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
         let idx = self.frame_order as usize;
         self.cells[idx].end_frame();
         self.swap_frames();
+    }
+
+    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
+        &mut self.layers
     }
 }
 

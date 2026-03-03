@@ -5,10 +5,12 @@ pub mod slice;
 pub mod test;
 pub mod utils;
 
+use std::collections::BTreeMap;
+
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    core::{Position, draw::Size},
+    core::{Position, buffer::flat::FlatBuffer, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -88,9 +90,31 @@ pub trait Buffer {
     /// Called at the beginning of a frame. Implementations may use this to
     /// clear or prepare the buffer for new draw commands.
     fn start_frame(&mut self) {}
+
     /// Called at the end of a frame. Implementations may use this to
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}
+
+    /// Returns a [`BTreeMap`] holding all layers.
+    /// Implementors are expected to handle storage of layers.
+    fn layers(&mut self) -> &mut BTreeMap<isize, FlatBuffer>;
+
+    /// Retrieves a [`FlatBuffer`] layer at a specified `z_index`.
+    /// If the layer does not exist, a new one is created.
+    fn layer(&mut self, z_index: isize) -> &mut FlatBuffer {
+        let self_ptr = self as *mut Self;
+
+        self.layers().entry(z_index).or_insert_with(|| {
+            // SAFETY:
+            // - `self_ptr` points to a valid `Self` and will remain valid for the duration of this closure
+            // - We only call `size()`, which does not touch `self.layers`.
+            //
+            // Without `unsafe`, we'd have to precompute the new buffer size even
+            // when we don't need to create a new layer`, which wastes CPU cycles.
+            let size = unsafe { (*self_ptr).size() };
+            FlatBuffer::new(size)
+        })
+    }
 }
 
 pub trait ResizableBuffer: Buffer {
