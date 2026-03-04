@@ -133,7 +133,22 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                         buffer: &mut sub,
                     });
                 }
-                TitleAlignment::Right => todo!(),
+                TitleAlignment::Right => {
+                    let mut sub = SubBuffer::new(
+                        ctx.buffer_mut(),
+                        Rect::new(
+                            Position::new(size.width.saturating_sub(title_width), y_pos),
+                            Size::new(title_width.min(free_width), 1),
+                        ),
+                    );
+
+                    title.inner().draw(&mut FrameContext {
+                        total_time,
+                        delta,
+                        buffer: &mut sub,
+                        display_width,
+                    });
+                }
             }
         }
     }
