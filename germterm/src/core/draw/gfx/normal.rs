@@ -167,14 +167,12 @@ pub fn draw_style<Buf: Buffer>(buf: &mut Buf, area: Rect, style: Style) -> u32 {
         return 0;
     }
 
-    let sub = SubBuffer::new(buf, area);
+    let mut sub = SubBuffer::new(buf, area);
     let sz = sub.size();
 
-    // TODO: finish implementing this once Cell stores Style
     for y in 0..sz.height {
         for x in 0..sz.width {
-            todo!();
-            // sub.get_cell_mut(Position { x, y }).style.merge(style);
+            sub.get_cell_mut(Position { x, y }).style.merge(style);
         }
     }
 
