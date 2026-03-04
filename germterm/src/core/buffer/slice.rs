@@ -31,10 +31,28 @@ impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     /// time, so translated positions can never exceed the parent's size.
     /// If `area` lies entirely outside the parent, the resulting `SubBuffer`
     /// has zero size and all drawing operations become no-ops.
+    ///
+    /// # Panics
+    ///
+    /// If the provided area cannot be contained in the provided buffers size.
+    /// If truncating is preferred instead of a panic [`SubBuffer::new_clamped`] can be used.
     pub fn new(inner: &'a mut Buf, area: Rect) -> Self {
-        let parent_rect = Rect::new(Position::ZERO, inner.size());
-        let area = area.intersection(&parent_rect).unwrap_or(Rect::ZERO);
+        let sz = inner.size();
+        assert!(
+            sz.area_is_within(area),
+            "Provided {area:?} cannot be stored inside the provided buffers size {sz:?}"
+        );
         Self { inner, area }
+    }
+
+    pub fn new_clamped(inner: &'a mut Buf, area: Rect) -> Self {
+        let sz = inner.size();
+        Self {
+            inner,
+            area: area
+                .intersection(&Rect::new(Position::ZERO, sz))
+                .unwrap_or_default(),
+        }
     }
 
     /// The top-left corner of this subbuffer in the parent buffer's
@@ -200,7 +218,7 @@ mod tests {
         buffer_tests,
         cell::Cell,
         core::{
-            buffer::{paired::PairedBuffer, slice::SubBuffer, Buffer},
+            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
             draw::{Position, Rect, Size},
         },
     };
