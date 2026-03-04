@@ -45,10 +45,16 @@ impl<'a, D, B> Block<'a, D, B> {
             _timer: PhantomData,
         }
     }
+}
 
-    pub fn with_titles(mut self, titles: &'a [Title<Line<'a>>]) -> Self {
-        self.titles = titles;
-        self
+impl<'a, D: TimerDelta, B, T: Widget<D>> Block<'a, D, B, T> {
+    pub fn with_titles<T2>(self, titles: &'a [Title<T2>]) -> Block<'a, D, B, T2> {
+        Block {
+            set: self.set,
+            sides: self.sides,
+            titles,
+            _timer: PhantomData,
+        }
     }
 }
 
