@@ -18,9 +18,9 @@ bitflags! {
         const KNOWN = Self::BOLD.bits() | Self::ITALIC.bits() | Self::UNDERLINED.bits() | Self::HIDDEN.bits();
         // These are doc hidden as users should not use them
         #[doc(hidden)]
-        const NO_FG_COLOR   = 0b_00010000;
+        const CLEAR_FG   = 0b_00010000;
         #[doc(hidden)]
-        const NO_BG_COLOR   = 0b_00100000;
+        const CLEAR_BG   = 0b_00100000;
     }
 }
 
@@ -53,8 +53,28 @@ impl Style {
         fg: MaybeUninit::uninit(),
         bg: MaybeUninit::uninit(),
         attributes: Attributes::from_bits_truncate(
-            Attributes::NO_FG_COLOR.bits() | Attributes::NO_BG_COLOR.bits(),
+            Attributes::CLEAR_FG.bits() | Attributes::CLEAR_BG.bits(),
         ),
+    };
+
+    pub const CLEAR: Self = Style {
+        fg: MaybeUninit::uninit(),
+        bg: MaybeUninit::uninit(),
+        attributes: Attributes::from_bits_truncate(
+            Attributes::CLEAR_FG.bits() | Attributes::CLEAR_BG.bits(),
+        ),
+    };
+
+    pub const CLEAR_FG: Self = Style {
+        fg: MaybeUninit::uninit(),
+        bg: MaybeUninit::new(Color::TRANSPARENT),
+        attributes: Attributes::from_bits_truncate(Attributes::CLEAR_FG.bits()),
+    };
+
+    pub const CLEAR_BG: Self = Style {
+        fg: MaybeUninit::new(Color::TRANSPARENT),
+        bg: MaybeUninit::uninit(),
+        attributes: Attributes::from_bits_truncate(Attributes::CLEAR_BG.bits()),
     };
 
     pub fn new(
@@ -73,9 +93,9 @@ impl Style {
         let c: Option<Color> = fg.into();
         if let Some(c) = c {
             self.fg.write(c);
-            self.attributes.remove(Attributes::NO_FG_COLOR);
+            self.attributes.remove(Attributes::CLEAR_FG);
         } else {
-            self.attributes |= Attributes::NO_FG_COLOR;
+            self.attributes |= Attributes::CLEAR_FG;
         }
         self
     }
@@ -87,7 +107,7 @@ impl Style {
 
     #[inline]
     pub fn has_fg(&self) -> bool {
-        !self.attributes.contains(Attributes::NO_FG_COLOR)
+        !self.attributes.contains(Attributes::CLEAR_FG)
     }
 
     #[inline]
@@ -95,9 +115,9 @@ impl Style {
         let c: Option<Color> = bg.into();
         if let Some(c) = c {
             self.bg.write(c);
-            self.attributes.remove(Attributes::NO_BG_COLOR);
+            self.attributes.remove(Attributes::CLEAR_BG);
         } else {
-            self.attributes |= Attributes::NO_BG_COLOR;
+            self.attributes |= Attributes::CLEAR_BG;
         }
 
         self
@@ -110,7 +130,7 @@ impl Style {
 
     #[inline]
     pub fn has_bg(&self) -> bool {
-        !self.attributes.contains(Attributes::NO_BG_COLOR)
+        !self.attributes.contains(Attributes::CLEAR_BG)
     }
 
     #[inline]
@@ -373,7 +393,7 @@ mod tests {
     fn set_attributes_internal_color_bits_are_ignored() {
         // Passing the internal sentinel bits via set_attributes should have no effect on
         // the publicly visible attributes() value.
-        let internal = Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR;
+        let internal = Attributes::CLEAR_FG | Attributes::CLEAR_BG;
         let style = Style::default().set_attributes(internal);
         assert_eq!(style.attributes(), Attributes::empty());
     }
@@ -386,8 +406,8 @@ mod tests {
             .with_bg(Color::BLUE)
             .set_attributes(Attributes::BOLD);
         let attrs = style.attributes();
-        assert!(!attrs.contains(Attributes::NO_FG_COLOR));
-        assert!(!attrs.contains(Attributes::NO_BG_COLOR));
+        assert!(!attrs.contains(Attributes::CLEAR_FG));
+        assert!(!attrs.contains(Attributes::CLEAR_BG));
         assert!(attrs.contains(Attributes::BOLD));
     }
 

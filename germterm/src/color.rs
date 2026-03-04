@@ -115,11 +115,11 @@ pub static LERP_LUT_B: [[u8; 256]; 256] = {
 /// let color = Color::new(255, 0, 0, 255);
 /// assert_eq!(color, Color::RED);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Color(pub u32);
 
 impl Color {
-    pub const CLEAR: Self = Self(0x00_00_00_00);
+    pub const TRANSPARENT: Self = Self(0x00_00_00_00);
     pub const WHITE: Self = Self(0xFF_FF_FF_FF);
     pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
     pub const LIGHT_GRAY: Self = Self(0xD3_D3_D3_FF);
@@ -136,7 +136,7 @@ impl Color {
     pub const DARK_GREEN: Self = Self(0x08_48_08_FF);
 
     #[inline]
-    pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Color(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | (a as u32))
     }
 
@@ -171,7 +171,7 @@ impl Color {
     }
 
     #[inline]
-    pub fn with_alpha(&self, a: u8) -> Self {
+    pub fn with_alpha(&self, a: u8) -> Color {
         Color((self.0 & 0xFFFF_FF00) | a as u32)
     }
 
@@ -185,13 +185,29 @@ impl Color {
     }
 
     #[inline]
-    pub fn from_f32(r: f32, g: f32, b: f32, a: f32) -> Self {
+    pub fn from_f32(r: f32, g: f32, b: f32, a: f32) -> Color {
         Color::new(
             (r.clamp(0.0, 1.0) * 255.0) as u8,
             (g.clamp(0.0, 1.0) * 255.0) as u8,
             (b.clamp(0.0, 1.0) * 255.0) as u8,
             (a.clamp(0.0, 1.0) * 255.0) as u8,
         )
+    }
+
+    /// Converts this color to premultiplied alpha form (rgb *= a).
+    #[inline]
+    pub fn to_premultiplied_alpha(&self) -> Color {
+        let (r, g, b, a) = self.rgba();
+        let r = (r as u16 * a as u16 / 255) as u8;
+        let g = (g as u16 * a as u16 / 255) as u8;
+        let b = (b as u16 * a as u16 / 255) as u8;
+        Color::new(r, g, b, a)
+    }
+}
+
+impl std::fmt::Debug for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Color").field(&self.rgba()).finish()
     }
 }
 
@@ -371,35 +387,22 @@ pub fn lerp(a: Color, b: Color, t: f32) -> Color {
     Color::new(out_r, out_g, out_b, out_a)
 }
 
+/// The parameters `bottom` and `top` have to be
+/// premultiplied by alpha for correct results.
 #[inline]
 pub(crate) fn blend_source_over(bottom: Color, top: Color) -> Color {
     let (tr, tg, tb, ta) = top.rgba();
     let (br, bg, bb, ba) = bottom.rgba();
 
-    let alpha_mult = BLEND_ALPHA_MULT[ta as usize][ba as usize] as u16;
-    let out_a = ta as u16 + alpha_mult;
+    let out_a = ta as u16 + ((ba as u16 * (255 - ta as u16)) / 255);
 
     if out_a == 0 {
-        return Color::CLEAR;
+        return Color::TRANSPARENT;
     }
 
-    #[inline]
-    fn compute_channel(tc: u8, bc: u8, ta: u8, alpha_mult: u16, out_a: u16) -> u8 {
-        // numerator = tc * ta + bc * alpha_mult
-        let tc_ta = MUL_DIV_255[tc as usize][ta as usize] as u16 * 255;
-        let bc_alpha = MUL_DIV_255[bc as usize][alpha_mult as usize] as u16 * 255;
-        let numerator = tc_ta + bc_alpha;
+    let out_r = tr as u16 + ((br as u16 * (255 - ta as u16)) / 255);
+    let out_g = tg as u16 + ((bg as u16 * (255 - ta as u16)) / 255);
+    let out_b = tb as u16 + ((bb as u16 * (255 - ta as u16)) / 255);
 
-        // out_c = (numerator * 255) / out_a
-        let recip = RECIPROCAL_255_OVER_X[out_a as usize] as u32;
-        let result = ((numerator as u32 * recip) + (1 << 7)) >> 8;
-
-        (result >> 8) as u8
-    }
-
-    let out_r = compute_channel(tr, br, ta, alpha_mult, out_a);
-    let out_g = compute_channel(tg, bg, ta, alpha_mult, out_a);
-    let out_b = compute_channel(tb, bb, ta, alpha_mult, out_a);
-
-    Color::new(out_r, out_g, out_b, out_a as u8)
+    Color::new(out_r as u8, out_g as u8, out_b as u8, out_a as u8)
 }

@@ -123,23 +123,17 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
 
                 // At this point we already have pre-composed layers,
                 // now the goal is to compose them to one flat buffer
-                let mut layers = std::mem::take(self.buffer.layers());
-                //     let color_zero = Color::new(0, 0, 0, 0);
-                //     let cell_zero = Cell {
-                //         ch: ' ',
-                //         style: Style::new(color_zero, color_zero, Attributes::empty()),
-                //         format: CellFormat::Standard,
-                //     };
-                //     let mut acc = FlatBuffer::new_with_cell(self.buffer.size(), cell_zero);
+                let layers = std::mem::take(self.buffer.layers());
+                let mut acc_buf = FlatBuffer::new_with_cell(self.buffer.size(), Cell::CLEAR);
 
-                // for (_, buffer) in layers.into_iter() {
-                //         compose_buffers(&mut acc, &buffer);
-                //     }
+                for (_, buf) in layers.into_iter() {
+                    compose_buffers(&mut acc_buf, &buf);
+                }
 
                 renderer.start_frame()?;
                 // renderer.render(self.buffer.draw())?;
-                let buf_foo = layers.iter_mut().last().unwrap().1;
-                renderer.render(buf_foo.draw())?;
+                // let buf_foo = layers.iter_mut().last().unwrap().1;
+                renderer.render(acc_buf.draw())?;
 
                 self.buffer.end_frame();
                 renderer.end_frame()?;

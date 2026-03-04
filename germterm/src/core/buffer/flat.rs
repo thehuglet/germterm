@@ -1,9 +1,17 @@
-use std::{cmp::Ordering, collections::BTreeMap, ptr};
+use std::{
+    cell,
+    cmp::Ordering,
+    collections::BTreeMap,
+    ptr,
+    slice::{Iter, IterMut},
+};
 
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises, ResizableBuffer};
 use crate::{
-    cell::Cell,
+    cell::{Cell, CellFormat},
+    color::Color,
     core::{Position, compositor::compose_cell, draw::Size},
+    style::{Attributes, Style},
 };
 
 /// A flat buffer that stores every cell in a single `Vec<Cell>` in row-major
@@ -25,9 +33,14 @@ pub struct FlatBuffer {
 
 impl FlatBuffer {
     pub fn new(size: Size) -> Self {
+        let layer_base_cell = Cell {
+            ch: ' ',
+            style: Style::new(Color::TRANSPARENT, Color::TRANSPARENT, Attributes::empty()),
+            format: CellFormat::Standard,
+        };
         Self {
             size,
-            cells: vec![Cell::EMPTY; size.area() as usize],
+            cells: vec![layer_base_cell; size.area() as usize],
             layers: BTreeMap::new(),
         }
     }
@@ -38,6 +51,14 @@ impl FlatBuffer {
             cells: vec![cell; size.area() as usize],
             layers: BTreeMap::new(),
         }
+    }
+
+    pub fn cells(&self) -> Iter<'_, Cell> {
+        self.cells.iter()
+    }
+
+    pub fn cells_mut(&mut self) -> IterMut<'_, Cell> {
+        self.cells.iter_mut()
     }
 }
 
@@ -62,8 +83,6 @@ impl Buffer for FlatBuffer {
 
         let current_cell = self.get_cell_mut_checked(pos)?;
         compose_cell(current_cell, &cell);
-
-        // self.cells[pos.to_index(self.size.width)] = cell;
         Ok(())
     }
 

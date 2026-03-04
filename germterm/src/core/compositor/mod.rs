@@ -1,11 +1,48 @@
-use crate::{cell::Cell, core::buffer::flat::FlatBuffer};
+use crate::{
+    cell::Cell,
+    color::{Color, blend_source_over},
+    core::buffer::flat::FlatBuffer,
+    style::Attributes,
+};
 
+#[inline]
 pub fn compose_cell(bottom: &mut Cell, top: &Cell) {
-    *bottom = *top;
+    // Cyan is a placeholder here, it should NEVER be used.
+    //
+    // If you ever see cyan where there shouldn't be cyan,
+    // it means something clearly went wrong.
+    let top_fg = top
+        .style
+        .fg()
+        .unwrap_or(Color::CYAN)
+        .to_premultiplied_alpha();
+    let top_bg = top
+        .style
+        .bg()
+        .unwrap_or(Color::CYAN)
+        .to_premultiplied_alpha();
+
+    if top.style.has_fg() {
+        let bottom_fg: Color = bottom.style.fg().unwrap_or(Color::TRANSPARENT);
+        let new_color: Color = blend_source_over(bottom_fg, top_fg);
+        bottom.ch = top.ch;
+        bottom.style = bottom.style.with_fg(new_color);
+    }
+
+    if top.style.has_bg() {
+        let bottom_bg: Color = bottom.style.bg().unwrap_or(Color::TRANSPARENT);
+        let new_color = blend_source_over(bottom_bg, top_bg);
+
+        bottom.ch = top.ch;
+        bottom.style = bottom.style.with_bg(new_color);
+    }
 }
 
-pub fn compose_buffers(bottom: &mut FlatBuffer, top: &FlatBuffer) {
-    todo!();
+#[inline]
+pub fn compose_buffers(bottom_buf: &mut FlatBuffer, top_buf: &FlatBuffer) {
+    for (bottom, top) in bottom_buf.cells_mut().zip(top_buf.cells()) {
+        compose_cell(bottom, top);
+    }
 }
 
 #[inline]

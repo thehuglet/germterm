@@ -22,6 +22,24 @@ impl Cell {
         format: CellFormat::Standard,
     };
 
+    pub const CLEAR: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR,
+        format: CellFormat::Standard,
+    };
+
+    pub const CLEAR_FG: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR_FG,
+        format: CellFormat::Standard,
+    };
+
+    pub const CLEAR_BG: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR_BG,
+        format: CellFormat::Standard,
+    };
+
     pub fn merge(&mut self, other: Self) {
         self.ch = other.ch;
         self.style.merge(other.style);
