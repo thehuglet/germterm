@@ -2,7 +2,9 @@ pub mod block;
 pub mod text;
 
 use crate::core::{
-    DisplayWidth, buffer::Buffer, timer::{Delta, NoDelta, TimerDelta}
+    DisplayWidth,
+    buffer::Buffer,
+    timer::{Delta, NoDelta, TimerDelta},
 };
 
 pub trait Widget<Delta: TimerDelta = NoDelta> {
@@ -17,7 +19,7 @@ impl<W: Widget> Widget<Delta> for W {
                 total_time: NoDelta::new(),
                 delta: NoDelta::new(),
                 buffer: ctx.buffer,
-                display_width: DisplayWidth::default()
+                display_width: ctx.display_width,
             },
         );
     }
@@ -27,7 +29,7 @@ pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoDelta> {
     pub(crate) total_time: Delta,
     pub(crate) delta: Delta,
     pub(crate) buffer: &'a mut Buf,
-    pub(crate) display_width: DisplayWidth
+    pub(crate) display_width: DisplayWidth,
 }
 
 impl<Buf: Buffer + ?Sized, Delta: TimerDelta> FrameContext<'_, Buf, Delta> {
@@ -44,12 +46,17 @@ impl<Buf: Buffer + ?Sized, Delta: TimerDelta> FrameContext<'_, Buf, Delta> {
 
 impl<'a, Buf: Buffer + ?Sized, Delta> FrameContext<'a, Buf, Delta> {
     /// Creates a new `FrameContext`.
-    pub fn new(total_time: Delta, delta: Delta, buffer: &'a mut Buf) -> Self {
+    pub fn new(
+        total_time: Delta,
+        delta: Delta,
+        buffer: &'a mut Buf,
+        display_width: DisplayWidth,
+    ) -> Self {
         Self {
             total_time,
             delta,
             buffer,
-            display_width: DisplayWidth::default()
+            display_width,
         }
     }
 
