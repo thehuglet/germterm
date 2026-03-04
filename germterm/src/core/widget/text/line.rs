@@ -5,7 +5,6 @@ use crate::{
         DisplayWidth,
         buffer::slice::SubBuffer,
         draw::{Position, Rect, Size},
-        timer::NoDelta,
         widget::{
             FrameContext, Widget,
             text::{LineWidth, span::Span},
