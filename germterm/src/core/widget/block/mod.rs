@@ -59,19 +59,24 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
             self.sides.contains(BorderSides::LEFT) as u16 * set.left_width(display_width) as u16;
         let right_offset =
             self.sides.contains(BorderSides::RIGHT) as u16 * set.right_width(display_width) as u16;
+        let horizontal_offset = left_offset.saturating_add(right_offset);
         let top_offset = self.sides.contains(BorderSides::TOP) as u16;
         let bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
+        let vertical_offset = top_offset.saturating_add(bottom_offset);
 
         // just return the whole area if the area will just be filled with borders
         //
         // the content inside takes priority over the border if needed
-        if (sz.width <= left_offset + right_offset) || sz.height <= top_offset + bottom_offset {
+        if (sz.width <= horizontal_offset) || sz.height <= vertical_offset {
             return Rect::new(Position::ZERO, sz);
         }
 
         Rect::new(
             Position::new(left_offset, top_offset),
-            Size::new(sz.width - right_offset, sz.height - bottom_offset),
+            Size::new(
+                sz.width.saturating_sub(horizontal_offset),
+                sz.height.saturating_sub(vertical_offset),
+            ),
         )
     }
 
@@ -116,7 +121,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                     let mut sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
-                            Position::new(size.width.saturating_sub(title_width / 2), y_pos),
+                            Position::new(size.width.saturating_sub(title_width) / 2, y_pos),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
@@ -128,7 +133,22 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                         buffer: &mut sub,
                     });
                 }
-                TitleAlignment::Right => todo!(),
+                TitleAlignment::Right => {
+                    let mut sub = SubBuffer::new(
+                        ctx.buffer_mut(),
+                        Rect::new(
+                            Position::new(size.width.saturating_sub(title_width), y_pos),
+                            Size::new(title_width.min(free_width), 1),
+                        ),
+                    );
+
+                    title.inner().draw(&mut FrameContext {
+                        total_time,
+                        delta,
+                        buffer: &mut sub,
+                        display_width,
+                    });
+                }
             }
         }
     }
@@ -137,18 +157,23 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
 impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Block<'a, D, B, T> {
     fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, D>) {
         let size = ctx.buffer().size();
-        if size.area() == 0 {
+
+        let left_offset = self.sides.contains(BorderSides::LEFT) as u16;
+        let right_offset = self.sides.contains(BorderSides::RIGHT) as u16;
+        let horizontal_offset = left_offset.saturating_add(right_offset);
+        let x_end = size.width.saturating_sub(right_offset);
+        let top_offset = self.sides.contains(BorderSides::TOP) as u16;
+        let bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
+        let vertical_offset = top_offset.saturating_add(bottom_offset);
+        if size.width <= horizontal_offset || size.height <= vertical_offset || size.area() == 0 {
             return;
         }
 
-        let x_end = size.width.saturating_sub(1).max(1);
-        let left_offset = self.sides.contains(BorderSides::LEFT) as u16;
-        let right_offset = self.sides.contains(BorderSides::RIGHT) as u16;
-        let top_offset = self.sides.contains(BorderSides::TOP) as u16;
-        let _bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
-
         // top left corner
-        if self.sides.contains(BorderSides::LEFT) && self.sides.contains(BorderSides::TOP) {
+        if self.sides.contains(BorderSides::LEFT)
+            && self.sides.contains(BorderSides::TOP)
+            && size.width > 0
+        {
             let cur = ctx.buffer_mut().get_cell_mut(Position::ZERO);
             cur.ch = self
                 .set
@@ -159,7 +184,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
         }
 
         // top side
-        if self.sides.contains(BorderSides::TOP) && size.width > 2 {
+        if self.sides.contains(BorderSides::TOP) && size.width > horizontal_offset {
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y: 0 });
                 cur.ch = self
@@ -182,10 +207,10 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
         // top right corner
         if self.sides.contains(BorderSides::RIGHT)
             && self.sides.contains(BorderSides::TOP)
-            && size.width > 1
+            && size.width > 2
         {
             let cur = ctx.buffer_mut().get_cell_mut(Position {
-                x: size.width - 1,
+                x: size.width.saturating_sub(1),
                 y: 0,
             });
             cur.ch = self
@@ -197,12 +222,12 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
         }
 
         // LR sides
-        if size.height > 2 {
-            let h_end = size.height.saturating_sub(1).max(1);
+        if size.height > vertical_offset {
+            let h_end = size.height.saturating_sub(bottom_offset).max(1);
             // Left side
             if self.sides.contains(BorderSides::LEFT) {
                 for y in top_offset..h_end {
-                    let cur = ctx.buffer_mut().get_cell_mut(Position { x: 0, y });
+                    let cur = ctx.buffer_mut().get_cell_mut(Position::new(0, y));
                     cur.ch = self
                         .set
                         .left(&cur.ch.to_string())
@@ -216,7 +241,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             if self.sides.contains(BorderSides::RIGHT) {
                 for y in top_offset..h_end {
                     let cur = ctx.buffer_mut().get_cell_mut(Position {
-                        x: size.width - 1,
+                        x: size.width.saturating_sub(right_offset),
                         y,
                     });
                     cur.ch = self
@@ -230,14 +255,10 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
         }
 
         // bottom left
-        if self.sides.contains(BorderSides::BOTTOM)
-            && self.sides.contains(BorderSides::LEFT)
-            && size.height > 1
-        {
-            let cur = ctx.buffer_mut().get_cell_mut(Position {
-                x: 0,
-                y: size.height - 1,
-            });
+        if self.sides.contains(BorderSides::BOTTOM) && self.sides.contains(BorderSides::LEFT) {
+            let cur = ctx
+                .buffer_mut()
+                .get_cell_mut(Position::new(0, size.height.saturating_sub(1)));
             cur.ch = self
                 .set
                 .bottom_left(&cur.ch.to_string())
@@ -247,8 +268,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
         }
 
         // bottom
-        if self.sides.contains(BorderSides::BOTTOM) && size.width > 2 {
-            let y = size.height - 1;
+        if self.sides.contains(BorderSides::BOTTOM) {
+            let y = size.height.saturating_sub(1);
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y });
                 cur.ch = self
@@ -258,16 +279,21 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                     .next()
                     .unwrap_or_default();
             }
+
+            let bottom_titles = self
+                .titles
+                .as_ref()
+                .iter()
+                .filter(|title| title.position() == TitlePosition::Bottom);
+
+            self.render_titles(ctx, bottom_titles, y, left_offset, right_offset);
         }
 
         // bottom right
-        if self.sides.contains(BorderSides::BOTTOM)
-            && self.sides.contains(BorderSides::RIGHT)
-            && size.width > 1
-        {
+        if self.sides.contains(BorderSides::BOTTOM) && self.sides.contains(BorderSides::RIGHT) {
             let cur = ctx.buffer_mut().get_cell_mut(Position {
-                x: size.width - 1,
-                y: size.height - 1,
+                x: size.width.saturating_sub(1),
+                y: size.height.saturating_sub(1),
             });
             cur.ch = self
                 .set
