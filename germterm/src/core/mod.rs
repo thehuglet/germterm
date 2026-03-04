@@ -14,7 +14,7 @@ use crate::{
         buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
-        timer::{DefaultTimer, FrameTimer, Timer, TimerDelta},
+        timer::{DefaultTimer, FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
 };
