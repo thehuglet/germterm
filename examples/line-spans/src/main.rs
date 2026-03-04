@@ -17,12 +17,16 @@ use germterm::{
     color::Color,
     core::{
         DisplayWidth, Engine,
-        buffer::{Buffer, paired::PairedBuffer},
-        draw::{Rect, Size},
+        buffer::{Buffer, ResizableBuffer, paired::PairedBuffer},
+        draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, Delta},
         widget::{
-            block::{Block, set::SimpleBorderSet, title::Title},
+            block::{
+                Block,
+                set::SimpleBorderSet,
+                title::{Title, TitleAlignment},
+            },
             text::line::Line,
         },
     },
@@ -51,11 +55,26 @@ fn main() -> io::Result<()> {
             })) = event::read()
             {
                 return ControlFlow::Break(());
+            } else if let Ok(Event::Resize(w, h)) = event::read() {
+                engine.buffer_mut().resize(Size::new(w, h));
             }
         }
 
-        let t = engine.total_time();
         let sz = engine.buffer().size();
+
+        if sz.height < 17 {
+            if sz.height >= 1 {
+                engine.draw(
+                    Rect::new(Position::ZERO, sz),
+                    span!("Grow the terminal to view the demo")
+                        .with_bold(true)
+                        .with_fg(Color::RED),
+                );
+            }
+            return ControlFlow::Continue(());
+        }
+
+        let t = engine.total_time();
         let (width, height) = (sz.width, sz.height);
 
         // Row 0: Header bar
@@ -113,7 +132,9 @@ fn main() -> io::Result<()> {
             let title_spans = [span!(" Text Attributes ")
                 .with_fg(Color::WHITE)
                 .with_bold(true)];
-            let titles = [Title::new(Line::new(title_spans.as_slice()))];
+            let titles =
+                [Title::new(Line::new(title_spans.as_slice()))
+                    .with_alignment(TitleAlignment::Left)];
             let block = Block::<f32, _>::new(SimpleBorderSet::SINGLE).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 6, width, 3), block);
 
@@ -199,20 +220,17 @@ fn main() -> io::Result<()> {
             );
         }
 
-        // Last row: Footer
-        if height > 17 {
-            let dim = Style::EMPTY.with_fg(Color::DARK_GRAY);
-            let key = Style::EMPTY.with_fg(Color::YELLOW);
-            let spans = [
-                span!("  Press ").with_style(dim),
-                span!("q").with_style(key),
-                span!(" to quit").with_style(dim),
-            ];
-            engine.draw(
-                Rect::from_xywh(0, height - 1, width, 1),
-                Line::new(spans.as_slice()),
-            );
-        }
+        let dim = Style::EMPTY.with_fg(Color::DARK_GRAY);
+        let key = Style::EMPTY.with_fg(Color::YELLOW);
+        let spans = [
+            span!("  Press ").with_style(dim),
+            span!("q").with_style(key),
+            span!(" to quit").with_style(dim),
+        ];
+        engine.draw(
+            Rect::from_xywh(0, height - 1, width, 1),
+            Line::new(spans.as_slice()),
+        );
 
         ControlFlow::Continue(()) // keep running
     })?;
