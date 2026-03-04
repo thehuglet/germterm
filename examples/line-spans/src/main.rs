@@ -25,7 +25,7 @@ use germterm::{
             block::{
                 Block,
                 set::SimpleBorderSet,
-                title::{Title, TitleAlignment},
+                title::{Title, TitleAlignment, TitlePosition},
             },
             text::line::Line,
         },
@@ -103,7 +103,9 @@ fn main() -> io::Result<()> {
             let title_spans = [span!(" Foreground Colors ")
                 .with_fg(Color::WHITE)
                 .with_bold(true)];
-            let titles = [Title::new(Line::new(title_spans.as_slice()))];
+            let titles =
+                [Title::new(Line::new(title_spans.as_slice()))
+                    .with_alignment(TitleAlignment::Left)];
             let block = Block::<Delta, _>::new(SimpleBorderSet::ROUNDED).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 2, width, 3), block);
 
@@ -132,9 +134,8 @@ fn main() -> io::Result<()> {
             let title_spans = [span!(" Text Attributes ")
                 .with_fg(Color::WHITE)
                 .with_bold(true)];
-            let titles =
-                [Title::new(Line::new(title_spans.as_slice()))
-                    .with_alignment(TitleAlignment::Left)];
+            let titles = [Title::new(Line::new(title_spans.as_slice()))
+                .with_alignment(TitleAlignment::Center)];
             let block = Block::<f32, _>::new(SimpleBorderSet::SINGLE).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 6, width, 3), block);
 
@@ -162,7 +163,9 @@ fn main() -> io::Result<()> {
             let title_spans = [span!(" Background Colors ")
                 .with_fg(Color::WHITE)
                 .with_bold(true)];
-            let titles = [Title::new(Line::new(title_spans.as_slice()))];
+            let titles =
+                [Title::new(Line::new(title_spans.as_slice()))
+                    .with_alignment(TitleAlignment::Right)];
             let block = Block::<f32, _>::new(SimpleBorderSet::DOUBLE).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 10, width, 3), block);
 
@@ -194,7 +197,9 @@ fn main() -> io::Result<()> {
             let title_spans = [span!(" Animated Spans ")
                 .with_fg(Color::WHITE)
                 .with_bold(true)];
-            let titles = [Title::new(Line::new(title_spans.as_slice()))];
+            let titles =
+                [Title::new(Line::new(title_spans.as_slice()))
+                    .with_position(TitlePosition::Bottom)];
             let block = Block::<f32, _>::new(SimpleBorderSet::BOLD).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 14, width, 3), block);
 
