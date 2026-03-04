@@ -26,7 +26,14 @@ pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
 impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     /// Creates a new `SubBuffer` viewing into `inner` at the given
     /// `origin` with the given drawable `size`.
+    ///
+    /// The `area` is clamped to the parent buffer's bounds at construction
+    /// time, so translated positions can never exceed the parent's size.
+    /// If `area` lies entirely outside the parent, the resulting `SubBuffer`
+    /// has zero size and all drawing operations become no-ops.
     pub fn new(inner: &'a mut Buf, area: Rect) -> Self {
+        let parent_rect = Rect::new(Position::ZERO, inner.size());
+        let area = area.intersection(&parent_rect).unwrap_or(Rect::ZERO);
         Self { inner, area }
     }
 
@@ -193,7 +200,7 @@ mod tests {
         buffer_tests,
         cell::Cell,
         core::{
-            buffer::{Buffer, paired::PairedBuffer, slice::SubBuffer},
+            buffer::{paired::PairedBuffer, slice::SubBuffer, Buffer},
             draw::{Position, Rect, Size},
         },
     };
