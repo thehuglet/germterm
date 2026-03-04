@@ -4,7 +4,7 @@ use crate::{
     core::{
         DisplayWidth,
         buffer::slice::SubBuffer,
-        draw::{Position, Rect},
+        draw::{Position, Rect, Size},
         timer::NoDelta,
         widget::{
             FrameContext, Widget,
@@ -79,12 +79,17 @@ where
 
         let mut offset = 0;
         for span in self.spans.as_ref().iter() {
+            // Cannot underflow as its checked at the end of the iteration and we break if it does
+            let allowed_width = sz.width - offset;
             offset = span
                 .as_borrowed()
                 .with_style(self.style.merged(span.style()))
                 .fill_cells(
-                    &mut SubBuffer::new(buf, Rect::new(Position::new(offset, 0), sz)),
-                    sz.width.saturating_sub(offset),
+                    &mut SubBuffer::new(
+                        buf,
+                        Rect::new(Position::new(offset, 0), Size::new(allowed_width, 1)),
+                    ),
+                    allowed_width,
                 )
                 .saturating_add(offset);
             if offset >= sz.width {
@@ -92,6 +97,7 @@ where
             }
         }
 
+        // Set the style for the cells that are untouched in our `Line`
         for x in offset..sz.width {
             buf.get_cell_mut(Position::new(x, 0))
                 .style
