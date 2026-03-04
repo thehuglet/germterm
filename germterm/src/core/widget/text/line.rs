@@ -84,7 +84,7 @@ where
                 .with_style(self.style.merged(span.style()))
                 .fill_cells(
                     &mut SubBuffer::new(buf, Rect::new(Position::new(offset, 0), sz)),
-                    sz.width - offset,
+                    sz.width.saturating_sub(offset),
                 )
                 .saturating_add(offset);
             if offset >= sz.width {

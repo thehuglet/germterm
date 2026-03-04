@@ -59,19 +59,24 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
             self.sides.contains(BorderSides::LEFT) as u16 * set.left_width(display_width) as u16;
         let right_offset =
             self.sides.contains(BorderSides::RIGHT) as u16 * set.right_width(display_width) as u16;
+        let horizontal_offset = left_offset.saturating_add(right_offset);
         let top_offset = self.sides.contains(BorderSides::TOP) as u16;
         let bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
+        let vertical_offset = top_offset.saturating_add(bottom_offset);
 
         // just return the whole area if the area will just be filled with borders
         //
         // the content inside takes priority over the border if needed
-        if (sz.width <= left_offset + right_offset) || sz.height <= top_offset + bottom_offset {
+        if (sz.width <= horizontal_offset) || sz.height <= vertical_offset {
             return Rect::new(Position::ZERO, sz);
         }
 
         Rect::new(
             Position::new(left_offset, top_offset),
-            Size::new(sz.width - right_offset, sz.height - bottom_offset),
+            Size::new(
+                sz.width.saturating_sub(horizontal_offset),
+                sz.height.saturating_sub(vertical_offset),
+            ),
         )
     }
 
@@ -116,7 +121,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                     let mut sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
-                            Position::new(size.width.saturating_sub(title_width / 2), y_pos),
+                            Position::new(size.width.saturating_sub(title_width) / 2, y_pos),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
@@ -137,13 +142,11 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
 impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Block<'a, D, B, T> {
     fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, D>) {
         let size = ctx.buffer().size();
-        if size.area() == 0 {
-            return;
-        }
 
-        let x_end = size.width.saturating_sub(1).max(1);
         let left_offset = self.sides.contains(BorderSides::LEFT) as u16;
         let right_offset = self.sides.contains(BorderSides::RIGHT) as u16;
+        let horizontal_offset = left_offset.saturating_add(right_offset);
+        let x_end = size.width.saturating_sub(right_offset);
         let top_offset = self.sides.contains(BorderSides::TOP) as u16;
         let _bottom_offset = self.sides.contains(BorderSides::BOTTOM) as u16;
 
