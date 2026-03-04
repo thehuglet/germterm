@@ -65,9 +65,15 @@ pub trait Buffer {
     /// # Panics
     ///
     /// Panics if `pos` is out of bounds.
+    #[track_caller]
     fn get_cell_mut(&mut self, pos: Position) -> &mut Cell {
-        self.get_cell_mut_checked(pos)
-            .expect("out of bounds get_cell_mut")
+        let sz = self.size();
+        self.get_cell_mut_checked(pos).unwrap_or_else(|_| {
+            panic!(
+                "out of bounds get_cell_mut for position: {:?} with size: {:?}",
+                pos, sz
+            )
+        })
     }
 
     /// Fills the entire buffer with `cell`.
