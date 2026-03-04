@@ -20,7 +20,7 @@ use germterm::{
         buffer::{Buffer, paired::PairedBuffer},
         draw::{Rect, Size},
         renderer::crossterm::CrosstermRenderer,
-        timer::{DefaultTimer, Delta, NoDelta},
+        timer::{DefaultTimer, Delta},
         widget::{
             block::{Block, set::SimpleBorderSet, title::Title},
             text::line::Line,
