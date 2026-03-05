@@ -328,14 +328,14 @@ mod tests {
 
     #[test]
     fn default_has_no_fg() {
-        let style = Style::default();
+        let style = Style::default().with_fg(None);
         assert!(!style.has_fg());
         assert!(style.fg().is_none());
     }
 
     #[test]
     fn default_has_no_bg() {
-        let style = Style::default();
+        let style = Style::default().with_bg(None);
         assert!(!style.has_bg());
         assert!(style.bg().is_none());
     }
