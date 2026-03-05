@@ -39,6 +39,7 @@ mod tests {
     use super::*;
     use crate::{
         buf_str,
+        color::Color,
         core::{
             buffer::{flat::FlatBuffer, utils::dump_buffer_to_string as dbts},
             draw::Size,
@@ -100,7 +101,12 @@ mod tests {
     #[test]
     fn string_fits_entirely() {
         let mut buf = make_buf(Size::new(10, 3));
-        let written = draw_string(&mut buf, Position::ZERO, "hello", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::ZERO,
+            "hello",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 5);
 
         assert_eq!(
@@ -112,7 +118,12 @@ mod tests {
     #[test]
     fn string_truncated_at_right_edge() {
         let mut buf = make_buf(Size::new(5, 3));
-        let written = draw_string(&mut buf, Position::ZERO, "hello world", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::ZERO,
+            "hello world",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 5);
 
         assert_eq!(dbts(&buf), buf_str!["hello", "     ", "     ",]);
@@ -121,7 +132,12 @@ mod tests {
     #[test]
     fn string_exactly_fills_width() {
         let mut buf = make_buf(Size::new(5, 2));
-        let written = draw_string(&mut buf, Position::ZERO, "abcde", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::ZERO,
+            "abcde",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 5);
 
         assert_eq!(dbts(&buf), buf_str!["abcde", "     ",]);
@@ -130,7 +146,12 @@ mod tests {
     #[test]
     fn start_at_nonzero_x() {
         let mut buf = make_buf(Size::new(10, 3));
-        let written = draw_string(&mut buf, Position::new(4, 0), "hello", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::new(4, 0),
+            "hello",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 5);
 
         assert_eq!(
@@ -142,7 +163,12 @@ mod tests {
     #[test]
     fn start_at_nonzero_y() {
         let mut buf = make_buf(Size::new(10, 3));
-        let written = draw_string(&mut buf, Position::new(0, 2), "hello", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::new(0, 2),
+            "hello",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 5);
 
         assert_eq!(
@@ -154,7 +180,12 @@ mod tests {
     #[test]
     fn start_at_nonzero_x_and_y() {
         let mut buf = make_buf(Size::new(10, 3));
-        let written = draw_string(&mut buf, Position::new(3, 1), "test", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::new(3, 1),
+            "test",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 4);
 
         assert_eq!(
@@ -166,7 +197,12 @@ mod tests {
     #[test]
     fn start_at_nonzero_x_truncated() {
         let mut buf = make_buf(Size::new(8, 2));
-        let written = draw_string(&mut buf, Position::new(5, 0), "hello", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::new(5, 0),
+            "hello",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 3);
 
         assert_eq!(dbts(&buf), buf_str!["     hel", "        ",]);
@@ -175,7 +211,12 @@ mod tests {
     #[test]
     fn single_cell_buffer() {
         let mut buf = make_buf(Size::new(1, 1));
-        let written = draw_string(&mut buf, Position::ZERO, "hello", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::ZERO,
+            "hello",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 1);
 
         assert_eq!(dbts(&buf), buf_str!["h"]);
@@ -184,7 +225,12 @@ mod tests {
     #[test]
     fn single_char_string() {
         let mut buf = make_buf(Size::new(5, 2));
-        let written = draw_string(&mut buf, Position::new(2, 0), "x", Style::default());
+        let written = draw_string(
+            &mut buf,
+            Position::new(2, 0),
+            "x",
+            Style::default().with_fg(Color::WHITE),
+        );
         assert_eq!(written, 1);
 
         assert_eq!(dbts(&buf), buf_str!["  x  ", "     ",]);
