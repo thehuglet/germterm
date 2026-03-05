@@ -6,7 +6,8 @@ use crate::{
         buffer::slice::SubBuffer,
         draw::{Position, Rect, Size},
         widget::{
-            FrameContext, SimpleWidget, Widget, text::{LineWidth, span::Span}
+            FrameContext, SimpleWidget,
+            text::{LineWidth, span::Span},
         },
     },
     style::{Stylable, Style},
