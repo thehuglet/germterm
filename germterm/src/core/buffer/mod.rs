@@ -104,13 +104,13 @@ pub trait Buffer {
     fn layer(&mut self, z_index: isize) -> &mut FlatBuffer {
         let self_ptr = self as *mut Self;
 
+        // SAFETY:
+        // - `self_ptr` points to a valid `Self` and will remain valid for the duration of this closure
+        // - We only call `size()`, which does not touch `self.layers`.
+        //
+        // Without `unsafe`, we'd have to precompute the new buffer size even
+        // when we don't need to create a new layer`, which wastes CPU cycles.
         self.layers().entry(z_index).or_insert_with(|| {
-            // SAFETY:
-            // - `self_ptr` points to a valid `Self` and will remain valid for the duration of this closure
-            // - We only call `size()`, which does not touch `self.layers`.
-            //
-            // Without `unsafe`, we'd have to precompute the new buffer size even
-            // when we don't need to create a new layer`, which wastes CPU cycles.
             let size = unsafe { (*self_ptr).size() };
             FlatBuffer::new(size)
         })

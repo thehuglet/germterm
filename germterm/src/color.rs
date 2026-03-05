@@ -196,7 +196,7 @@ impl Color {
 
     /// Converts this color to premultiplied alpha form (rgb *= a).
     #[inline]
-    pub fn to_premultiplied_alpha(&self) -> Color {
+    pub fn to_premultiplied_alpha(self) -> Color {
         let (r, g, b, a) = self.rgba();
         let r = (r as u16 * a as u16 / 255) as u8;
         let g = (g as u16 * a as u16 / 255) as u8;
@@ -207,7 +207,8 @@ impl Color {
 
 impl std::fmt::Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Color").field(&self.rgba()).finish()
+        let (r, g, b, a) = self.rgba();
+        write!(f, "Color({}, {}, {}, {})", r, g, b, a)
     }
 }
 

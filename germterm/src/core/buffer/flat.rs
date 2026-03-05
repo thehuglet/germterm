@@ -74,7 +74,7 @@ impl Buffer for FlatBuffer {
     fn set_cell_checked(
         &mut self,
         pos: Position,
-        cell: Cell,
+        mut cell: Cell,
     ) -> Result<(), ErrorOutOfBoundsAxises> {
         if let err @ Err(_) = self.size.contains(pos) {
             cold();
@@ -82,7 +82,9 @@ impl Buffer for FlatBuffer {
         }
 
         let current_cell = self.get_cell_mut_checked(pos)?;
+        cell.style.premultiply_fg_and_bg();
         compose_cell(current_cell, &cell);
+
         Ok(())
     }
 
@@ -110,8 +112,8 @@ impl Buffer for FlatBuffer {
         self.clear();
     }
 
-    fn layers(&mut self) -> &mut std::collections::BTreeMap<isize, FlatBuffer> {
-        self.layers()
+    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
+        &mut self.layers
     }
 }
 

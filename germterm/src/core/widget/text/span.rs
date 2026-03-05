@@ -76,7 +76,7 @@ impl<'a> Span<'a> {
 
         Ok(Self {
             content,
-            style: Style::EMPTY,
+            style: Style::TRANSPARENT,
         })
     }
 
@@ -84,7 +84,7 @@ impl<'a> Span<'a> {
         let content = Cow::Borrowed(content);
         Self {
             content,
-            style: Style::EMPTY,
+            style: Style::TRANSPARENT,
         }
     }
 

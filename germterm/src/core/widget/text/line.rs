@@ -31,7 +31,7 @@ where
     pub fn new(spans: Spans) -> Self {
         Self {
             spans,
-            style: Style::EMPTY,
+            style: Style::TRANSPARENT,
             __p: PhantomData,
         }
     }

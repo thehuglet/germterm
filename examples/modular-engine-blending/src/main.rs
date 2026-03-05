@@ -50,17 +50,24 @@ fn update_loop(
 
     draw_string(
         buf.layer(0),
-        Position::new(5, 5),
-        "    ",
-        Style::default().with_bg(Color::RED.with_alpha(90)),
+        Position::new(4, 5),
+        "  ",
+        Style::default().with_bg(Color::RED.with_alpha(127)),
     );
 
     draw_string(
         buf.layer(1),
         Position::new(5, 5),
-        "    ",
-        Style::default().with_bg(Color::BLUE.with_alpha(90)),
+        "  ",
+        Style::default().with_bg(Color::BLUE.with_alpha(127)),
     );
+
+    // draw_string(
+    //     buf.layer(1),
+    //     Position::new(5, 5),
+    //     "    ",
+    //     Style::default().with_bg(Color::BLUE.with_alpha(90)),
+    // );
 
     // draw_string(
     //     buf.layer(0),

@@ -99,20 +99,14 @@ fn main() -> io::Result<()> {
                 span!("Violet ").with_fg(Color::VIOLET),
                 span!("Teal").with_fg(Color::TEAL),
             ];
-            engine.draw(
-                Rect::from_xywh(0, 3, width, 1),
-                Line::new(spans.as_slice()),
-            );
+            engine.draw(Rect::from_xywh(0, 3, width, 1), Line::new(spans.as_slice()));
         }
 
         // Row 5: Text attributes section header
         {
             let section = Style::new(Color::WHITE, None, Attributes::BOLD);
             let spans = [span!("  Text Attributes").with_style(section)];
-            engine.draw(
-                Rect::from_xywh(0, 5, width, 1),
-                Line::new(spans.as_slice()),
-            );
+            engine.draw(Rect::from_xywh(0, 5, width, 1), Line::new(spans.as_slice()));
         }
 
         // Row 6: Attribute samples
@@ -144,10 +138,7 @@ fn main() -> io::Result<()> {
         {
             let section = Style::new(Color::WHITE, None, Attributes::BOLD);
             let spans = [span!("  Background Colors").with_style(section)];
-            engine.draw(
-                Rect::from_xywh(0, 8, width, 1),
-                Line::new(spans.as_slice()),
-            );
+            engine.draw(Rect::from_xywh(0, 8, width, 1), Line::new(spans.as_slice()));
         }
 
         // Row 9: Background color badges
@@ -166,10 +157,7 @@ fn main() -> io::Result<()> {
                 span!("  "),
                 span!(" Violet ").with_colors(Color::WHITE, Color::VIOLET),
             ];
-            engine.draw(
-                Rect::from_xywh(0, 9, width, 1),
-                Line::new(spans.as_slice()),
-            );
+            engine.draw(Rect::from_xywh(0, 9, width, 1), Line::new(spans.as_slice()));
         }
 
         // Row 11: Animated wave section header
@@ -214,8 +202,8 @@ fn main() -> io::Result<()> {
 
         // Last row: Footer
         if height > 14 {
-            let dim = Style::EMPTY.with_fg(Color::DARK_GRAY);
-            let key = Style::EMPTY.with_fg(Color::YELLOW);
+            let dim = Style::TRANSPARENT.with_fg(Color::DARK_GRAY);
+            let key = Style::TRANSPARENT.with_fg(Color::YELLOW);
             let spans = [
                 span!("  Press ").with_style(dim),
                 span!("q").with_style(key),
