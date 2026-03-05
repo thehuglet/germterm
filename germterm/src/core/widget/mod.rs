@@ -7,22 +7,26 @@ use crate::core::{
     timer::{Delta, NoDelta, TimerDelta},
 };
 
-pub trait Widget<Delta: TimerDelta = NoDelta> {
-    fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, Delta>);
+trait SimpleWidget {
+    fn draw(&self, ctx: FrameContext<'_, impl Buffer>);
 }
 
-impl<W: Widget> Widget<Delta> for W {
-    fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, Delta>) {
-        W::draw(
+impl<W: SimpleWidget, T: TimerDelta> Widget<T> for W {
+    fn draw(&self, mut ctx: FrameContext<'_, impl Buffer, T>) {
+        SimpleWidget::draw(
             self,
-            &mut FrameContext {
+            FrameContext {
                 total_time: NoDelta::new(),
                 delta: NoDelta::new(),
-                buffer: ctx.buffer,
                 display_width: ctx.display_width,
+                buffer: ctx.buffer_mut(),
             },
         );
     }
+}
+
+pub trait Widget<Delta: TimerDelta = NoDelta> {
+    fn draw(&self, ctx: FrameContext<'_, impl Buffer, Delta>);
 }
 
 pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoDelta> {

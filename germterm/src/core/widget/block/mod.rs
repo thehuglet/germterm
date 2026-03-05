@@ -29,36 +29,33 @@ bitflags! {
     }
 }
 
-pub struct Block<'a, D, B, T = Line<'a>> {
+pub struct Block<'a, B, T = Line<'a>> {
     set: B,
     sides: BorderSides,
     titles: &'a [Title<T>],
-    _timer: PhantomData<D>,
 }
 
-impl<'a, D, B> Block<'a, D, B> {
+impl<'a, B> Block<'a, B> {
     pub fn new(set: B) -> Self {
         Self {
             set,
             sides: BorderSides::all(),
             titles: &[],
-            _timer: PhantomData,
         }
     }
 }
 
-impl<'a, D: TimerDelta, B, T: Widget<D>> Block<'a, D, B, T> {
-    pub fn with_titles<T2>(self, titles: &'a [Title<T2>]) -> Block<'a, D, B, T2> {
+impl<'a, B, T> Block<'a, B, T> {
+    pub fn with_titles<T2>(self, titles: &'a [Title<T2>]) -> Block<'a, B, T2> {
         Block {
             set: self.set,
             sides: self.sides,
             titles,
-            _timer: PhantomData,
         }
     }
 }
 
-impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T> {
+impl<'a, B: BlockSet, T: LineWidth> Block<'a, B, T> {
     pub fn inner_area(&self, sz: Size, display_width: &DisplayWidth) -> Rect {
         let set = &self.set;
         let left_offset =
@@ -86,14 +83,16 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
         )
     }
 
-    fn render_titles<Buf: Buffer>(
+    fn render_titles<Buf: Buffer, D: TimerDelta>(
         &self,
         ctx: &mut FrameContext<'_, Buf, D>,
         titles: impl Iterator<Item = &'a Title<T>>,
         y_pos: u16,
         left_offset: u16,
         right_offset: u16,
-    ) {
+    ) where
+        T: Widget<D>,
+    {
         let size = ctx.buffer().size();
         let free_width = size
             .width
@@ -116,7 +115,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
-                    title.inner().draw(&mut FrameContext {
+                    title.inner().draw(FrameContext {
                         total_time,
                         delta,
                         display_width,
@@ -132,7 +131,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                         ),
                     );
 
-                    title.inner().draw(&mut FrameContext {
+                    title.inner().draw(FrameContext {
                         total_time,
                         delta,
                         display_width,
@@ -148,7 +147,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
                         ),
                     );
 
-                    title.inner().draw(&mut FrameContext {
+                    title.inner().draw(FrameContext {
                         total_time,
                         delta,
                         buffer: &mut sub,
@@ -160,8 +159,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Block<'a, D, B, T
     }
 }
 
-impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Block<'a, D, B, T> {
-    fn draw(&self, ctx: &mut FrameContext<'_, impl Buffer, D>) {
+impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Block<'a, B, T> {
+    fn draw(&self, mut ctx: FrameContext<'_, impl Buffer, D>) {
         let size = ctx.buffer().size();
 
         let left_offset = self.sides.contains(BorderSides::LEFT) as u16;
@@ -207,7 +206,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 .as_ref()
                 .iter()
                 .filter(|title| title.position() == TitlePosition::Top);
-            self.render_titles(ctx, top_titles, 0, left_offset, right_offset);
+            self.render_titles(&mut ctx, top_titles, 0, left_offset, right_offset);
         }
 
         // top right corner
@@ -292,7 +291,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 .iter()
                 .filter(|title| title.position() == TitlePosition::Bottom);
 
-            self.render_titles(ctx, bottom_titles, y, left_offset, right_offset);
+            self.render_titles(&mut ctx, bottom_titles, y, left_offset, right_offset);
         }
 
         // bottom right
@@ -323,14 +322,14 @@ mod tests {
     fn test_block_draw_borders() {
         let mut buf = PairedBuffer::new(Size::new(3, 3));
         let block = Block::new(SimpleBorderSet::ASCII);
-        let mut ctx = FrameContext {
+        let ctx = FrameContext {
             total_time: NoDelta::new(),
             delta: NoDelta::new(),
             buffer: &mut buf,
             display_width: DisplayWidth::default(),
         };
 
-        block.draw(&mut ctx);
+        block.draw(ctx);
 
         // Ascii style: top_left='+', top='-', top_right='+', left='|', right='|', bottom_left='+', bottom='-', bottom_right='+'
         assert_eq!(buf.get_cell(Position::new(0, 0)).ch, '+');
@@ -352,14 +351,14 @@ mod tests {
         let mut buf = PairedBuffer::new(Size::new(5, 5));
         let drawn = Rc::new(Cell::new(false));
         let block = Block::new(SimpleBorderSet::ASCII);
-        let mut ctx = FrameContext {
+        let ctx = FrameContext {
             total_time: NoDelta::new(),
             delta: NoDelta::new(),
             buffer: &mut buf,
             display_width: DisplayWidth::default(),
         };
 
-        block.draw(&mut ctx);
+        block.draw(ctx);
 
         assert!(drawn.get());
     }

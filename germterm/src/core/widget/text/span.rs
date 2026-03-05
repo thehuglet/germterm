@@ -6,7 +6,7 @@ use crate::{
         buffer::Buffer,
         draw::Position,
         timer::NoDelta,
-        widget::{FrameContext, Widget, text::LineWidth},
+        widget::{FrameContext, SimpleWidget, Widget, text::LineWidth},
     },
     style::{Stylable, Style},
 };
@@ -142,8 +142,8 @@ impl<'a> Span<'a> {
     }
 }
 
-impl<'a> Widget<NoDelta> for Span<'a> {
-    fn draw(&self, ctx: &mut FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
+impl<'a> SimpleWidget for Span<'a> {
+    fn draw(&self, ctx: FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
         self.fill_cells(ctx.buffer, ctx.buffer.size().width);
     }
 }
