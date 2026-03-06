@@ -20,7 +20,7 @@ use germterm::{
         buffer::{Buffer, ResizableBuffer, paired::PairedBuffer},
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
-        timer::{DefaultTimer, Delta},
+        timer::DefaultTimer,
         widget::{
             block::{
                 Block,
@@ -106,7 +106,7 @@ fn main() -> io::Result<()> {
                     .with_bold(true),
             )
             .with_alignment(TitleAlignment::Left)];
-            let block = Block::<Delta, _>::new(SimpleBorderSet::ROUNDED).with_titles(&titles);
+            let block = Block::new(SimpleBorderSet::ROUNDED).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 2, width, 3), block);
 
             let spans = [
@@ -137,7 +137,7 @@ fn main() -> io::Result<()> {
                     .with_bold(true),
             )
             .with_alignment(TitleAlignment::Center)];
-            let block = Block::<f32, _>::new(SimpleBorderSet::SINGLE).with_titles(&titles);
+            let block = Block::new(SimpleBorderSet::SINGLE).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 6, width, 3), block);
 
             let spans = [
@@ -167,7 +167,7 @@ fn main() -> io::Result<()> {
                     .with_bold(true),
             )
             .with_alignment(TitleAlignment::Right)];
-            let block = Block::<f32, _>::new(SimpleBorderSet::DOUBLE).with_titles(&titles);
+            let block = Block::new(SimpleBorderSet::DOUBLE).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 10, width, 3), block);
 
             let spans = [
@@ -201,7 +201,7 @@ fn main() -> io::Result<()> {
                     .with_bold(true),
             )
             .with_position(TitlePosition::Bottom)];
-            let block = Block::<f32, _>::new(SimpleBorderSet::BOLD).with_titles(&titles);
+            let block = Block::new(SimpleBorderSet::BOLD).with_titles(&titles);
             engine.draw(Rect::from_xywh(0, 14, width, 3), block);
 
             let phase = t * 2.0;

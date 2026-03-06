@@ -6,7 +6,7 @@ use crate::{
         buffer::slice::SubBuffer,
         draw::{Position, Rect, Size},
         widget::{
-            FrameContext, Widget,
+            FrameContext, SimpleWidget,
             text::{LineWidth, span::Span},
         },
     },
@@ -64,11 +64,11 @@ where
     }
 }
 
-impl<'a, Spans> Widget for Line<'a, Spans>
+impl<'a, Spans> SimpleWidget for Line<'a, Spans>
 where
     Spans: AsRef<[Span<'a>]>,
 {
-    fn draw(&self, ctx: &mut FrameContext<'_, impl crate::core::buffer::Buffer>) {
+    fn draw(&self, mut ctx: FrameContext<'_, impl crate::core::buffer::Buffer>) {
         let buf = ctx.buffer_mut();
         let sz = buf.size();
 

@@ -96,14 +96,14 @@ impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
 
 impl<Timed: FrameTimer, Buf: Buffer> Engine<Timed, Buf> {
     pub fn draw(&mut self, area: Rect, widget: impl Widget<Timed::Delta>) {
-        let mut fc = FrameContext {
+        let fc = FrameContext {
             total_time: self.timer.total_time,
             delta: self.timer.delta,
             buffer: &mut SubBuffer::new(&mut self.buffer, area),
             display_width: self.display_width,
         };
 
-        widget.draw(&mut fc);
+        widget.draw(fc);
     }
 }
 
