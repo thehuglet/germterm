@@ -29,11 +29,32 @@ pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
 impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
     /// Creates a new `SubBuffer` viewing into `inner` at the given
     /// `origin` with the given drawable `size`.
+    ///
+    /// The `area` is clamped to the parent buffer's bounds at construction
+    /// time, so translated positions can never exceed the parent's size.
+    /// If `area` lies entirely outside the parent, the resulting `SubBuffer`
+    /// has zero size and all drawing operations become no-ops.
+    ///
+    /// # Panics
+    ///
+    /// If the provided area cannot be contained in the provided buffers size.
+    /// If truncating is preferred instead of a panic [`SubBuffer::new_clamped`] can be used.
     pub fn new(inner: &'a mut Buf, area: Rect) -> Self {
+        let sz = inner.size();
+        assert!(
+            sz.area_is_within(area),
+            "Provided {area:?} cannot be stored inside the provided buffers size {sz:?}"
+        );
+        Self { inner, area }
+    }
+
+    pub fn new_clamped(inner: &'a mut Buf, area: Rect) -> Self {
+        let sz = inner.size();
         Self {
             inner,
-            area,
-            layers: BTreeMap::new(),
+            area: area
+                .intersection(&Rect::new(Position::ZERO, sz))
+                .unwrap_or_default(),
         }
     }
 

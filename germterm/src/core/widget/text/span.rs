@@ -2,10 +2,11 @@ use std::borrow::Cow;
 
 use crate::{
     core::{
+        DisplayWidth,
         buffer::Buffer,
         draw::Position,
         timer::NoDelta,
-        widget::{FrameContext, Widget},
+        widget::{FrameContext, Widget, text::LineWidth},
     },
     style::{Stylable, Style},
 };
@@ -55,6 +56,13 @@ macro_rules! span {
 pub struct Span<'a> {
     pub(crate) content: Cow<'a, str>,
     style: Style,
+}
+
+impl<'a> LineWidth for Span<'a> {
+    #[inline]
+    fn width(&self, display_width: &DisplayWidth) -> u16 {
+        display_width.str_width(self.content())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Hash)]
@@ -126,7 +134,7 @@ impl<'a> Span<'a> {
         written as u16
     }
 
-    pub fn as_borrowed(&'a self) -> Span<'a> {
+    pub fn as_borrowed<'s: 'a>(&'s self) -> Span<'s> {
         Self {
             content: Cow::Borrowed(self.content.as_ref()),
             style: self.style,
@@ -135,7 +143,7 @@ impl<'a> Span<'a> {
 }
 
 impl<'a> Widget<NoDelta> for Span<'a> {
-    fn draw(&mut self, ctx: &mut FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
+    fn draw(&self, ctx: &mut FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
         self.fill_cells(ctx.buffer, ctx.buffer.size().width);
     }
 }
