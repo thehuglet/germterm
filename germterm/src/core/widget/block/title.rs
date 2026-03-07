@@ -24,16 +24,6 @@ pub enum TitleAlignment {
     Right,
 }
 
-impl TitleAlignment {
-    pub(crate) const fn as_index(self) -> usize {
-        match self {
-            Self::Left => 0,
-            Self::Center => 1,
-            Self::Right => 2,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A widget displayed on a block's border with configurable position and alignment.
 pub struct Title<W> {
