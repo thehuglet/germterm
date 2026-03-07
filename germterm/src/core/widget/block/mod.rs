@@ -1,8 +1,6 @@
 pub mod set;
 pub mod title;
 
-use std::marker::PhantomData;
-
 use bitflags::bitflags;
 
 use crate::core::{
@@ -106,55 +104,43 @@ impl<'a, B: BlockSet, T: LineWidth> Block<'a, B, T> {
             let total_time = ctx.total_time;
             let delta = ctx.delta;
             let display_width = ctx.display_width;
+            let mut sub;
             match title.alignment() {
                 TitleAlignment::Left => {
-                    let mut sub = SubBuffer::new(
+                    sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
                             Position::new(left_offset, y_pos),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
-                    title.inner().draw(FrameContext {
-                        total_time,
-                        delta,
-                        display_width,
-                        buffer: &mut sub,
-                    });
                 }
                 TitleAlignment::Center => {
-                    let mut sub = SubBuffer::new(
+                    sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
                             Position::new(size.width.saturating_sub(title_width) / 2, y_pos),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
-
-                    title.inner().draw(FrameContext {
-                        total_time,
-                        delta,
-                        display_width,
-                        buffer: &mut sub,
-                    });
                 }
                 TitleAlignment::Right => {
-                    let mut sub = SubBuffer::new(
+                    sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
                             Position::new(size.width.saturating_sub(title_width), y_pos),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
-
-                    title.inner().draw(FrameContext {
-                        total_time,
-                        delta,
-                        buffer: &mut sub,
-                        display_width,
-                    });
                 }
             }
+
+            title.inner().draw(FrameContext {
+                total_time,
+                delta,
+                buffer: &mut sub,
+                display_width,
+            });
         }
     }
 }
