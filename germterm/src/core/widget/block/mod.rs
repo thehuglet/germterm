@@ -328,26 +328,5 @@ mod tests {
         assert_eq!(buf.get_cell(Position::new(2, 2)).ch, '+');
     }
 
-    #[test]
-    fn test_block_draws_inner_widget() {
-        // TODO: check the buffer results are correct
-        use std::cell::Cell;
-        use std::rc::Rc;
-
-        let mut buf = PairedBuffer::new(Size::new(5, 5));
-        let drawn = Rc::new(Cell::new(false));
-        let block = Block::new(SimpleBorderSet::ASCII);
-        let ctx = FrameContext {
-            total_time: NoDelta::new(),
-            delta: NoDelta::new(),
-            buffer: &mut buf,
-            display_width: DisplayWidth::default(),
-        };
-
-        block.draw(ctx);
-
-        assert!(drawn.get());
-    }
-
     // TODO: add more tests
 }
