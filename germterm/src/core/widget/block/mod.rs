@@ -44,6 +44,11 @@ impl<'a, B> Block<'a, B> {
 }
 
 impl<'a, B, T> Block<'a, B, T> {
+    pub fn with_sides(mut self, sides: BorderSides) -> Self {
+        self.sides = sides;
+        self
+    }
+
     pub fn with_titles<T2>(self, titles: &'a [Title<T2>]) -> Block<'a, B, T2> {
         Block {
             set: self.set,
@@ -128,7 +133,12 @@ impl<'a, B: BlockSet, T: LineWidth> Block<'a, B, T> {
                     sub = SubBuffer::new(
                         ctx.buffer_mut(),
                         Rect::new(
-                            Position::new(size.width.saturating_sub(title_width), y_pos),
+                            Position::new(
+                                size.width
+                                    .saturating_sub(title_width)
+                                    .saturating_sub(right_offset),
+                                y_pos,
+                            ),
                             Size::new(title_width.min(free_width), 1),
                         ),
                     );
@@ -299,34 +309,230 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{
-        DisplayWidth, buffer::paired::PairedBuffer, draw::Size, timer::NoDelta,
-        widget::block::set::SimpleBorderSet,
+    use crate::{
+        buf_str,
+        core::{
+            DisplayWidth,
+            buffer::{paired::PairedBuffer, utils::dump_buffer_to_string as dbts},
+            draw::Size,
+            timer::NoDelta,
+            widget::block::{
+                set::SimpleBorderSet,
+                title::{Title, TitleAlignment, TitlePosition},
+            },
+        },
+        span,
     };
 
-    #[test]
-    fn test_block_draw_borders() {
-        let mut buf = PairedBuffer::new(Size::new(3, 3));
-        let block = Block::new(SimpleBorderSet::ASCII);
-        let ctx = FrameContext {
+    fn draw_block(
+        block: Block<'_, SimpleBorderSet, impl Widget<NoDelta> + LineWidth>,
+        size: Size,
+    ) -> PairedBuffer {
+        let mut buf = PairedBuffer::new(size);
+        block.draw(FrameContext {
             total_time: NoDelta::new(),
             delta: NoDelta::new(),
             buffer: &mut buf,
             display_width: DisplayWidth::default(),
-        };
-
-        block.draw(ctx);
-
-        // Ascii style: top_left='+', top='-', top_right='+', left='|', right='|', bottom_left='+', bottom='-', bottom_right='+'
-        assert_eq!(buf.get_cell(Position::new(0, 0)).ch, '+');
-        assert_eq!(buf.get_cell(Position::new(1, 0)).ch, '-');
-        assert_eq!(buf.get_cell(Position::new(2, 0)).ch, '+');
-        assert_eq!(buf.get_cell(Position::new(0, 1)).ch, '|');
-        assert_eq!(buf.get_cell(Position::new(2, 1)).ch, '|');
-        assert_eq!(buf.get_cell(Position::new(0, 2)).ch, '+');
-        assert_eq!(buf.get_cell(Position::new(1, 2)).ch, '-');
-        assert_eq!(buf.get_cell(Position::new(2, 2)).ch, '+');
+        });
+        buf
     }
 
-    // TODO: add more tests
+    // Border sides
+
+    #[test]
+    fn all_sides() {
+        let buf = draw_block(Block::new(SimpleBorderSet::ASCII), Size::new(5, 5));
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+---+", "|   |", "|   |", "|   |", "+---+",]
+        );
+    }
+
+    #[test]
+    fn top_only() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::TOP),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["-----", "     ", "     ", "     ", "     ",]
+        );
+    }
+
+    #[test]
+    fn bottom_only() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::BOTTOM),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["     ", "     ", "     ", "     ", "-----",]
+        );
+    }
+
+    #[test]
+    fn left_only() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::LEFT),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["|    ", "|    ", "|    ", "|    ", "|    ",]
+        );
+    }
+
+    #[test]
+    fn right_only() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::RIGHT),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["    |", "    |", "    |", "    |", "    |",]
+        );
+    }
+
+    #[test]
+    fn top_and_left() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::TOP | BorderSides::LEFT),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+----", "|    ", "|    ", "|    ", "|    ",]
+        );
+    }
+
+    #[test]
+    fn top_and_bottom() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::TOP | BorderSides::BOTTOM),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["-----", "     ", "     ", "     ", "-----",]
+        );
+    }
+
+    #[test]
+    fn left_and_right() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::LEFT | BorderSides::RIGHT),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["|   |", "|   |", "|   |", "|   |", "|   |",]
+        );
+    }
+
+    #[test]
+    fn empty() {
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_sides(BorderSides::empty()),
+            Size::new(5, 5),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["     ", "     ", "     ", "     ", "     ",]
+        );
+    }
+
+    // Titles
+
+    #[test]
+    fn title_top_left() {
+        let spans = [span!("Hi")];
+        let titles = [Title::new(Line::new(&spans[..]))];
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_titles(&titles),
+            Size::new(10, 3),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+Hi------+", "|        |", "+--------+",]
+        );
+    }
+
+    #[test]
+    fn title_top_center() {
+        let spans = [span!("Hi")];
+        let titles =
+            [Title::new(Line::new(spans.as_slice())).with_alignment(TitleAlignment::Center)];
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_titles(&titles),
+            Size::new(10, 3),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+---Hi---+", "|        |", "+--------+",]
+        );
+    }
+
+    #[test]
+    fn title_top_right() {
+        let spans = [span!("Hi")];
+        let titles = [Title::new(Line::new(&spans[..])).with_alignment(TitleAlignment::Right)];
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_titles(&titles),
+            Size::new(10, 3),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+-------H+", "|        |", "+--------+",]
+        );
+    }
+
+    #[test]
+    fn title_bottom_left() {
+        let spans = [span!("Hi")];
+        let titles = [Title::new(Line::new(&spans[..])).with_position(TitlePosition::Bottom)];
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_titles(&titles),
+            Size::new(10, 3),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+--------+", "|        |", "+Hi------+",]
+        );
+    }
+
+    #[test]
+    fn title_top_and_bottom() {
+        let top_spans = [span!("top")];
+        let bot_spans = [span!("bot")];
+        let titles = [
+            Title::new(Line::new(&top_spans[..])),
+            Title::new(Line::new(&bot_spans[..])).with_position(TitlePosition::Bottom),
+        ];
+        let buf = draw_block(
+            Block::new(SimpleBorderSet::ASCII).with_titles(&titles),
+            Size::new(10, 3),
+        );
+
+        assert_eq!(
+            dbts(&buf),
+            buf_str!["+top-----+", "|        |", "+bot-----+",]
+        );
+    }
 }
