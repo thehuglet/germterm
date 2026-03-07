@@ -79,6 +79,8 @@ pub trait Widget<Delta: TimerDelta = crate::core::timer::Delta> {
     fn draw(&self, ctx: FrameContext<'_, impl Buffer, Delta>);
 }
 
+/// Rendering context passed to widgets during drawing, carrying the buffer,
+/// timing data, and display-width info.
 pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoDelta> {
     pub(crate) total_time: Delta,
     pub(crate) delta: Delta,
@@ -87,11 +89,13 @@ pub struct FrameContext<'a, Buf: Buffer + ?Sized, Delta = NoDelta> {
 }
 
 impl<Buf: Buffer + ?Sized, Delta: TimerDelta> FrameContext<'_, Buf, Delta> {
+    /// Returns the elapsed time since the application started.
     #[inline(always)]
     pub fn total_time(&self) -> Delta {
         self.total_time
     }
 
+    /// Returns the time elapsed since the last frame.
     #[inline(always)]
     pub fn delta(&self) -> Delta {
         self.delta
@@ -114,11 +118,13 @@ impl<'a, Buf: Buffer + ?Sized, Delta> FrameContext<'a, Buf, Delta> {
         }
     }
 
+    /// Returns a shared reference to the underlying buffer.
     #[inline(always)]
     pub fn buffer(&self) -> &Buf {
         self.buffer
     }
 
+    /// Returns a mutable reference to the underlying buffer.
     #[inline(always)]
     pub fn buffer_mut(&mut self) -> &mut Buf {
         self.buffer
