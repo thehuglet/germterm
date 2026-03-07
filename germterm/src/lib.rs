@@ -7,7 +7,7 @@ pub mod color;
 pub mod draw;
 pub mod engine;
 pub mod fps_counter;
-mod fps_limiter;
+pub mod fps_limiter;
 pub mod frame;
 pub mod input;
 pub mod layer;
