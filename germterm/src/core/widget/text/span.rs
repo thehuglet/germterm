@@ -121,6 +121,7 @@ impl<'a> Span<'a> {
     /// This is mainly intended to be called from other [`Widget`]'s where they would account for
     /// line wrapping themselves. In other words this is a primitive text drawer in widget form.
     pub fn fill_cells<Buf: Buffer>(&self, buf: &mut Buf, limit: u16) -> u16 {
+        // TODO: use proper cell length checks here (should get passed a `&DisplayWidth` as arg)
         let limit = limit as u32;
         let sz = buf.size();
         let mut chars = self.content.chars();
