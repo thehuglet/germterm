@@ -66,7 +66,7 @@ impl<W: SimpleWidget, T: TimerDelta> Widget<T> for W {
 /// Use `NoDelta` for static content or `Delta` (`f32`) when you need
 /// animation timing. Defaults to `Delta`.
 ///
-/// If implementing a static widget (`Widget<NoDelta>`), [`SimpleWidget`] should be implemented instead. 
+/// If implementing a static widget (`Widget<NoDelta>`), [`SimpleWidget`] should be implemented instead.
 /// SimpleWidget has blanket impls that simplify the use in container widgets.
 ///
 /// # Type Parameters
