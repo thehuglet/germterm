@@ -55,13 +55,6 @@ where
             __p: PhantomData,
         }
     }
-
-    pub fn width(&self) -> usize {
-        self.spans
-            .as_ref()
-            .iter()
-            .fold(0, |len, s| len + s.content().len())
-    }
 }
 
 impl<'a, Spans> SimpleWidget for Line<'a, Spans>
