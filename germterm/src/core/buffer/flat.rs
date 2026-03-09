@@ -28,7 +28,6 @@ use crate::{
 pub struct FlatBuffer {
     size: Size,
     cells: Vec<Cell>,
-    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl FlatBuffer {
@@ -41,7 +40,6 @@ impl FlatBuffer {
         Self {
             size,
             cells: vec![layer_base_cell; size.area() as usize],
-            layers: BTreeMap::new(),
         }
     }
 
@@ -49,7 +47,6 @@ impl FlatBuffer {
         Self {
             size,
             cells: vec![cell; size.area() as usize],
-            layers: BTreeMap::new(),
         }
     }
 
@@ -74,17 +71,13 @@ impl Buffer for FlatBuffer {
     fn set_cell_checked(
         &mut self,
         pos: Position,
-        mut cell: Cell,
+        cell: Cell,
     ) -> Result<(), ErrorOutOfBoundsAxises> {
         if let err @ Err(_) = self.size.contains(pos) {
             cold();
             return err;
         }
-
-        let current_cell = self.get_cell_mut_checked(pos)?;
-        cell.style.premultiply_fg_and_bg();
-        compose_cell(current_cell, &cell);
-
+        self.cells[pos.to_index(self.size.width)] = cell;
         Ok(())
     }
 
@@ -110,10 +103,6 @@ impl Buffer for FlatBuffer {
 
     fn start_frame(&mut self) {
         self.clear();
-    }
-
-    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
-        &mut self.layers
     }
 }
 

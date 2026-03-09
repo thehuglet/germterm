@@ -14,7 +14,6 @@ use crate::{
     color::Color,
     core::{
         buffer::{Buffer, Drawer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
-        compositor::compose_buffers,
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, FrameTimer, Timer},
@@ -155,19 +154,16 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
 
                 // At this point we already have pre-composed layers,
                 // now the goal is to compose them to one flat buffer
-                let layers = std::mem::take(self.buffer.layers());
-                let mut acc_buf = FlatBuffer::new_with_cell(self.buffer.size(), Cell::CLEAR);
+                // let layers = std::mem::take(self.buffer.layers());
+                // let mut acc_buf = FlatBuffer::new_with_cell(self.buffer.size(), Cell::CLEAR);
 
-                for (_, buf) in layers.into_iter() {
-                    compose_buffers(&mut acc_buf, &buf);
-                }
-
-                renderer.start_frame()?;
-                // renderer.render(self.buffer.draw())?;
-                // let buf_foo = layers.iter_mut().last().unwrap().1;
-                renderer.render(acc_buf.draw())?;
+                // for (_, buf) in layers.into_iter() {
+                //     compose_buffers(&mut acc_buf, &buf);
+                // }
 
                 self.buffer.end_frame();
+                renderer.start_frame()?;
+                renderer.render(self.buffer.draw())?;
                 renderer.end_frame()?;
 
                 self.timer.update();

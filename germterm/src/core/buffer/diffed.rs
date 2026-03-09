@@ -31,9 +31,8 @@ enum FrameOrder {
 /// implementation when you want to minimise redundant terminal writes.
 pub struct DiffedBuffers<Buf: Buffer> {
     size: Size,
-    cells: [Buf; 2],
     frame_order: FrameOrder,
-    layers: BTreeMap<isize, FlatBuffer>,
+    cells: [Buf; 2],
 }
 
 impl<Buf: Buffer> DiffedBuffers<Buf> {
@@ -46,7 +45,6 @@ impl<Buf: Buffer> DiffedBuffers<Buf> {
             size,
             cells: [buf1, buf2],
             frame_order: FrameOrder::CurrentOld,
-            layers: BTreeMap::new(),
         }
     }
 
@@ -103,10 +101,6 @@ impl<Buf: Buffer> Buffer for DiffedBuffers<Buf> {
         let idx = self.frame_order as usize;
         self.cells[idx].end_frame();
         self.swap_frames();
-    }
-
-    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
-        &mut self.layers
     }
 }
 

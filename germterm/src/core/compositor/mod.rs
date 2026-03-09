@@ -57,12 +57,12 @@ pub fn compose_cell(bottom: &mut Cell, top: &Cell) {
     }
 }
 
-#[inline]
-pub fn compose_buffers(bottom_buf: &mut FlatBuffer, top_buf: &FlatBuffer) {
-    for (bottom, top) in bottom_buf.cells_mut().zip(top_buf.cells()) {
-        compose_cell(bottom, top);
-    }
-}
+// #[inline]
+// pub fn compose_buffer(bottom_buf: &mut FlatBuffer, top_buf: &FlatBuffer) {
+//     for (bottom, top) in bottom_buf.cells_mut().zip(top_buf.cells()) {
+//         compose_cell(bottom, top);
+//     }
+// }
 
 #[inline]
 fn merge_octad(a: char, b: char) -> char {

@@ -36,7 +36,6 @@ pub struct PairedBuffer {
     size: Size,
     frames: Vec<[Cell; 2]>,
     order: FrameOrder,
-    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl PairedBuffer {
@@ -48,7 +47,6 @@ impl PairedBuffer {
             size,
             frames: vec![[Cell::EMPTY; 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
-            layers: BTreeMap::new(),
         }
     }
 
@@ -131,10 +129,6 @@ impl Buffer for PairedBuffer {
 
     fn end_frame(&mut self) {
         self.swap_frames();
-    }
-
-    fn layers(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
-        &mut self.layers
     }
 }
 

@@ -1,11 +1,12 @@
+pub mod blended;
+pub mod classic_diffed;
 pub mod diffed;
 pub mod flat;
+pub mod layered;
 pub mod paired;
 pub mod slice;
 pub mod test;
 pub mod utils;
-
-use std::collections::BTreeMap;
 
 use super::DrawCall;
 use crate::{
@@ -100,27 +101,6 @@ pub trait Buffer {
     /// Called at the end of a frame. Implementations may use this to
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}
-
-    /// Returns a [`BTreeMap`] holding all layers.
-    /// Implementors are expected to handle storage of layers.
-    fn layers(&mut self) -> &mut BTreeMap<isize, FlatBuffer>;
-
-    /// Retrieves a [`FlatBuffer`] layer at a specified `z_index`.
-    /// If the layer does not exist, a new one is created.
-    fn layer(&mut self, z_index: isize) -> &mut FlatBuffer {
-        let self_ptr = self as *mut Self;
-
-        // SAFETY:
-        // - `self_ptr` points to a valid `Self` and will remain valid for the duration of this closure
-        // - We only call `size()`, which does not touch `self.layers`.
-        //
-        // Without `unsafe`, we'd have to precompute the new buffer size even
-        // when we don't need to create a new layer`, which wastes CPU cycles.
-        self.layers().entry(z_index).or_insert_with(|| {
-            let size = unsafe { (*self_ptr).size() };
-            FlatBuffer::new(size)
-        })
-    }
 }
 
 pub trait ResizableBuffer: Buffer {

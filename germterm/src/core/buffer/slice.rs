@@ -23,7 +23,6 @@ pub struct SubBuffer<'a, Buf: Buffer + ?Sized> {
     inner: &'a mut Buf,
     // Never make this public as we never want a widget to grow its area.
     area: Rect,
-    layers: BTreeMap<isize, FlatBuffer>,
 }
 
 impl<'a, Buf: Buffer + ?Sized> SubBuffer<'a, Buf> {
@@ -209,10 +208,6 @@ impl<Buf: Buffer + ?Sized> Buffer for SubBuffer<'_, Buf> {
         };
         self.inner.get_cell_mut_checked(translated)
     }
-
-    fn layers<'a>(&mut self) -> &mut BTreeMap<isize, FlatBuffer> {
-        &mut self.layers
-    }
 }
 
 // This section is kind of hacky.
@@ -364,12 +359,6 @@ mod tests {
             pos: Position,
         ) -> Result<&mut crate::cell::Cell, crate::core::buffer::ErrorOutOfBoundsAxises> {
             self.0.get_cell_mut_checked(pos)
-        }
-
-        fn layers(
-            &mut self,
-        ) -> &mut std::collections::BTreeMap<isize, crate::core::buffer::flat::FlatBuffer> {
-            &mut self.1
         }
     }
 

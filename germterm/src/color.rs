@@ -141,6 +141,11 @@ impl Color {
     }
 
     #[inline]
+    pub const fn new_rgb(r: u8, g: u8, b: u8) -> Self {
+        Color(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8))
+    }
+
+    #[inline]
     pub fn r(&self) -> u8 {
         ((self.0 >> 24) & 0xFF) as u8
     }
@@ -212,56 +217,56 @@ impl std::fmt::Debug for Color {
     }
 }
 
-/// A packed RGB color stored in an `u32`.
-///
-/// Layout: `0xRR_GG_BB_00`
-///
-/// This struct is intended to be used in cases
-/// where the alpha channel is not applicable.
-pub struct ColorRgb(u32);
+// /// A packed RGB color stored in an `u32`.
+// ///
+// /// Layout: `0xRR_GG_BB_00`
+// ///
+// /// This struct is intended to be used in cases
+// /// where the alpha channel is not applicable.
+// pub struct ColorRgb(u32);
 
-impl ColorRgb {
-    pub const WHITE: Self = Self(0xFF_FF_FF_FF);
-    pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
-    pub const LIGHT_GRAY: Self = Self(0xD3_D3_D3_FF);
-    pub const BLACK: Self = Self(0x00_00_00_FF);
-    pub const RED: Self = Self(0xFF_00_00_FF);
-    pub const GREEN: Self = Self(0x00_FF_00_FF);
-    pub const BLUE: Self = Self(0x00_00_FF_FF);
-    pub const YELLOW: Self = Self(0xFF_FF_00_FF);
-    pub const CYAN: Self = Self(0x00_FF_FF_FF);
-    pub const TEAL: Self = Self(0x00_80_80_FF);
-    pub const VIOLET: Self = Self(0x7F_00_FF_FF);
-    pub const PINK: Self = Self(0xFF_C0_CB_FF);
-    pub const ORANGE: Self = Self(0xFF_A5_00_FF);
-    pub const DARK_GREEN: Self = Self(0x08_48_08_FF);
+// impl ColorRgb {
+//     pub const WHITE: Self = Self(0xFF_FF_FF_FF);
+//     pub const DARK_GRAY: Self = Self(0xA9_A9_A9_FF);
+//     pub const LIGHT_GRAY: Self = Self(0xD3_D3_D3_FF);
+//     pub const BLACK: Self = Self(0x00_00_00_FF);
+//     pub const RED: Self = Self(0xFF_00_00_FF);
+//     pub const GREEN: Self = Self(0x00_FF_00_FF);
+//     pub const BLUE: Self = Self(0x00_00_FF_FF);
+//     pub const YELLOW: Self = Self(0xFF_FF_00_FF);
+//     pub const CYAN: Self = Self(0x00_FF_FF_FF);
+//     pub const TEAL: Self = Self(0x00_80_80_FF);
+//     pub const VIOLET: Self = Self(0x7F_00_FF_FF);
+//     pub const PINK: Self = Self(0xFF_C0_CB_FF);
+//     pub const ORANGE: Self = Self(0xFF_A5_00_FF);
+//     pub const DARK_GREEN: Self = Self(0x08_48_08_FF);
 
-    #[inline]
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
-        ColorRgb(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8))
-    }
+//     #[inline]
+//     pub fn new(r: u8, g: u8, b: u8) -> Self {
+//         ColorRgb(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8))
+//     }
 
-    #[inline]
-    pub fn r(&self) -> u8 {
-        ((self.0 >> 24) & 0xFF) as u8
-    }
+//     #[inline]
+//     pub fn r(&self) -> u8 {
+//         ((self.0 >> 24) & 0xFF) as u8
+//     }
 
-    #[inline]
-    pub fn g(&self) -> u8 {
-        ((self.0 >> 16) & 0xFF) as u8
-    }
+//     #[inline]
+//     pub fn g(&self) -> u8 {
+//         ((self.0 >> 16) & 0xFF) as u8
+//     }
 
-    #[inline]
-    pub fn b(&self) -> u8 {
-        ((self.0 >> 8) & 0xFF) as u8
-    }
-}
+//     #[inline]
+//     pub fn b(&self) -> u8 {
+//         ((self.0 >> 8) & 0xFF) as u8
+//     }
+// }
 
-impl From<ColorRgb> for Color {
-    fn from(color: ColorRgb) -> Self {
-        Color::new(color.r(), color.g(), color.b(), 255)
-    }
-}
+// impl From<ColorRgb> for Color {
+//     fn from(color: ColorRgb) -> Self {
+//         Color::new(color.r(), color.g(), color.b(), 255)
+//     }
+// }
 
 /// A single stop in a [`ColorGradient`].
 ///
