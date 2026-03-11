@@ -67,6 +67,22 @@ fn main() -> io::Result<()> {
             "  ",
             Style::default().with_bg(Color::BLUE.with_alpha(127)),
         );
+
+        buf.current_buffer_mut().select_layer(1);
+
+        draw_string(
+            buf,
+            Position::new(4, 7),
+            "  ",
+            Style::default().with_bg(Color::RED.with_alpha(127)),
+        );
+
+        draw_string(
+            buf,
+            Position::new(5, 7),
+            "  ",
+            Style::default().with_bg(Color::BLUE.with_alpha(127)),
+        );
         ControlFlow::Continue(())
     })?;
 

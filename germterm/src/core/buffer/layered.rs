@@ -1,13 +1,15 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    cell::Cell,
+    cell::{Cell, CellFormat},
+    color::Color,
     core::{
         DrawCall,
         buffer::{Buffer, Drawer, ResizableBuffer, flat::FlatBuffer},
         compositor::compose_cell,
         draw::{Position, Size},
     },
+    style::Style,
 };
 
 pub struct LayeredBuffer<Buf, F>

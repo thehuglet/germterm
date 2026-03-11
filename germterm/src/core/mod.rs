@@ -22,6 +22,7 @@ use crate::{
     style::{Attributes, Style},
 };
 
+#[derive(Debug)]
 pub struct DrawCall<'a> {
     pub pos: Position,
     pub cell: &'a Cell,
@@ -152,18 +153,10 @@ impl<Timed: FrameTimer, Buf: Buffer + buffer::Drawer> Engine<Timed, Buf> {
 
                 let should_exit = update(self);
 
-                // At this point we already have pre-composed layers,
-                // now the goal is to compose them to one flat buffer
-                // let layers = std::mem::take(self.buffer.layers());
-                // let mut acc_buf = FlatBuffer::new_with_cell(self.buffer.size(), Cell::CLEAR);
-
-                // for (_, buf) in layers.into_iter() {
-                //     compose_buffers(&mut acc_buf, &buf);
-                // }
-
-                self.buffer.end_frame();
                 renderer.start_frame()?;
                 renderer.render(self.buffer.draw())?;
+
+                self.buffer.end_frame();
                 renderer.end_frame()?;
 
                 self.timer.update();
