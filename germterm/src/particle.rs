@@ -92,12 +92,14 @@ impl Default for ParticleEmitter {
 pub fn spawn_particles(
     engine: &mut Engine,
     layer_index: LayerIndex,
-    x: f32,
-    y: f32,
+    position: impl Into<OctadPosition>,
     spec: &ParticleSpec,
     emitter: &ParticleEmitter,
 ) {
+    let position: OctadPosition = position.into();
     let mut rng: ThreadRng = rand::rng();
+
+    let (x, y): (f32, f32) = octad_to_native_f32(position);
 
     match emitter.shape {
         ParticleEmitterShape::Circle => {
@@ -192,8 +194,17 @@ pub(crate) fn update_and_draw_particles(engine: &mut Engine) {
             (state.layer_index, state.pos.0, state.pos.1, color)
         };
 
-        draw_octad(engine, layer_index, x, y, color);
+        let pos: OctadPosition = native_f32_to_octad((x, y));
+        draw_octad(engine, layer_index, pos, color);
 
         i += 1;
     }
+}
+
+fn octad_to_native_f32(position: OctadPosition) -> (f32, f32) {
+    (position.x as f32 / 2.0, position.y as f32 / 4.0)
+}
+
+fn native_f32_to_octad((x, y): (f32, f32)) -> OctadPosition {
+    OctadPosition::new((x * 2.0).round() as i16, (y * 4.0).round() as i16)
 }

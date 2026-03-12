@@ -2,6 +2,7 @@ use std::io;
 
 use germterm::{
     color::Color,
+    coord_space::{native::NativePosition, octad::OctadPosition},
     crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind},
     draw::draw_fps_counter,
     engine::{Engine, end_frame, exit_cleanup, init, start_frame},
@@ -37,11 +38,14 @@ fn main() -> io::Result<()> {
                     kind: KeyEventKind::Press,
                     ..
                 }) => {
+                    let screen_center: OctadPosition =
+                        NativePosition::new((TERM_COLS / 2) as i16, (TERM_ROWS / 2) as i16)
+                            .to_octad();
+
                     spawn_particles(
                         &mut engine,
                         layer,
-                        TERM_COLS as f32 * 0.5,
-                        TERM_ROWS as f32 * 0.5,
+                        screen_center,
                         &ParticleSpec {
                             color: ParticleColor::Solid(Color::VIOLET),
                             lifetime_sec: 4.0,
@@ -58,7 +62,7 @@ fn main() -> io::Result<()> {
             }
         }
 
-        draw_fps_counter(&mut engine, layer, 0, 1);
+        draw_fps_counter(&mut engine, layer, (0, 1));
 
         end_frame(&mut engine)?;
     }
