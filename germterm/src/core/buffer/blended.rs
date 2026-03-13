@@ -50,6 +50,14 @@ impl<Buf: Buffer> Buffer for BlendedBuffer<Buf> {
     ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
         self.inner.get_cell_mut_checked(pos)
     }
+
+    fn start_frame(&mut self) {
+        self.inner.start_frame()
+    }
+
+    fn end_frame(&mut self) {
+        self.inner.end_frame()
+    }
 }
 
 impl<Buf> Drawer for BlendedBuffer<Buf>

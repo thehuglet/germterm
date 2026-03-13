@@ -113,6 +113,18 @@ where
     ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
         self.selected_layer_mut().get_cell_mut_checked(pos)
     }
+
+    fn start_frame(&mut self) {
+        for (_, layer) in self.layers.iter_mut() {
+            layer.start_frame()
+        }
+    }
+
+    fn end_frame(&mut self) {
+        for (_, layer) in self.layers.iter_mut() {
+            layer.end_frame()
+        }
+    }
 }
 
 impl<Buf, F> Drawer for LayeredBuffer<Buf, F>
