@@ -94,6 +94,7 @@ mod tests {
         cell::{Cell, CellFormat},
         color::Color,
         core::{
+            DrawCall,
             buffer::{
                 Buffer, Drawer, blended::BlendedBuffer, flat::FlatBuffer, layered::LayeredBuffer,
             },
@@ -135,8 +136,13 @@ mod tests {
     }
 
     // Convenience helper for retrieving the cell at (0, 0)
-    fn cell<Buf: Buffer>(buf: &Buf) -> &Cell {
+    fn buf_cell<Buf: Buffer>(buf: &Buf) -> &Cell {
         buf.get_cell(Position::new(0, 0))
+    }
+
+    fn layered_buf_cell<Buf: Buffer + Drawer>(buf: &mut Buf) -> &Cell {
+        let draw_calls: Vec<DrawCall> = buf.draw().collect();
+        draw_calls[0].cell
     }
 
     #[test]
@@ -151,7 +157,7 @@ mod tests {
             style: Style::new(Color::TRANSPARENT, Color::WHITE, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -166,7 +172,7 @@ mod tests {
             style: Style::new(Color::WHITE, Color::TRANSPARENT, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -181,7 +187,7 @@ mod tests {
             style: Style::new(Color::TRANSPARENT, Color::RED, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -196,7 +202,7 @@ mod tests {
             style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -220,7 +226,7 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -244,7 +250,7 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -267,7 +273,7 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -290,7 +296,7 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -305,7 +311,7 @@ mod tests {
             style: Style::new(Color::TRANSPARENT, Color::DARK_GRAY, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -320,7 +326,7 @@ mod tests {
             style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -344,7 +350,7 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*cell(&buf), expected);
+        assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
@@ -360,14 +366,6 @@ mod tests {
             Color::RED.with_alpha(127),
         );
 
-        // Trigger composition and get the final cell
-        let draw_calls: Vec<_> = buf.draw().collect();
-        let final_cell = draw_calls
-            .iter()
-            .find(|call| call.pos == Position::new(0, 0))
-            .map(|call| call.cell)
-            .expect("cell not found");
-
         let expected = Cell {
             ch: ' ',
             style: Style::new(
@@ -377,6 +375,6 @@ mod tests {
             ),
             format: CellFormat::Standard,
         };
-        assert_eq!(*final_cell, expected);
+        assert_eq!(*layered_buf_cell(&mut buf), expected);
     }
 }

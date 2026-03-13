@@ -64,7 +64,7 @@ impl std::fmt::Debug for Style {
 
 impl Default for Style {
     fn default() -> Self {
-        Self::TRANSPARENT
+        Style::TRANSPARENT
     }
 }
 
@@ -378,8 +378,8 @@ mod tests {
     #[test]
     fn set_fg_does_not_affect_bg() {
         let style = Style::default().with_fg(Color::RED);
-        assert!(!style.has_bg());
-        assert!(style.bg().is_none());
+        assert!(style.has_bg());
+        assert!(style.bg().is_some_and(|bg| bg == Color::TRANSPARENT));
     }
 
     // set_bg / bg / has_bg
@@ -414,8 +414,8 @@ mod tests {
     #[test]
     fn set_bg_does_not_affect_fg() {
         let style = Style::default().with_bg(Color::WHITE);
-        assert!(!style.has_fg());
-        assert!(style.fg().is_none());
+        assert!(style.has_fg());
+        assert!(style.fg().unwrap() == Color::TRANSPARENT);
     }
 
     // set_attributes / attributes
