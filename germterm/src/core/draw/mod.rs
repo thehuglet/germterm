@@ -1,4 +1,5 @@
 pub mod gfx;
+pub mod layer;
 mod position;
 mod rect;
 mod size;

@@ -1,9 +1,17 @@
-use std::{cmp::Ordering, ptr};
+use std::{
+    cell,
+    cmp::Ordering,
+    collections::BTreeMap,
+    ptr,
+    slice::{Iter, IterMut},
+};
 
 use super::{Buffer, DrawCall, Drawer, ErrorOutOfBoundsAxises, ResizableBuffer};
 use crate::{
-    cell::Cell,
-    core::{Position, draw::Size},
+    cell::{Cell, CellFormat},
+    color::Color,
+    core::{Position, compositor::compose_cell, draw::Size},
+    style::{Attributes, Style},
 };
 
 /// A flat buffer that stores every cell in a single `Vec<Cell>` in row-major
@@ -16,6 +24,7 @@ use crate::{
 /// used instead.
 ///
 /// [`DiffedBuffers<FlatBuffer>`]: super::diffed::DiffedBuffers
+#[derive(Debug, PartialEq, Eq)]
 pub struct FlatBuffer {
     size: Size,
     cells: Vec<Cell>,
@@ -23,10 +32,30 @@ pub struct FlatBuffer {
 
 impl FlatBuffer {
     pub fn new(size: Size) -> Self {
+        let layer_base_cell = Cell {
+            ch: ' ',
+            style: Style::new(Color::TRANSPARENT, Color::TRANSPARENT, Attributes::empty()),
+            format: CellFormat::Standard,
+        };
         Self {
             size,
-            cells: vec![Cell::EMPTY; size.area() as usize],
+            cells: vec![layer_base_cell; size.area() as usize],
         }
+    }
+
+    pub fn new_with_cell(size: Size, cell: Cell) -> Self {
+        Self {
+            size,
+            cells: vec![cell; size.area() as usize],
+        }
+    }
+
+    pub fn cells(&self) -> Iter<'_, Cell> {
+        self.cells.iter()
+    }
+
+    pub fn cells_mut(&mut self) -> IterMut<'_, Cell> {
+        self.cells.iter_mut()
     }
 }
 

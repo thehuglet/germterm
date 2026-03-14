@@ -1,5 +1,8 @@
+pub mod blended;
+pub mod classic_diffed;
 pub mod diffed;
 pub mod flat;
+pub mod layered;
 pub mod paired;
 pub mod slice;
 pub mod test;
@@ -8,7 +11,7 @@ pub mod utils;
 use super::DrawCall;
 use crate::{
     cell::Cell,
-    core::{Position, draw::Size},
+    core::{Position, buffer::flat::FlatBuffer, draw::Size},
 };
 
 /// Indicates which axis (or axes) caused an out-of-bounds access.
@@ -94,6 +97,7 @@ pub trait Buffer {
     /// Called at the beginning of a frame. Implementations may use this to
     /// clear or prepare the buffer for new draw commands.
     fn start_frame(&mut self) {}
+
     /// Called at the end of a frame. Implementations may use this to
     /// flush or finalise the buffer contents.
     fn end_frame(&mut self) {}

@@ -18,7 +18,25 @@ pub struct Cell {
 impl Cell {
     pub const EMPTY: Cell = Cell {
         ch: ' ',
-        style: Style::EMPTY,
+        style: Style::TRANSPARENT,
+        format: CellFormat::Standard,
+    };
+
+    pub const CLEAR: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR,
+        format: CellFormat::Standard,
+    };
+
+    pub const CLEAR_FG: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR_FG,
+        format: CellFormat::Standard,
+    };
+
+    pub const CLEAR_BG: Cell = Cell {
+        ch: ' ',
+        style: Style::CLEAR_BG,
         format: CellFormat::Standard,
     };
 

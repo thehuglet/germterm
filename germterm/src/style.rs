@@ -18,23 +18,53 @@ bitflags! {
         const KNOWN = Self::BOLD.bits() | Self::ITALIC.bits() | Self::UNDERLINED.bits() | Self::HIDDEN.bits();
         // These are doc hidden as users should not use them
         #[doc(hidden)]
-        const NO_FG_COLOR   = 0b_00010000;
+        const CLEAR_FG   = 0b_00010000;
         #[doc(hidden)]
-        const NO_BG_COLOR   = 0b_00100000;
+        const CLEAR_BG   = 0b_00100000;
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Style {
     fg: MaybeUninit<Color>,
     bg: MaybeUninit<Color>,
     // The colors are initialized if `Attributes::NO_*_COLOR` are not set.
-    attributes: Attributes,
+    pub(crate) attributes: Attributes,
+}
+
+struct Uninit;
+
+impl std::fmt::Debug for Uninit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Uninit")
+    }
+}
+
+impl std::fmt::Debug for Style {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("Style");
+
+        unsafe {
+            if self.has_fg() {
+                ds.field("fg", self.fg.assume_init_ref());
+            } else {
+                ds.field("fg", &Uninit);
+            }
+
+            if self.has_bg() {
+                ds.field("bg", self.bg.assume_init_ref());
+            } else {
+                ds.field("bg", &Uninit);
+            }
+        }
+
+        ds.field("attributes", &self.attributes).finish()
+    }
 }
 
 impl Default for Style {
     fn default() -> Self {
-        Self::EMPTY
+        Style::TRANSPARENT
     }
 }
 
@@ -49,12 +79,30 @@ impl PartialEq for Style {
 impl Eq for Style {}
 
 impl Style {
-    pub const EMPTY: Self = Style {
+    pub const TRANSPARENT: Self = Style {
+        fg: MaybeUninit::new(Color::TRANSPARENT),
+        bg: MaybeUninit::new(Color::TRANSPARENT),
+        attributes: Attributes::empty(),
+    };
+
+    pub const CLEAR: Self = Style {
         fg: MaybeUninit::uninit(),
         bg: MaybeUninit::uninit(),
         attributes: Attributes::from_bits_truncate(
-            Attributes::NO_FG_COLOR.bits() | Attributes::NO_BG_COLOR.bits(),
+            Attributes::CLEAR_FG.bits() | Attributes::CLEAR_BG.bits(),
         ),
+    };
+
+    pub const CLEAR_FG: Self = Style {
+        fg: MaybeUninit::uninit(),
+        bg: MaybeUninit::new(Color::TRANSPARENT),
+        attributes: Attributes::from_bits_truncate(Attributes::CLEAR_FG.bits()),
+    };
+
+    pub const CLEAR_BG: Self = Style {
+        fg: MaybeUninit::new(Color::TRANSPARENT),
+        bg: MaybeUninit::uninit(),
+        attributes: Attributes::from_bits_truncate(Attributes::CLEAR_BG.bits()),
     };
 
     pub fn new(
@@ -62,7 +110,7 @@ impl Style {
         bg: impl Into<Option<Color>>,
         attributes: Attributes,
     ) -> Self {
-        Self::EMPTY
+        Self::TRANSPARENT
             .with_fg(fg)
             .with_bg(bg)
             .set_attributes(attributes)
@@ -73,11 +121,22 @@ impl Style {
         let c: Option<Color> = fg.into();
         if let Some(c) = c {
             self.fg.write(c);
-            self.attributes.remove(Attributes::NO_FG_COLOR);
+            self.attributes.remove(Attributes::CLEAR_FG);
         } else {
-            self.attributes |= Attributes::NO_FG_COLOR;
+            self.attributes |= Attributes::CLEAR_FG;
         }
         self
+    }
+
+    #[inline]
+    pub fn set_fg(&mut self, fg: impl Into<Option<Color>>) {
+        let c: Option<Color> = fg.into();
+        if let Some(c) = c {
+            self.fg.write(c);
+            self.attributes.remove(Attributes::CLEAR_FG);
+        } else {
+            self.attributes |= Attributes::CLEAR_FG;
+        }
     }
 
     #[inline]
@@ -87,7 +146,7 @@ impl Style {
 
     #[inline]
     pub fn has_fg(&self) -> bool {
-        !self.attributes.contains(Attributes::NO_FG_COLOR)
+        !self.attributes.contains(Attributes::CLEAR_FG)
     }
 
     #[inline]
@@ -95,12 +154,23 @@ impl Style {
         let c: Option<Color> = bg.into();
         if let Some(c) = c {
             self.bg.write(c);
-            self.attributes.remove(Attributes::NO_BG_COLOR);
+            self.attributes.remove(Attributes::CLEAR_BG);
         } else {
-            self.attributes |= Attributes::NO_BG_COLOR;
+            self.attributes |= Attributes::CLEAR_BG;
         }
 
         self
+    }
+
+    #[inline]
+    pub fn set_bg(&mut self, bg: impl Into<Option<Color>>) {
+        let c: Option<Color> = bg.into();
+        if let Some(c) = c {
+            self.bg.write(c);
+            self.attributes.remove(Attributes::CLEAR_BG);
+        } else {
+            self.attributes |= Attributes::CLEAR_BG;
+        }
     }
 
     #[inline]
@@ -110,7 +180,7 @@ impl Style {
 
     #[inline]
     pub fn has_bg(&self) -> bool {
-        !self.attributes.contains(Attributes::NO_BG_COLOR)
+        !self.attributes.contains(Attributes::CLEAR_BG)
     }
 
     #[inline]
@@ -129,17 +199,30 @@ impl Style {
     }
 
     pub fn merged(self, other: Self) -> Self {
-        Self::EMPTY
+        Self::TRANSPARENT
             .with_fg(other.fg().or(self.fg()))
             .with_bg(other.bg().or(self.bg()))
             .set_attributes(other.attributes() | self.attributes())
     }
 
     pub fn merge(&mut self, other: Self) {
-        *self = Self::EMPTY
+        *self = Self::TRANSPARENT
             .with_fg(other.fg().or(self.fg()))
             .with_bg(other.bg().or(self.bg()))
             .set_attributes(other.attributes() | self.attributes());
+    }
+
+    /// Premultiplies the `fg` and `bg` RGB channels by alpha if applicable.
+    pub fn premultiply_fg_and_bg(&mut self) {
+        if self.has_fg() {
+            let fg = self.fg();
+            self.fg.write(fg.unwrap().to_premultiplied_alpha());
+        }
+
+        if self.has_bg() {
+            let bg = self.bg();
+            self.bg.write(bg.unwrap().to_premultiplied_alpha());
+        }
     }
 }
 
@@ -245,14 +328,14 @@ mod tests {
 
     #[test]
     fn default_has_no_fg() {
-        let style = Style::default();
+        let style = Style::default().with_fg(None);
         assert!(!style.has_fg());
         assert!(style.fg().is_none());
     }
 
     #[test]
     fn default_has_no_bg() {
-        let style = Style::default();
+        let style = Style::default().with_bg(None);
         assert!(!style.has_bg());
         assert!(style.bg().is_none());
     }
@@ -295,8 +378,8 @@ mod tests {
     #[test]
     fn set_fg_does_not_affect_bg() {
         let style = Style::default().with_fg(Color::RED);
-        assert!(!style.has_bg());
-        assert!(style.bg().is_none());
+        assert!(style.has_bg());
+        assert!(style.bg().is_some_and(|bg| bg == Color::TRANSPARENT));
     }
 
     // set_bg / bg / has_bg
@@ -331,8 +414,8 @@ mod tests {
     #[test]
     fn set_bg_does_not_affect_fg() {
         let style = Style::default().with_bg(Color::WHITE);
-        assert!(!style.has_fg());
-        assert!(style.fg().is_none());
+        assert!(style.has_fg());
+        assert!(style.fg().unwrap() == Color::TRANSPARENT);
     }
 
     // set_attributes / attributes
@@ -373,7 +456,7 @@ mod tests {
     fn set_attributes_internal_color_bits_are_ignored() {
         // Passing the internal sentinel bits via set_attributes should have no effect on
         // the publicly visible attributes() value.
-        let internal = Attributes::NO_FG_COLOR | Attributes::NO_BG_COLOR;
+        let internal = Attributes::CLEAR_FG | Attributes::CLEAR_BG;
         let style = Style::default().set_attributes(internal);
         assert_eq!(style.attributes(), Attributes::empty());
     }
@@ -386,8 +469,8 @@ mod tests {
             .with_bg(Color::BLUE)
             .set_attributes(Attributes::BOLD);
         let attrs = style.attributes();
-        assert!(!attrs.contains(Attributes::NO_FG_COLOR));
-        assert!(!attrs.contains(Attributes::NO_BG_COLOR));
+        assert!(!attrs.contains(Attributes::CLEAR_FG));
+        assert!(!attrs.contains(Attributes::CLEAR_BG));
         assert!(attrs.contains(Attributes::BOLD));
     }
 
