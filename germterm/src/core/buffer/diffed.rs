@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
+
 use crate::{
     cell::Cell,
     core::{
         Position,
-        buffer::{Drawer, ResizableBuffer},
+        buffer::{Drawer, ResizableBuffer, flat::FlatBuffer},
+        compositor::compose_cell,
         draw::Size,
     },
 };
@@ -28,8 +31,8 @@ enum FrameOrder {
 /// implementation when you want to minimise redundant terminal writes.
 pub struct DiffedBuffers<Buf: Buffer> {
     size: Size,
-    cells: [Buf; 2],
     frame_order: FrameOrder,
+    cells: [Buf; 2],
 }
 
 impl<Buf: Buffer> DiffedBuffers<Buf> {

@@ -193,7 +193,7 @@ mod tests {
     fn test_cell() -> Cell {
         Cell {
             ch: '#',
-            ..Cell::EMPTY
+            ..Cell::TRANSPARENT
         }
     }
 

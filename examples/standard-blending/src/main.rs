@@ -74,7 +74,7 @@ fn main() -> io::Result<()> {
         draw_test_cases(&mut engine, layer, 40, 17, game_time);
 
         // Should do nothing
-        draw_rect(&mut engine, layer, 40, 0, 40, 25, Color::CLEAR);
+        draw_rect(&mut engine, layer, 40, 0, 40, 25, Color::TRANSPARENT);
 
         draw_fps_counter(&mut engine, layer, 0, 0);
         end_frame(&mut engine)?;
@@ -245,10 +245,10 @@ fn draw_test_cases(engine: &mut Engine, layer: LayerIndex, x: i16, y: i16, game_
     );
 
     // --- Drawing a clear rect ---
-    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::CLEAR);
+    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::TRANSPARENT);
 
     // --- Drawing a translucent rect + opaque text on top of it ---
-    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::CLEAR);
+    draw_rect(engine, layer, x + 2, y + 10, 4, 2, Color::TRANSPARENT);
 
     // --- Drawing a translucent fg on top of an oscillating alpha fg
     draw_text(

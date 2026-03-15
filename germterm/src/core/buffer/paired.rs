@@ -1,11 +1,15 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::BTreeMap};
 
 use super::{Buffer, DrawCall, Drawer};
 #[cfg(test)]
 use crate::{buffer_resizing_tests, buffer_tests, drawer_diffed_buffer_tests};
 use crate::{
     cell::Cell,
-    core::{Position, buffer::ResizableBuffer, draw::Size},
+    core::{
+        Position,
+        buffer::{ResizableBuffer, flat::FlatBuffer},
+        draw::Size,
+    },
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -41,7 +45,7 @@ impl PairedBuffer {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            frames: vec![[Cell::EMPTY; 2]; size.area() as usize],
+            frames: vec![[Cell::TRANSPARENT; 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
         }
     }
