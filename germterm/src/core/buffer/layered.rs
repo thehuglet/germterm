@@ -22,6 +22,7 @@ where
     selected_layer_index: isize,
     buf_factory: F,
     composed_buffer: FlatBuffer,
+    bg_fallback: Color,
 }
 
 impl<Buf, F> LayeredBuffer<Buf, F>
@@ -36,10 +37,16 @@ where
             selected_layer_index: 0,
             buf_factory,
             composed_buffer: FlatBuffer::new(size),
+            bg_fallback: Color::BLACK,
         };
         layered_buffer.create_layer(0);
 
         layered_buffer
+    }
+
+    pub fn with_bg_fallback(mut self, color: Color) -> Self {
+        self.bg_fallback = color;
+        self
     }
 
     pub fn select_layer(&mut self, index: isize) {
@@ -114,6 +121,12 @@ where
         self.selected_layer_mut().get_cell_mut_checked(pos)
     }
 
+    fn clear(&mut self) {
+        for (_, layer) in self.layers.iter_mut() {
+            layer.fill(Cell::TRANSPARENT);
+        }
+    }
+
     fn start_frame(&mut self) {
         for (_, layer) in self.layers.iter_mut() {
             layer.start_frame()
@@ -135,13 +148,14 @@ where
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
         let width = self.size.width;
         let height = self.size.height;
+        let bg_fallback: Color = self.bg_fallback;
 
         self.composed_buffer.fill(Cell::CLEAR);
 
         for buf in self.layers.values_mut() {
             for call in buf.draw() {
                 let bottom = self.composed_buffer.get_cell_mut(call.pos);
-                compose_cell(bottom, call.cell);
+                compose_cell(bottom, call.cell, bg_fallback);
             }
         }
 

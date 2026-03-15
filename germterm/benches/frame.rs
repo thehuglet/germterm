@@ -9,7 +9,7 @@ use germterm::{
 };
 
 fn full_cell() -> Cell {
-    let mut cell = Cell::EMPTY;
+    let mut cell = Cell::TRANSPARENT;
     cell.ch = 'X';
     cell.fg = Color::WHITE;
     cell.bg = Color::BLACK;

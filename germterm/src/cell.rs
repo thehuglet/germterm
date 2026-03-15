@@ -16,7 +16,7 @@ pub struct Cell {
 }
 
 impl Cell {
-    pub const EMPTY: Cell = Cell {
+    pub const TRANSPARENT: Cell = Cell {
         ch: ' ',
         style: Style::TRANSPARENT,
         format: CellFormat::Standard,

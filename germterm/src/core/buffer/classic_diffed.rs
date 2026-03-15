@@ -21,7 +21,9 @@ impl<Buf: Buffer> ClassicDiffedBuffers<Buf> {
             current_buf: buf,
             last_frame: {
                 (0..size.width)
-                    .flat_map(|y| (0..size.height).map(move |x| (Position::new(x, y), Cell::EMPTY)))
+                    .flat_map(|y| {
+                        (0..size.height).map(move |x| (Position::new(x, y), Cell::TRANSPARENT))
+                    })
                     .collect()
             },
         }
@@ -61,6 +63,10 @@ where
 
     fn fill(&mut self, cell: Cell) {
         self.current_buf.fill(cell);
+    }
+
+    fn clear(&mut self) {
+        self.current_buf.clear()
     }
 
     fn start_frame(&mut self) {

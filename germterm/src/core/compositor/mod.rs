@@ -5,7 +5,10 @@ use crate::{
 };
 
 #[inline]
-pub fn compose_cell(bottom: &mut Cell, top: &Cell) {
+pub fn compose_cell(bottom: &mut Cell, top: &Cell, bg_fallback: Color) {
+    let top_has_fg: bool = top.style.has_fg();
+    let top_has_bg: bool = top.style.has_bg();
+
     // Cyan is a convenience placeholder for no value here.
     // It should NEVER be visible in the terminal.
     //
@@ -23,48 +26,50 @@ pub fn compose_cell(bottom: &mut Cell, top: &Cell) {
     // --- ch, attributes ---
     if cover_fg_with_bg {
         bottom.ch = ' ';
-        bottom.style.attributes = top.style.attributes;
+        bottom.style.set_attributes(top.style.attributes());
     } else if !(translucent_fg_keep_char || keep_old_ch_and_fg) {
         bottom.ch = top.ch;
-        bottom.style.attributes = top.style.attributes;
+        bottom.style.set_attributes(top.style.attributes());
     }
 
     // --- fg ---
-    if top.style.has_fg() {
-        let bottom_fg: Color = bottom.style.fg().unwrap_or(Color::TRANSPARENT);
-
+    if top_has_fg {
+        let translucent_on_clear: bool = top_fg.a() == 0 && !bottom.style.has_fg();
         let override_fg: bool = top_fg.a() == 255;
         let blend_fg_with_fg: bool = (1..254).contains(&top_fg.a());
 
-        if keep_old_ch_and_fg {
-            // Do nothing
-        } else if override_fg {
-            bottom.style.set_fg(top_fg);
-        } else if blend_fg_with_fg {
-            bottom.style.set_fg(blend_source_over(bottom_fg, top_fg));
-        } else if cover_fg_with_bg {
-            // When fg is covered up, we set it's color
-            // to transparent to prevent anomalies
-            bottom.style.set_fg(Color::TRANSPARENT)
+        if let Some(bottom_fg) = bottom.style.fg() {
+            if keep_old_ch_and_fg {
+                // Do nothing
+            } else if override_fg {
+                bottom.style.set_fg(top_fg);
+            } else if blend_fg_with_fg {
+                bottom.style.set_fg(blend_source_over(bottom_fg, top_fg));
+            } else if cover_fg_with_bg {
+                // When fg is covered up, we set it's color
+                // to none to prevent anomalies
+                bottom.style.set_fg(None);
+            }
         }
     } else {
-        bottom.style.set_fg(None)
+        bottom.style.set_fg(None);
     }
 
     // --- bg ---
-    if top.style.has_bg() {
-        let bottom_bg: Color = bottom.style.bg().unwrap_or(Color::TRANSPARENT);
-
+    if top_has_bg {
+        let translucent_on_clear: bool = top_bg.a() == 0 && !bottom.style.has_bg();
         let override_bg: bool = top_bg.a() == 255;
         let blend_bg_with_bg: bool = (1..254).contains(&top_bg.a());
 
-        if override_bg {
-            bottom.style.set_bg(top_bg);
-        } else if blend_bg_with_bg {
-            bottom.style.set_bg(blend_source_over(bottom_bg, top_bg));
+        if let Some(bottom_bg) = bottom.style.bg() {
+            if override_bg {
+                bottom.style.set_bg(top_bg);
+            } else if blend_bg_with_bg {
+                bottom.style.set_bg(blend_source_over(bottom_bg, top_bg));
+            }
         }
     } else {
-        bottom.style.set_bg(None)
+        bottom.style.set_bg(None);
     }
 }
 
@@ -101,6 +106,8 @@ fn merge_blocktad(a: char, b: char) -> char {
 
 #[cfg(test)]
 mod tests {
+    use std::mem::MaybeUninit;
+
     use crate::{
         cell::{Cell, CellFormat},
         color::Color,
@@ -115,17 +122,24 @@ mod tests {
     };
 
     const POS: Position = Position::new(0, 0);
+    const SIZE: Size = Size::new(1, 1);
 
     // Convenience helper for constructing a flat blended 1x1 buffer
-    fn flat_blended_buf() -> BlendedBuffer<FlatBuffer> {
-        BlendedBuffer::new(FlatBuffer::new(Size::new(1, 1)))
+    fn flat_blended_buf_opaque_fill() -> BlendedBuffer<FlatBuffer> {
+        BlendedBuffer::new(FlatBuffer::new(SIZE))
     }
 
     // Convenience helper for constructing a layered blended 1x1 buffer
     fn layered_blended_buf()
     -> LayeredBuffer<BlendedBuffer<FlatBuffer>, impl Fn(Size) -> BlendedBuffer<FlatBuffer>> {
-        let buf_size = Size::new(1, 1);
-        LayeredBuffer::new(buf_size, |size| BlendedBuffer::new(FlatBuffer::new(size)))
+        LayeredBuffer::new(SIZE, |size| {
+            let black_bg_cell = Cell {
+                ch: ' ',
+                style: Style::CLEAR.with_bg(Color::BLACK),
+                format: CellFormat::Standard,
+            };
+            BlendedBuffer::new(FlatBuffer::new_with_cell(size, black_bg_cell))
+        })
     }
 
     // Convenience helper for drawing a single standard cell at (0, 0)
@@ -160,25 +174,36 @@ mod tests {
 
     #[test]
     fn cell_clear_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
-        buf.set_cell(POS, Cell::CLEAR_BG);
+        draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::BLACK);
+        draw_standard_cell(&mut buf, 'a', Color::WHITE, None);
 
-        let expected = Cell::CLEAR_BG;
+        let expected = Cell {
+            ch: 'a',
+            style: Style {
+                fg: MaybeUninit::new(Color::WHITE),
+                bg: MaybeUninit::uninit(),
+                attributes: Attributes::CLEAR_BG,
+            },
+            format: CellFormat::Standard,
+        };
         assert_eq!(*buf_cell(&buf), expected);
     }
 
     #[test]
     fn cell_opaque_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::WHITE);
+        // draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::RED);
 
         let expected = Cell {
-            ch: ' ',
-            style: Style::new(Color::TRANSPARENT, Color::WHITE, Attributes::empty()),
+            ch: 'a',
+            style: Style {
+                fg: MaybeUninit::new(Color::WHITE),
+                bg: MaybeUninit::new(Color::RED),
+                attributes: Attributes::empty(),
+            },
             format: CellFormat::Standard,
         };
         assert_eq!(*buf_cell(&buf), expected);
@@ -186,7 +211,7 @@ mod tests {
 
     #[test]
     fn cell_opaque_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
         draw_standard_cell(&mut buf, '*', Color::WHITE, Color::TRANSPARENT);
@@ -201,7 +226,7 @@ mod tests {
 
     #[test]
     fn cell_transparent_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::RED);
         draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
@@ -216,7 +241,7 @@ mod tests {
 
     #[test]
     fn cell_transparent_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
         draw_standard_cell(&mut buf, '*', Color::TRANSPARENT, Color::TRANSPARENT);
@@ -231,7 +256,7 @@ mod tests {
 
     #[test]
     fn cell_translucent_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
         draw_standard_cell(
@@ -255,7 +280,7 @@ mod tests {
 
     #[test]
     fn cell_translucent_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
         draw_standard_cell(
@@ -279,7 +304,7 @@ mod tests {
 
     #[test]
     fn cell_translucent_bg_over_transparent_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(
             &mut buf,
@@ -302,7 +327,7 @@ mod tests {
 
     #[test]
     fn cell_translucent_fg_over_transparent_fg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(
             &mut buf,
@@ -325,7 +350,7 @@ mod tests {
 
     #[test]
     fn cell_translucent_fg_over_opaque_fg_char_interpolation() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, 'a', Color::RED, Color::TRANSPARENT);
         draw_standard_cell(
@@ -349,7 +374,7 @@ mod tests {
 
     #[test]
     fn cell_cover_fg_with_opaque_bg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
         draw_standard_cell(&mut buf, 'a', Color::TRANSPARENT, Color::DARK_GRAY);
@@ -364,7 +389,7 @@ mod tests {
 
     #[test]
     fn cell_transparent_fg_transparent_bg_over_opaque_fg() {
-        let mut buf = flat_blended_buf();
+        let mut buf = flat_blended_buf_opaque_fill();
 
         draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
         draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
@@ -372,6 +397,28 @@ mod tests {
         let expected = Cell {
             ch: '*',
             style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
+            format: CellFormat::Standard,
+        };
+        assert_eq!(*buf_cell(&buf), expected);
+    }
+
+    #[test]
+    fn cell_transparent_bg_over_clear_bg() {
+        let mut buf = flat_blended_buf_opaque_fill();
+
+        buf.set_cell(
+            POS,
+            Cell {
+                ch: ' ',
+                style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+                format: CellFormat::Standard,
+            },
+        );
+        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+
+        let expected = Cell {
+            ch: ' ',
+            style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
             format: CellFormat::Standard,
         };
         assert_eq!(*buf_cell(&buf), expected);
@@ -402,6 +449,28 @@ mod tests {
     }
 
     #[test]
+    fn same_layer_transparent_bg_over_clear_bg() {
+        let mut buf = layered_blended_buf();
+
+        buf.set_cell(
+            POS,
+            Cell {
+                ch: ' ',
+                style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+                format: CellFormat::Standard,
+            },
+        );
+        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+
+        let expected = Cell {
+            ch: ' ',
+            style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+            format: CellFormat::Standard,
+        };
+        assert_eq!(*buf_cell(&buf), expected);
+    }
+
+    #[test]
     fn cross_layer_transparent_bg_over_opaque_bg() {
         let mut buf = layered_blended_buf();
 
@@ -416,11 +485,7 @@ mod tests {
 
         let expected = Cell {
             ch: ' ',
-            style: Style::new(
-                Color::TRANSPARENT,
-                Color::new(127, 0, 0, 255),
-                Attributes::empty(),
-            ),
+            style: Style::CLEAR_FG.with_bg(Color::new(127, 0, 0, 255)),
             format: CellFormat::Standard,
         };
         assert_eq!(*layered_buf_cell(&mut buf), expected);

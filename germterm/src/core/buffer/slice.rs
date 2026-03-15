@@ -230,7 +230,7 @@ mod tests {
     pub const SCALE: u16 = 2;
     pub const TEST_CELL: Cell = Cell {
         ch: '森',
-        ..Cell::EMPTY
+        ..Cell::TRANSPARENT
     };
 
     struct OwnedSubBuffer(
@@ -324,7 +324,7 @@ mod tests {
         }
 
         fn clear(&mut self) {
-            self.0.fill(crate::cell::Cell::EMPTY);
+            self.0.fill(crate::cell::Cell::TRANSPARENT);
         }
 
         fn start_frame(&mut self) {

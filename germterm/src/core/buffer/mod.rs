@@ -89,9 +89,9 @@ pub trait Buffer {
         }
     }
 
-    /// Clears the buffer by filling it with [`Cell::EMPTY`].
+    /// Clears the buffer by filling it with [`Cell::CLEAR`].
     fn clear(&mut self) {
-        self.fill(Cell::EMPTY);
+        self.fill(Cell::CLEAR);
     }
 
     /// Called at the beginning of a frame. Implementations may use this to

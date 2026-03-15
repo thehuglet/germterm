@@ -26,8 +26,8 @@ bitflags! {
 
 #[derive(Clone, Copy)]
 pub struct Style {
-    fg: MaybeUninit<Color>,
-    bg: MaybeUninit<Color>,
+    pub(crate) fg: MaybeUninit<Color>,
+    pub(crate) bg: MaybeUninit<Color>,
     // The colors are initialized if `Attributes::NO_*_COLOR` are not set.
     pub(crate) attributes: Attributes,
 }

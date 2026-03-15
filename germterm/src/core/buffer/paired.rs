@@ -45,7 +45,7 @@ impl PairedBuffer {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            frames: vec![[Cell::EMPTY; 2]; size.area() as usize],
+            frames: vec![[Cell::TRANSPARENT; 2]; size.area() as usize],
             order: FrameOrder::CurrentOld,
         }
     }

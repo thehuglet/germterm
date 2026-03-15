@@ -5,4 +5,5 @@ edition = "2024"
 publish = false
 
 [dependencies]
+termbg = "0.6.2"
 germterm = { path = "../../germterm" }

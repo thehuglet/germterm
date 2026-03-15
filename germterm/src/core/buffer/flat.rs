@@ -32,14 +32,9 @@ pub struct FlatBuffer {
 
 impl FlatBuffer {
     pub fn new(size: Size) -> Self {
-        let layer_base_cell = Cell {
-            ch: ' ',
-            style: Style::new(Color::TRANSPARENT, Color::TRANSPARENT, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
         Self {
             size,
-            cells: vec![layer_base_cell; size.area() as usize],
+            cells: vec![Cell::CLEAR; size.area() as usize],
         }
     }
 
@@ -146,7 +141,7 @@ impl ResizableBuffer for FlatBuffer {
         // rather than UB.
         #[allow(unused)]
         fn is_copy<T: Unpin>(arg: &T) {
-            let _ = || is_copy::<Cell>(&Cell::EMPTY);
+            let _ = || is_copy::<Cell>(&Cell::TRANSPARENT);
         }
         let new_temp_len = (self.size.height as usize) * (size.width as usize);
 
@@ -171,13 +166,15 @@ impl ResizableBuffer for FlatBuffer {
                         ptr::copy(src, dst, old_w);
 
                         // Fill the new columns at the end of this row.
-                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by).fill(Cell::EMPTY);
+                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by)
+                            .fill(Cell::TRANSPARENT);
                     }
 
                     // Row 0: fill trailing gap last, after all rows have been
                     // scattered, so that row 1's old data is not overwritten.
                     if old_h > 0 {
-                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
+                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by)
+                            .fill(Cell::TRANSPARENT);
                     }
 
                     self.cells.set_len(new_temp_len);
@@ -196,7 +193,7 @@ impl ResizableBuffer for FlatBuffer {
         }
 
         // Height
-        self.cells.resize(size.area() as usize, Cell::EMPTY);
+        self.cells.resize(size.area() as usize, Cell::TRANSPARENT);
 
         self.size = size;
     }

@@ -108,7 +108,7 @@ pub fn draw_sorted<Buf: Buffer + Drawer>(buf: &mut Buf) -> Vec<(u16, u16, Cell)>
 /// - **Overwrite** - writing a second value to the same position replaces the
 ///   first.
 /// - **`fill`** - every cell in the grid equals the fill value afterwards.
-/// - **`clear`** - every cell equals [`Cell::EMPTY`] after clearing.
+/// - **`clear`** - every cell equals [`Cell::TRANSPARENT`] after clearing.
 #[macro_export]
 macro_rules! buffer_tests {
     ($module_name:ident, $constructor:expr, $buffer_type:ty) => {
@@ -364,7 +364,7 @@ macro_rules! buffer_tests {
                     for x in 0..size.width {
                         assert_eq!(
                             buf.get_cell(Position::new(x, y)),
-                            &Cell::EMPTY,
+                            &Cell::TRANSPARENT,
                             "cell at ({x},{y}) should be EMPTY after clear"
                         );
                     }
@@ -407,7 +407,7 @@ macro_rules! drawer_buffer_tests {
                 let size = Size::new(3, 2);
                 let mut buf = new_buf(size);
                 let calls = draw_sorted(&mut buf);
-                assert!(calls.iter().all(|(_, _, c)| *c == Cell::EMPTY));
+                assert!(calls.iter().all(|(_, _, c)| *c == Cell::TRANSPARENT));
                 assert_eq!(
                     calls.len(),
                     (size.width * size.height) as usize,
@@ -642,8 +642,8 @@ macro_rules! drawer_diffed_buffer_tests {
                 let calls = draw_sorted(&mut buf);
                 assert_eq!(
                     calls,
-                    [(pos.x, pos.y, Cell::EMPTY)],
-                    "the cleared cell must be emitted with Cell::EMPTY's character"
+                    [(pos.x, pos.y, Cell::TRANSPARENT)],
+                    "the cleared cell must be emitted with Cell::TRANSPARENT's character"
                 );
             }
 

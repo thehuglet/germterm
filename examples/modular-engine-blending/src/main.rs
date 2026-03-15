@@ -19,12 +19,16 @@ use germterm::{
 pub const TERM_SIZE: Size = Size::new(80, 25);
 
 fn main() -> io::Result<()> {
+    let term_bg: Color = match termbg::rgb(Duration::from_millis(100)) {
+        Ok(rgb) => Color::new(rgb.r as u8, rgb.g as u8, rgb.b as u8, 255),
+        Err(_) => Color::BLACK,
+    };
     let mut engine = Engine::new(
         DefaultTimer::new(),
-        ClassicDiffedBuffers::new(
-            TERM_SIZE,
-            LayeredBuffer::new(TERM_SIZE, |size| BlendedBuffer::new(FlatBuffer::new(size))),
-        ),
+        LayeredBuffer::new(TERM_SIZE, |size| {
+            BlendedBuffer::new(FlatBuffer::new(size)).with_bg_fallback(term_bg)
+        })
+        .with_bg_fallback(term_bg),
         DisplayWidth::default(),
     );
     let mut renderer = CrosstermRenderer::new(io::stdout());
@@ -43,46 +47,20 @@ fn main() -> io::Result<()> {
         let buf = engine.buffer_mut();
         let buf_size = buf.size();
 
-        buf.current_buffer_mut().select_layer(0);
-
-        for y in 0..buf_size.height {
-            draw_string(
-                buf,
-                Position::new(0, y),
-                &" ".repeat(buf_size.width as usize),
-                Style::default().with_bg(Color::BLACK),
-            );
-        }
-
         draw_string(
             buf,
-            Position::new(4, 5),
-            "  ",
-            Style::default().with_bg(Color::RED.with_alpha(127)),
+            Position::new(30, 5),
+            "    ",
+            Style::default().with_bg(Color::BLACK),
         );
 
         draw_string(
             buf,
-            Position::new(5, 5),
-            "  ",
-            Style::default().with_bg(Color::BLUE.with_alpha(127)),
+            Position::new(30, 5),
+            "test",
+            Style::default().with_fg(Color::WHITE).with_bg(None),
         );
 
-        buf.current_buffer_mut().select_layer(1);
-
-        draw_string(
-            buf,
-            Position::new(4, 7),
-            "  ",
-            Style::default().with_bg(Color::RED.with_alpha(127)),
-        );
-
-        draw_string(
-            buf,
-            Position::new(5, 7),
-            "  ",
-            Style::default().with_bg(Color::BLUE.with_alpha(127)),
-        );
         ControlFlow::Continue(())
     })?;
 

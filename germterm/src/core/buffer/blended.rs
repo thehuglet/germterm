@@ -11,15 +11,20 @@ use crate::{
 
 pub struct BlendedBuffer<Buf: Buffer> {
     inner: Buf,
-    default_blending_bg_color: Color,
+    bg_fallback: Color,
 }
 
 impl<Buf: Buffer> BlendedBuffer<Buf> {
     pub fn new(inner: Buf) -> Self {
         Self {
             inner,
-            default_blending_bg_color: Color::BLACK,
+            bg_fallback: Color::BLACK,
         }
+    }
+
+    pub fn with_bg_fallback(mut self, color: Color) -> Self {
+        self.bg_fallback = color;
+        self
     }
 }
 
@@ -33,9 +38,10 @@ impl<Buf: Buffer> Buffer for BlendedBuffer<Buf> {
         pos: Position,
         mut cell: Cell,
     ) -> Result<(), super::ErrorOutOfBoundsAxises> {
+        let bg_fallback: Color = self.bg_fallback;
         let bottom_cell = self.get_cell_mut_checked(pos)?;
         cell.style.premultiply_fg_and_bg();
-        compose_cell(bottom_cell, &cell);
+        compose_cell(bottom_cell, &cell, bg_fallback);
 
         Ok(())
     }
@@ -49,6 +55,10 @@ impl<Buf: Buffer> Buffer for BlendedBuffer<Buf> {
         pos: Position,
     ) -> Result<&mut Cell, super::ErrorOutOfBoundsAxises> {
         self.inner.get_cell_mut_checked(pos)
+    }
+
+    fn clear(&mut self) {
+        self.inner.clear()
     }
 
     fn start_frame(&mut self) {
