@@ -3,21 +3,21 @@ use crate::{
     color::Color,
     core::{
         DrawCall,
-        buffer::{Buffer, Drawer},
+        buffer::{Buffer, Drawer, flat::FlatBuffer},
         compositor::compose_cell,
         draw::{Position, Size},
     },
 };
 
-pub struct BlendedBuffer<Buf: Buffer> {
-    inner: Buf,
+pub struct BlendedBuffer {
+    inner: FlatBuffer,
     bg_fallback: Color,
 }
 
-impl<Buf: Buffer> BlendedBuffer<Buf> {
-    pub fn new(inner: Buf) -> Self {
+impl BlendedBuffer {
+    pub fn new(size: Size) -> Self {
         Self {
-            inner,
+            inner: FlatBuffer::new(size),
             bg_fallback: Color::BLACK,
         }
     }
@@ -28,7 +28,7 @@ impl<Buf: Buffer> BlendedBuffer<Buf> {
     }
 }
 
-impl<Buf: Buffer> Buffer for BlendedBuffer<Buf> {
+impl Buffer for BlendedBuffer {
     fn size(&self) -> Size {
         self.inner.size()
     }
@@ -70,10 +70,7 @@ impl<Buf: Buffer> Buffer for BlendedBuffer<Buf> {
     }
 }
 
-impl<Buf> Drawer for BlendedBuffer<Buf>
-where
-    Buf: Buffer + Drawer,
-{
+impl Drawer for BlendedBuffer {
     fn draw(&mut self) -> impl Iterator<Item = DrawCall<'_>> {
         self.inner.draw()
     }

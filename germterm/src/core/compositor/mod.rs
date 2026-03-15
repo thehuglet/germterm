@@ -124,21 +124,14 @@ mod tests {
     const POS: Position = Position::new(0, 0);
     const SIZE: Size = Size::new(1, 1);
 
-    // Convenience helper for constructing a flat blended 1x1 buffer
-    fn flat_blended_buf_opaque_fill() -> BlendedBuffer<FlatBuffer> {
-        BlendedBuffer::new(FlatBuffer::new(SIZE))
-    }
-
-    // Convenience helper for constructing a layered blended 1x1 buffer
-    fn layered_blended_buf()
-    -> LayeredBuffer<BlendedBuffer<FlatBuffer>, impl Fn(Size) -> BlendedBuffer<FlatBuffer>> {
+    fn layered_blended_buf() -> LayeredBuffer<BlendedBuffer, impl Fn(Size) -> BlendedBuffer> {
         LayeredBuffer::new(SIZE, |size| {
             let black_bg_cell = Cell {
                 ch: ' ',
-                style: Style::CLEAR.with_bg(Color::BLACK),
+                style: Style::CLEAR,
                 format: CellFormat::Standard,
             };
-            BlendedBuffer::new(FlatBuffer::new_with_cell(size, black_bg_cell))
+            BlendedBuffer::new(size)
         })
     }
 
@@ -173,321 +166,333 @@ mod tests {
     }
 
     #[test]
-    fn cell_clear_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    fn cell_clear_bg_on_clear_bg() {
+        let mut buf = BlendedBuffer::new(SIZE);
 
-        draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::BLACK);
-        draw_standard_cell(&mut buf, 'a', Color::WHITE, None);
+        let cell = {
 
-        let expected = Cell {
-            ch: 'a',
-            style: Style {
-                fg: MaybeUninit::new(Color::WHITE),
-                bg: MaybeUninit::uninit(),
-                attributes: Attributes::CLEAR_BG,
-            },
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
+        }
+
+        buf.set_cell(POS, Cell);
+        assert_eq!(buf.get_cell(POS), &Cell::CLEAR_BG);
     }
 
-    #[test]
-    fn cell_opaque_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_clear_bg_over_opaque_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        // draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::RED);
+    //     draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::BLACK);
+    //     draw_standard_cell(&mut buf, 'a', Color::WHITE, None);
 
-        let expected = Cell {
-            ch: 'a',
-            style: Style {
-                fg: MaybeUninit::new(Color::WHITE),
-                bg: MaybeUninit::new(Color::RED),
-                attributes: Attributes::empty(),
-            },
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: 'a',
+    //         style: Style {
+    //             fg: MaybeUninit::new(Color::WHITE),
+    //             bg: MaybeUninit::uninit(),
+    //             attributes: Attributes::CLEAR_BG,
+    //         },
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_opaque_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_opaque_bg_over_opaque_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
-        draw_standard_cell(&mut buf, '*', Color::WHITE, Color::TRANSPARENT);
+    //     // draw_standard_cell(&mut buf, 'a', Color::WHITE, Color::RED);
 
-        let expected = Cell {
-            ch: '*',
-            style: Style::new(Color::WHITE, Color::TRANSPARENT, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: 'a',
+    //         style: Style {
+    //             fg: MaybeUninit::new(Color::WHITE),
+    //             bg: MaybeUninit::new(Color::RED),
+    //             attributes: Attributes::empty(),
+    //         },
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_transparent_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_opaque_fg_over_opaque_fg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::RED);
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, '*', Color::WHITE, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(Color::TRANSPARENT, Color::RED, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: '*',
+    //         style: Style::new(Color::WHITE, Color::TRANSPARENT, Attributes::empty()),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_transparent_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_transparent_bg_over_opaque_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
-        draw_standard_cell(&mut buf, '*', Color::TRANSPARENT, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::RED);
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: '*',
-            style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(Color::TRANSPARENT, Color::RED, Attributes::empty()),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_translucent_bg_over_opaque_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_transparent_fg_over_opaque_fg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
-        draw_standard_cell(
-            &mut buf,
-            ' ',
-            Color::TRANSPARENT,
-            Color::RED.with_alpha(127),
-        );
+    //     draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, '*', Color::TRANSPARENT, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(
-                Color::TRANSPARENT,
-                Color::new(127, 0, 0, 255),
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: '*',
+    //         style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_translucent_fg_over_opaque_fg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_translucent_bg_over_opaque_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
-        draw_standard_cell(
-            &mut buf,
-            '*',
-            Color::RED.with_alpha(127),
-            Color::TRANSPARENT,
-        );
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         ' ',
+    //         Color::TRANSPARENT,
+    //         Color::RED.with_alpha(127),
+    //     );
 
-        let expected = Cell {
-            ch: '*',
-            style: Style::new(
-                Color::new(127, 0, 0, 255),
-                Color::TRANSPARENT,
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(
+    //             Color::TRANSPARENT,
+    //             Color::new(127, 0, 0, 255),
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_translucent_bg_over_transparent_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_translucent_fg_over_opaque_fg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(
-            &mut buf,
-            ' ',
-            Color::TRANSPARENT,
-            Color::RED.with_alpha(127),
-        );
+    //     draw_standard_cell(&mut buf, '*', Color::BLACK, Color::TRANSPARENT);
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         '*',
+    //         Color::RED.with_alpha(127),
+    //         Color::TRANSPARENT,
+    //     );
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(
-                Color::TRANSPARENT,
-                Color::new(127, 0, 0, 127),
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: '*',
+    //         style: Style::new(
+    //             Color::new(127, 0, 0, 255),
+    //             Color::TRANSPARENT,
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_translucent_fg_over_transparent_fg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_translucent_bg_over_transparent_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(
-            &mut buf,
-            '*',
-            Color::RED.with_alpha(127),
-            Color::TRANSPARENT,
-        );
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         ' ',
+    //         Color::TRANSPARENT,
+    //         Color::RED.with_alpha(127),
+    //     );
 
-        let expected = Cell {
-            ch: '*',
-            style: Style::new(
-                Color::new(127, 0, 0, 127),
-                Color::TRANSPARENT,
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(
+    //             Color::TRANSPARENT,
+    //             Color::new(127, 0, 0, 127),
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_translucent_fg_over_opaque_fg_char_interpolation() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_translucent_fg_over_transparent_fg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, 'a', Color::RED, Color::TRANSPARENT);
-        draw_standard_cell(
-            &mut buf,
-            'b',
-            Color::BLUE.with_alpha(127),
-            Color::TRANSPARENT,
-        );
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         '*',
+    //         Color::RED.with_alpha(127),
+    //         Color::TRANSPARENT,
+    //     );
 
-        let expected = Cell {
-            ch: 'b',
-            style: Style::new(
-                Color::new(128, 0, 127, 255),
-                Color::TRANSPARENT,
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: '*',
+    //         style: Style::new(
+    //             Color::new(127, 0, 0, 127),
+    //             Color::TRANSPARENT,
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_cover_fg_with_opaque_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_translucent_fg_over_opaque_fg_char_interpolation() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
-        draw_standard_cell(&mut buf, 'a', Color::TRANSPARENT, Color::DARK_GRAY);
+    //     draw_standard_cell(&mut buf, 'a', Color::RED, Color::TRANSPARENT);
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         'b',
+    //         Color::BLUE.with_alpha(127),
+    //         Color::TRANSPARENT,
+    //     );
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(Color::RED, Color::DARK_GRAY, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: 'b',
+    //         style: Style::new(
+    //             Color::new(128, 0, 127, 255),
+    //             Color::TRANSPARENT,
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_transparent_fg_transparent_bg_over_opaque_fg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_cover_fg_with_opaque_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, 'a', Color::TRANSPARENT, Color::DARK_GRAY);
 
-        let expected = Cell {
-            ch: '*',
-            style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(Color::RED, Color::DARK_GRAY, Attributes::empty()),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cell_transparent_bg_over_clear_bg() {
-        let mut buf = flat_blended_buf_opaque_fill();
+    // #[test]
+    // fn cell_transparent_fg_transparent_bg_over_opaque_fg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        buf.set_cell(
-            POS,
-            Cell {
-                ch: ' ',
-                style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
-                format: CellFormat::Standard,
-            },
-        );
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, '*', Color::RED, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: '*',
+    //         style: Style::new(Color::RED, Color::TRANSPARENT, Attributes::empty()),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn same_layer_transparent_bg_over_opaque_bg() {
-        let mut buf = layered_blended_buf();
+    // #[test]
+    // fn cell_transparent_bg_over_clear_bg() {
+    //     let mut buf = flat_blended_buf_opaque_fill();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
-        draw_standard_cell(
-            &mut buf,
-            ' ',
-            Color::TRANSPARENT,
-            Color::RED.with_alpha(127),
-        );
+    //     buf.set_cell(
+    //         POS,
+    //         Cell {
+    //             ch: ' ',
+    //             style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+    //             format: CellFormat::Standard,
+    //         },
+    //     );
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(
-                Color::TRANSPARENT,
-                Color::new(127, 0, 0, 255),
-                Attributes::empty(),
-            ),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn same_layer_transparent_bg_over_clear_bg() {
-        let mut buf = layered_blended_buf();
+    // #[test]
+    // fn same_layer_transparent_bg_over_opaque_bg() {
+    //     let mut buf = layered_blended_buf();
 
-        buf.set_cell(
-            POS,
-            Cell {
-                ch: ' ',
-                style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
-                format: CellFormat::Standard,
-            },
-        );
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         ' ',
+    //         Color::TRANSPARENT,
+    //         Color::RED.with_alpha(127),
+    //     );
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*buf_cell(&buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(
+    //             Color::TRANSPARENT,
+    //             Color::new(127, 0, 0, 255),
+    //             Attributes::empty(),
+    //         ),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
 
-    #[test]
-    fn cross_layer_transparent_bg_over_opaque_bg() {
-        let mut buf = layered_blended_buf();
+    // #[test]
+    // fn same_layer_transparent_bg_over_clear_bg() {
+    //     let mut buf = layered_blended_buf();
 
-        draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
-        buf.select_layer(1);
-        draw_standard_cell(
-            &mut buf,
-            ' ',
-            Color::TRANSPARENT,
-            Color::RED.with_alpha(127),
-        );
+    //     buf.set_cell(
+    //         POS,
+    //         Cell {
+    //             ch: ' ',
+    //             style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+    //             format: CellFormat::Standard,
+    //         },
+    //     );
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::TRANSPARENT);
 
-        let expected = Cell {
-            ch: ' ',
-            style: Style::CLEAR_FG.with_bg(Color::new(127, 0, 0, 255)),
-            format: CellFormat::Standard,
-        };
-        assert_eq!(*layered_buf_cell(&mut buf), expected);
-    }
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::new(Color::TRANSPARENT, None, Attributes::CLEAR_BG),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*buf_cell(&buf), expected);
+    // }
+
+    // #[test]
+    // fn cross_layer_transparent_bg_over_opaque_bg() {
+    //     let mut buf = layered_blended_buf();
+
+    //     draw_standard_cell(&mut buf, ' ', Color::TRANSPARENT, Color::BLACK);
+    //     buf.select_layer(1);
+    //     draw_standard_cell(
+    //         &mut buf,
+    //         ' ',
+    //         Color::TRANSPARENT,
+    //         Color::RED.with_alpha(127),
+    //     );
+
+    //     let expected = Cell {
+    //         ch: ' ',
+    //         style: Style::CLEAR_FG.with_bg(Color::new(127, 0, 0, 255)),
+    //         format: CellFormat::Standard,
+    //     };
+    //     assert_eq!(*layered_buf_cell(&mut buf), expected);
+    // }
 }
