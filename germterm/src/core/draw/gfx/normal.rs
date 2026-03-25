@@ -26,7 +26,7 @@ pub fn draw_vline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: C
     let to_render = renderable.min(len);
     for y in start.y..start.y + to_render {
         let cur = buf.get_cell_mut(Position::new(start.x, y));
-        cur.merge(cell);
+        cur.merge(&cell);
     }
 
     to_render
@@ -51,7 +51,7 @@ pub fn draw_hline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: C
     let to_render = renderable.min(len);
     for x in start.x..start.x + to_render {
         let cur = buf.get_cell_mut(Position::new(x, start.y));
-        cur.merge(cell);
+        cur.merge(&cell);
     }
 
     to_render
@@ -133,7 +133,7 @@ pub fn draw_line<Buf: Buffer>(buf: &mut Buf, start: Position, end: Position, cel
 
     // Draw
     for i in 0..=steps {
-        buf.get_cell_mut(cell_pos(x, y)).merge(cell);
+        buf.get_cell_mut(cell_pos(x, y)).merge(&cell);
 
         error += step_inc;
         if error >= 0 {
@@ -172,7 +172,7 @@ pub fn draw_style<Buf: Buffer>(buf: &mut Buf, area: Rect, style: Style) -> u32 {
 
     for y in 0..sz.height {
         for x in 0..sz.width {
-            sub.get_cell_mut(Position { x, y }).style.merge(style);
+            sub.get_cell_mut(Position { x, y }).style_mut().merge(style);
         }
     }
 
@@ -191,10 +191,7 @@ mod tests {
     };
 
     fn test_cell() -> Cell {
-        Cell {
-            ch: '#',
-            ..Cell::EMPTY
-        }
+        Cell::new("", Style::EMPTY)
     }
 
     fn make_buf(sz: Size) -> FlatBuffer {

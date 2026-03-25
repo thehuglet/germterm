@@ -176,24 +176,15 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             && size.width > 0
         {
             let cur = ctx.buffer_mut().get_cell_mut(Position::ZERO);
-            cur.ch = self
-                .set
-                .top_left(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+            cur.set_str(self.set.top_left(cur.as_str()));
         }
 
         // top side
         if self.sides.contains(BorderSides::TOP) && size.width > horizontal_offset {
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y: 0 });
-                cur.ch = self
-                    .set
-                    .top(&cur.ch.to_string())
-                    .chars()
-                    .next()
-                    .unwrap_or_default();
+
+                cur.set_str(self.set.top(cur.as_str()));
             }
 
             // Draw the top titles
@@ -214,12 +205,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 x: size.width.saturating_sub(1),
                 y: 0,
             });
-            cur.ch = self
-                .set
-                .top_right(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+            cur.set_str(self.set.top_right(cur.as_str()));
         }
 
         // LR sides
@@ -229,12 +215,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             if self.sides.contains(BorderSides::LEFT) {
                 for y in top_offset..h_end {
                     let cur = ctx.buffer_mut().get_cell_mut(Position::new(0, y));
-                    cur.ch = self
-                        .set
-                        .left(&cur.ch.to_string())
-                        .chars()
-                        .next()
-                        .unwrap_or_default();
+
+                    cur.set_str(self.set.left(cur.as_str()));
                 }
             }
 
@@ -245,12 +227,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                         x: size.width.saturating_sub(right_offset),
                         y,
                     });
-                    cur.ch = self
-                        .set
-                        .right(&cur.ch.to_string())
-                        .chars()
-                        .next()
-                        .unwrap_or_default();
+
+                    cur.set_str(self.set.right(cur.as_str()));
                 }
             }
         }
@@ -260,12 +238,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             let cur = ctx
                 .buffer_mut()
                 .get_cell_mut(Position::new(0, size.height.saturating_sub(1)));
-            cur.ch = self
-                .set
-                .bottom_left(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+
+            cur.set_str(self.set.bottom_left(cur.as_str()));
         }
 
         // bottom
@@ -273,12 +247,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             let y = size.height.saturating_sub(1);
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y });
-                cur.ch = self
-                    .set
-                    .bottom(&cur.ch.to_string())
-                    .chars()
-                    .next()
-                    .unwrap_or_default();
+
+                cur.set_str(self.set.bottom(cur.as_str()));
             }
 
             let bottom_titles = self
@@ -296,12 +266,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 x: size.width.saturating_sub(1),
                 y: size.height.saturating_sub(1),
             });
-            cur.ch = self
-                .set
-                .bottom_right(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+
+            cur.set_str(self.set.bottom_right(cur.as_str()));
         }
     }
 }

@@ -92,7 +92,7 @@ where
         // Set the style for the cells that are untouched in our `Line`
         for x in offset..sz.width {
             buf.get_cell_mut(Position::new(x, 0))
-                .style
+                .style_mut()
                 .merge(self.style);
         }
     }

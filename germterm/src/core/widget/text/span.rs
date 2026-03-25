@@ -128,18 +128,7 @@ impl<'a> Span<'a> {
         let mut written = 0;
         for y in 0..sz.height {
             for x in 0..sz.width {
-                let c = buf.get_cell_mut(Position::new(x, y));
-                written = sz.width as u32 * y as u32 + x as u32;
-                // TODO: add cell merging once cell styling is stored
-                if let Some(ch) = chars.next() {
-                    c.style.merge(self.style);
-                    c.ch = ch;
-                    if written >= limit {
-                        break;
-                    }
-                } else {
-                    break;
-                }
+                todo!()
             }
         }
 

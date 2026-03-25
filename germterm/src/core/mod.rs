@@ -19,6 +19,7 @@ use crate::{
     },
 };
 
+#[derive(Clone, Debug)]
 pub struct DrawCall<'a> {
     pub pos: Position,
     pub cell: &'a Cell,
