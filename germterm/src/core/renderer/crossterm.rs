@@ -71,8 +71,8 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
                 }
             }
             // Build the crossterm style from the cell's colors and attributes.
-            let fg = cell.style.fg().map(conv);
-            let bg = cell.style.bg().map(conv);
+            let fg = cell.style().fg().map(conv);
+            let bg = cell.style().bg().map(conv);
 
             let ct_attrs = [
                 (Attributes::BOLD, style::Attribute::Bold),
@@ -82,7 +82,7 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
             ]
             .iter()
             .fold(style::Attributes::none(), |acc, &(flag, attr)| {
-                if cell.style.attributes().contains(flag) {
+                if cell.style().attributes().contains(flag) {
                     acc | attr
                 } else {
                     acc
@@ -113,7 +113,7 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
                 last_style = Some(cell_style);
             }
 
-            queue!(&mut self.out, style::Print(cell.ch))?;
+            queue!(&mut self.out, style::Print(cell.as_str()))?;
 
             last_pos = Some((pos.x, pos.y));
         }

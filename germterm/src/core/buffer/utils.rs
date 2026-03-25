@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use super::Buffer;
-use crate::core::Position;
+use crate::{color::Color, core::Position};
 
 /// Dumps the contents of a buffer using a writer.
 ///
@@ -11,9 +11,7 @@ pub fn dump_buffer(buffer: &dyn Buffer, writer: &mut dyn Write) -> std::io::Resu
     for y in 0..size.height {
         for x in 0..size.width {
             let cell = buffer.get_cell(Position::new(x, y));
-            let mut buf = [0u8; 4];
-            let s = cell.ch.encode_utf8(&mut buf);
-            writer.write_all(s.as_bytes())?;
+            writer.write_all(cell.as_str().as_bytes())?;
         }
         if y < size.height - 1 {
             writer.write_all(b"\n")?;
@@ -30,6 +28,60 @@ pub fn dump_buffer_to_string(buffer: &dyn Buffer) -> String {
     let mut result = Vec::with_capacity((size.width as usize + 1) * size.height as usize);
     let _ = dump_buffer(buffer, &mut result);
     String::from_utf8(result).unwrap_or_default()
+}
+
+#[doc(hidden)]
+pub fn buf_cmp(lhs: &dyn Buffer, rhs: &dyn Buffer) -> impl Iterator<Item = (Position, CellDiff)> {
+    assert_eq!(lhs.size(), rhs.size());
+
+    let sz = lhs.size();
+    (0..sz.height).flat_map(move |y| {
+        (0..sz.width).filter_map(move |x| {
+            let pos = Position { x, y };
+            let lhs_cell = lhs.get_cell(pos);
+            let lhs_style = lhs_cell.style();
+            let rhs_cell = rhs.get_cell(pos);
+            let rhs_style = lhs_cell.style();
+
+            fn cmp_ret<T: Eq>(lhs: T, rhs: T) -> Option<DiffItem<T>> {
+                if lhs != rhs {
+                    Some(DiffItem {
+                        expected: lhs,
+                        found: rhs,
+                    })
+                } else {
+                    None
+                }
+            }
+
+            let cd = CellDiff {
+                fg: cmp_ret(lhs_style.fg(), rhs_style.fg()),
+                bg: cmp_ret(lhs_style.bg(), rhs_style.bg()),
+                ch: cmp_ret(lhs_cell.as_str().into(), rhs_cell.as_str().into()),
+            };
+
+            if cd == CellDiff::default() {
+                None
+            } else {
+                Some((pos, cd))
+            }
+        })
+    })
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct DiffItem<T> {
+    pub expected: T,
+    pub found: T,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CellDiff {
+    pub fg: Option<DiffItem<Option<Color>>>,
+    pub bg: Option<DiffItem<Option<Color>>>,
+    pub ch: Option<DiffItem<Box<str>>>,
 }
 
 #[macro_export]
