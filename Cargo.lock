@@ -481,6 +481,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "modular-engine-blending"
+version = "0.1.0"
+dependencies = [
+ "germterm",
+ "termbg",
+]
+
+[[package]]
 name = "num-conv"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

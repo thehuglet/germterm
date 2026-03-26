@@ -34,7 +34,7 @@ impl RichText {
         Self {
             text: Arc::new(text.into()),
             fg: Color::WHITE,
-            bg: Color::CLEAR,
+            bg: Color::TRANSPARENT,
             attributes: Attributes::empty(),
             cell_format: CellFormat::Standard,
         }

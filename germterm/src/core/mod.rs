@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod compositor;
 pub mod draw;
 pub mod renderer;
 pub mod timer;
@@ -9,16 +10,19 @@ use std::{io::Write, ops::ControlFlow};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::{
-    cell::Cell,
+    cell::{Cell, CellFormat},
+    color::Color,
     core::{
-        buffer::{Buffer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
+        buffer::{Buffer, Drawer, diffed::DiffedBuffers, flat::FlatBuffer, slice::SubBuffer},
         draw::{Position, Rect, Size},
         renderer::crossterm::CrosstermRenderer,
         timer::{DefaultTimer, FrameTimer, Timer},
         widget::{FrameContext, Widget},
     },
+    style::{Attributes, Style},
 };
 
+#[derive(Debug)]
 pub struct DrawCall<'a> {
     pub pos: Position,
     pub cell: &'a Cell,

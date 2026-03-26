@@ -63,16 +63,17 @@ impl<W: Write> Renderer for CrosstermRenderer<W> {
         let mut last_style: Option<style::ContentStyle> = None;
 
         for DrawCall { pos, cell } in calls {
-            fn conv(c: Color) -> style::Color {
-                style::Color::Rgb {
-                    r: c.r(),
-                    g: c.g(),
-                    b: c.b(),
-                }
+            fn to_crossterm_color(maybe_color: Option<Color>) -> Option<style::Color> {
+                maybe_color.map(|color| style::Color::Rgb {
+                    r: color.r(),
+                    g: color.g(),
+                    b: color.b(),
+                })
             }
+
             // Build the crossterm style from the cell's colors and attributes.
-            let fg = cell.style.fg().map(conv);
-            let bg = cell.style.bg().map(conv);
+            let fg: Option<style::Color> = to_crossterm_color(cell.style.fg());
+            let bg: Option<style::Color> = to_crossterm_color(cell.style.bg());
 
             let ct_attrs = [
                 (Attributes::BOLD, style::Attribute::Bold),
