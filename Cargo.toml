@@ -11,6 +11,7 @@ members = [
     "examples/twoxel-snake",
     "examples/particle-benchmark",
     "examples/erase-contents",
+    "examples/line-spans",
 ]
 
 [workspace.package]

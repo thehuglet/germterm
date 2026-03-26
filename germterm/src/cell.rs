@@ -1,6 +1,6 @@
-use crate::{color::Color, rich_text::Attributes};
+use crate::style::Style;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CellFormat {
     Standard,
     Twoxel,
@@ -8,23 +8,22 @@ pub enum CellFormat {
     Blocktad,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Cell {
     pub ch: char,
-    pub fg: Color,
-    pub bg: Color,
-    pub attributes: Attributes,
+    pub style: Style,
     pub format: CellFormat,
 }
 
 impl Cell {
     pub const EMPTY: Cell = Cell {
         ch: ' ',
-        fg: Color::CLEAR,
-        bg: Color::CLEAR,
-        attributes: Attributes::from_bits_truncate(
-            Attributes::NO_FG_COLOR.bits() | Attributes::NO_BG_COLOR.bits(),
-        ),
+        style: Style::EMPTY,
         format: CellFormat::Standard,
     };
+
+    pub fn merge(&mut self, other: Self) {
+        self.ch = other.ch;
+        self.style.merge(other.style);
+    }
 }
