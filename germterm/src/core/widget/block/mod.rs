@@ -276,10 +276,10 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
 mod tests {
     use super::*;
     use crate::{
-        buf_str,
+        buf_assert_eq, buffer,
         core::{
             DisplayWidth,
-            buffer::{paired::PairedBuffer, utils::dump_buffer_to_string as dbts},
+            buffer::paired::PairedBuffer,
             draw::Size,
             timer::NoDelta,
             widget::block::{
@@ -310,9 +310,15 @@ mod tests {
     fn all_sides() {
         let buf = draw_block(Block::new(SimpleBorderSet::ASCII), Size::new(5, 5));
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+---+", "|   |", "|   |", "|   |", "+---+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "+"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["+", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -323,9 +329,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["-----", "     ", "     ", "     ", "     ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["-", "-", "-", "-", "-"],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+            ]
         );
     }
 
@@ -336,9 +348,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["     ", "     ", "     ", "     ", "-----",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                ["-", "-", "-", "-", "-"],
+            ]
         );
     }
 
@@ -349,9 +367,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["|    ", "|    ", "|    ", "|    ", "|    ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+            ]
         );
     }
 
@@ -362,9 +386,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["    |", "    |", "    |", "    |", "    |",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+            ]
         );
     }
 
@@ -375,9 +405,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+----", "|    ", "|    ", "|    ", "|    ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-"],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+            ]
         );
     }
 
@@ -388,9 +424,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["-----", "     ", "     ", "     ", "-----",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["-", "-", "-", "-", "-"],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                ["-", "-", "-", "-", "-"],
+            ]
         );
     }
 
@@ -401,9 +443,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["|   |", "|   |", "|   |", "|   |", "|   |",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+            ]
         );
     }
 
@@ -414,9 +462,9 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["     ", "     ", "     ", "     ", "     ",]
+        buf_assert_eq!(
+            buf,
+            buffer![[empty(5)], [empty(5)], [empty(5)], [empty(5)], [empty(5)],]
         );
     }
 
@@ -431,9 +479,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+Hi------+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "H", "i", "-", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -447,9 +499,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+---Hi---+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "H", "i", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -462,9 +518,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+------Hi+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-", "-", "-", "H", "i", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -477,9 +537,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+--------+", "|        |", "+Hi------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "H", "i", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -496,9 +560,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+top-----+", "|        |", "+bot-----+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "t", "o", "p", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "b", "o", "t", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 }
