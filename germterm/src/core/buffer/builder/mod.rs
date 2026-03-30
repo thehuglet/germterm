@@ -3,7 +3,7 @@ pub mod row;
 use crate::{
     cell::Cell,
     core::{
-        buffer::{builder::row::BuilderRow, flat::FlatBuffer, Buffer},
+        buffer::{Buffer, builder::row::BuilderRow, flat::FlatBuffer},
         draw::{Position, Size},
     },
 };
