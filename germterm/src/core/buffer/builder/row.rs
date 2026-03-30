@@ -157,11 +157,13 @@ macro_rules! builder_row {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::buffer::builder::row::BuilderRowItem::{Cell as cell, Empty as empty};
+    use crate::core::buffer::builder::row::BuilderRowItem::{Cell as cell};
     use crate::core::buffer::builder::row::{BuilderRow, BuilderRowItem as BRI};
     use crate::style::Style as ST;
 
+    #[allow(unused)]
     static ROW_STATIC: BuilderRow = crate::builder_row!("a");
+    #[allow(unused)]
     const ROW_CONST: BuilderRow = crate::builder_row!(cell("a", ST::EMPTY));
 
     #[test]

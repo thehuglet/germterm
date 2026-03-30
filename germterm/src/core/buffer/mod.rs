@@ -85,7 +85,7 @@ pub trait Buffer {
         let size = self.size();
         for y in 0..size.height {
             for x in 0..size.width {
-                self.get_cell_mut(Position { x, y }).clone_from(&cell);
+                self.get_cell_mut(Position { x, y }).clone_from(cell);
             }
         }
     }
