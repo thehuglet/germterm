@@ -3,7 +3,7 @@ pub mod row;
 use crate::{
     cell::Cell,
     core::{
-        buffer::{builder::row::BuilderRow, Buffer},
+        buffer::{Buffer, builder::row::BuilderRow, flat::FlatBuffer},
         draw::{Position, Size},
     },
 };
@@ -16,13 +16,15 @@ pub struct BuilderBuffer {
 
 #[allow(unused)]
 impl BuilderBuffer {
-    const fn new(items: &'static [BuilderBufferItem]) -> Self {
+    #[doc(hidden)]
+    pub const fn new(items: &'static [BuilderBufferItem]) -> Self {
         Self {
             rows: items,
             size: Self::size(items),
         }
     }
 
+    #[doc(hidden)]
     const fn size(items: &'static [BuilderBufferItem]) -> Size {
         let width = Self::width(items);
         let height = Self::height(items);
@@ -30,6 +32,7 @@ impl BuilderBuffer {
         Size::new(width, height)
     }
 
+    #[doc(hidden)]
     const fn height(items: &'static [BuilderBufferItem]) -> u16 {
         let mut i = 0;
         let mut height = 0;
@@ -125,38 +128,21 @@ macro_rules! builder_buffer_internal  {
 #[macro_export]
 macro_rules! builder_buffer{
     ($($tokens:tt)+) => {{
-        #[allow(unused)]
-        use $crate::{
-            core::buffer::builder::{
-                BuilderBuffer as BB, BuilderBufferItem as BBI,
-                row::{
-                    BuilderRowItem as BRI,
-                    BuilderRowItem::{Cell as cell, Empty as empty},
-                },
-            },
-            style::Style as ST,
-        };
-
         const BUILT_BUFFER: BB = const { $crate::builder_buffer_internal!{@munched[] $($tokens)+} };
 
         BUILT_BUFFER
     }};
 }
 
-/// Renders a [`BuilderBuffer`] into a [`Buffer`].
-///
-/// # Panics
-///
-/// Panics if the buffer layout exceeds the target buffer bounds.
-///
-/// # Examples
-///
-/// ```
-/// let mut fb = FlatBuffer::new(layout.size);
-/// build(&layout, &mut fb);
-/// ```
 #[doc(hidden)]
-pub fn build(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
+pub fn build_buffer(bb: &BuilderBuffer) -> impl Buffer {
+    let mut fb = FlatBuffer::new(bb.size);
+    build_any_buffer(bb, &mut fb);
+    fb
+}
+
+#[doc(hidden)]
+pub fn build_any_buffer(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
     let mut cursor = Position::ZERO;
     let sz = buf.size();
     bb.rows.iter().for_each(|row| match row {
@@ -228,14 +214,30 @@ pub fn build(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
 /// ```
 #[macro_export]
 macro_rules! buffer {
-    ($($buffer_contents:tt)*) => {
-        $crate::builder_buffer!{$($buffer_contents)*}
-    };
+    ($($buffer_contents:tt)*) => {{
+        #[allow(unused)]
+        use $crate::{
+            core::buffer::builder::{
+                BuilderBuffer as BB, BuilderBufferItem as BBI,
+                row::{
+                    BuilderRowItem as BRI,
+                    BuilderRowItem::{Cell as cell, Empty as empty},
+                },
+                build_buffer,
+            },
+            style::Style as ST,
+            builder_buffer,
+        };
+
+        const BC: BB = builder_buffer!{$($buffer_contents)*};
+
+        build_buffer(&BC)
+    }};
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::core::buffer::{builder::BuilderBuffer, flat::FlatBuffer, Buffer};
+    use crate::core::buffer::Buffer;
     use crate::core::draw::Position;
     use crate::style::Style;
 
@@ -243,7 +245,7 @@ mod tests {
     fn simple() {
         use crate::cell::Cell;
 
-        const MY_BUFFER: BuilderBuffer = builder_buffer!(
+        let buf = buffer!(
             ["a", "b", empty(1)],
             empty(3),
             [empty(1), "b", cell("c", Style::EMPTY)],
@@ -254,20 +256,17 @@ mod tests {
             ["a5", "b", "c"]
         );
 
-        let mut fb = FlatBuffer::new(MY_BUFFER.size);
-        super::build(&MY_BUFFER, &mut fb);
+        assert_eq!(buf.get_cell(Position::new(0, 0)).as_str(), "a");
+        assert_eq!(buf.get_cell(Position::new(1, 0)).as_str(), "b");
+        assert_eq!(buf.get_cell(Position::new(2, 0)), &Cell::EMPTY);
 
-        assert_eq!(fb.get_cell(Position::new(0, 0)).as_str(), "a");
-        assert_eq!(fb.get_cell(Position::new(1, 0)).as_str(), "b");
-        assert_eq!(fb.get_cell(Position::new(2, 0)), &Cell::EMPTY);
+        assert_eq!(buf.get_cell(Position::new(1, 4)).as_str(), "b");
+        assert_eq!(buf.get_cell(Position::new(2, 4)).as_str(), "c");
 
-        assert_eq!(fb.get_cell(Position::new(1, 4)).as_str(), "b");
-        assert_eq!(fb.get_cell(Position::new(2, 4)).as_str(), "c");
-
-        assert_eq!(fb.get_cell(Position::new(0, 5)).as_str(), "a1");
-        assert_eq!(fb.get_cell(Position::new(0, 6)).as_str(), "a2");
-        assert_eq!(fb.get_cell(Position::new(0, 7)).as_str(), "a3");
-        assert_eq!(fb.get_cell(Position::new(0, 8)).as_str(), "a4");
-        assert_eq!(fb.get_cell(Position::new(0, 9)).as_str(), "a5");
+        assert_eq!(buf.get_cell(Position::new(0, 5)).as_str(), "a1");
+        assert_eq!(buf.get_cell(Position::new(0, 6)).as_str(), "a2");
+        assert_eq!(buf.get_cell(Position::new(0, 7)).as_str(), "a3");
+        assert_eq!(buf.get_cell(Position::new(0, 8)).as_str(), "a4");
+        assert_eq!(buf.get_cell(Position::new(0, 9)).as_str(), "a5");
     }
 }
