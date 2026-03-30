@@ -157,7 +157,7 @@ macro_rules! builder_row {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::buffer::builder::row::BuilderRowItem::{Cell as cell};
+    use crate::core::buffer::builder::row::BuilderRowItem::Cell as cell;
     use crate::core::buffer::builder::row::{BuilderRow, BuilderRowItem as BRI};
     use crate::style::Style as ST;
 
