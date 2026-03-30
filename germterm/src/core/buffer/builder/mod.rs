@@ -210,7 +210,7 @@ pub fn build_any_buffer(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
 /// # Examples
 ///
 /// ```
-/// const BUF: BuilderBuffer = builder_buffer!(
+/// let my_buffer = buffer!(
 ///     ["Header", empty(5), "Value"],
 ///     empty(1),
 ///     [cell("A", Style::EMPTY), "B", "C"],
