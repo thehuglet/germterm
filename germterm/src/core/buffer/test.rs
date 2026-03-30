@@ -890,17 +890,18 @@ pub fn fmt_diff(
     mut diff: impl Iterator<Item = (Position, CellDiff)>,
 ) -> Result<usize, core::fmt::Error> {
     let mut count = 0;
+    writeln!(w, "[expected - found]")?;
     diff.try_for_each(|(pos, cd)| {
+        write!(w, "{pos:?}")?;
         count += 1;
-        writeln!(w, "{pos:?} [expected - found]")?;
         if let Some(fg) = cd.fg {
-            write!(w, "fg [{:?} - {:?}] ", fg.expected, fg.found)?;
+            write!(w, " fg [{:?} - {:?}] ", fg.expected, fg.found)?;
         }
         if let Some(bg) = cd.bg {
-            write!(w, "bg [{:?} - {:?}] ", bg.expected, bg.found)?;
+            write!(w, " bg [{:?} - {:?}] ", bg.expected, bg.found)?;
         }
         if let Some(ch) = cd.ch {
-            write!(w, "ch [{:?} - {:?}]", ch.expected, ch.found)?;
+            write!(w, " ch [{:?} - {:?}]", ch.expected, ch.found)?;
         }
 
         writeln!(w)
@@ -911,14 +912,18 @@ pub fn fmt_diff(
 
 #[macro_export]
 macro_rules! buf_assert_eq {
-    ($lhs:expr, $rhs:expr, $msg:expr) => {{
+    ($lhs:expr, $rhs:expr) => {{
         let lhs = $lhs;
         let rhs = $rhs;
 
         let mut s = String::new();
-        let count = $crate::core::buffer::test::fmt_diff(&mut s, $crate::core::buffer::utils::buf_cmp(&lhs, &rhs)).unwrap();
+        let count = $crate::core::buffer::test::fmt_diff(
+            &mut s,
+            $crate::core::buffer::utils::buf_cmp(&lhs, &rhs),
+        )
+        .unwrap();
         if count != 0 {
-            panic!("Buffer assertion failed\n{}", s)
+            panic!("Buffer assertion failed:\n{s}")
         }
     }};
 }

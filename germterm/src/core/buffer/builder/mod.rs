@@ -3,7 +3,7 @@ pub mod row;
 use crate::{
     cell::Cell,
     core::{
-        buffer::{Buffer, builder::row::BuilderRow, flat::FlatBuffer},
+        buffer::{builder::row::BuilderRow, flat::FlatBuffer, Buffer},
         draw::{Position, Size},
     },
 };
@@ -103,7 +103,7 @@ macro_rules! builder_buffer_item {
     (empty($n:literal)) => {
         BBI::Empty($n)
     };
-    ($($row_stuff:tt)*) => {{
+    ([$($row_stuff:tt)*]) => {{
         BBI::Row($crate::builder_row!($($row_stuff)*))
     }};
 }
@@ -112,7 +112,7 @@ macro_rules! builder_buffer_item {
 #[macro_export]
 macro_rules! builder_buffer_internal  {
     (@munched[$($munched:tt)*] [$($row_content:tt)+] $(, $( $rest:tt)*)?) => {{
-        $crate::builder_buffer_internal!{@munched[$($munched)* $crate::builder_buffer_item!{$($row_content)+}, ] $($($rest)*)?}
+        $crate::builder_buffer_internal!{@munched[$($munched)* $crate::builder_buffer_item!{[$($row_content)+]}, ] $($($rest)*)?}
     }};
     (@munched[$($munched:tt)*] $buffer_item_ident:ident$(($($buffer_item_args:tt)*))? $(, $($rest:tt)*)?) => {{
         $crate::builder_buffer_internal!{@munched[$($munched)* $crate::builder_buffer_item!{$buffer_item_ident$(($($buffer_item_args)*))?}, ] $($($rest)*)?}
@@ -124,6 +124,8 @@ macro_rules! builder_buffer_internal  {
     }};
 }
 
+/// Creates a `BuilderBuffer` at compile time from rows of cells.
+/// Used internally by the `buffer!` macro.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! builder_buffer{
@@ -134,6 +136,7 @@ macro_rules! builder_buffer{
     }};
 }
 
+// This is so we can return an opaque [`Buffer`] from a macro.
 #[doc(hidden)]
 pub fn build_buffer(bb: &BuilderBuffer) -> impl Buffer {
     let mut fb = FlatBuffer::new(bb.size);
@@ -141,6 +144,7 @@ pub fn build_buffer(bb: &BuilderBuffer) -> impl Buffer {
     fb
 }
 
+/// Writes a `BuilderBuffer` into any `Buffer` implementation.
 #[doc(hidden)]
 pub fn build_any_buffer(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
     let mut cursor = Position::ZERO;
@@ -153,7 +157,7 @@ pub fn build_any_buffer(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
                 .checked_add(*n)
                 .expect("Cursor height should never be greater than u16::MAX");
             assert!(
-                cursor.y < sz.height,
+                cursor.y <= sz.height,
                 "Cursor skipped rows should never exceed area height"
             );
         }

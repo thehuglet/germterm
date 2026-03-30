@@ -42,13 +42,8 @@ pub fn draw_string<Buf: Buffer, D>(
 mod tests {
     use super::*;
     use crate::{
-        buf_str,
-        core::{
-            DisplayWidth,
-            buffer::{flat::FlatBuffer, utils::dump_buffer_to_string as dbts},
-            draw::Size,
-            timer::NoDelta,
-        },
+        buf_assert_eq, buffer,
+        core::{DisplayWidth, buffer::flat::FlatBuffer, draw::Size, timer::NoDelta},
     };
 
     fn make_buf(sz: Size) -> FlatBuffer {
@@ -86,7 +81,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(5, 0), "hello");
         assert_eq!(written, 0);
 
-        assert_eq!(dbts(&buf), buf_str!["     ", "     ", "     ",]);
+        buf_assert_eq!(buf, buffer![[empty(5)], empty(2)]);
     }
 
     #[test]
@@ -95,7 +90,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(0, 3), "hello");
         assert_eq!(written, 0);
 
-        assert_eq!(dbts(&buf), buf_str!["     ", "     ", "     ",]);
+        buf_assert_eq!(buf, buffer![empty(2), [empty(5)]]);
     }
 
     #[test]
@@ -104,7 +99,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "");
         assert_eq!(written, 0);
 
-        assert_eq!(dbts(&buf), buf_str!["     ", "     ", "     ",]);
+        buf_assert_eq!(buf, buffer![[empty(5)], empty(2)]);
     }
 
     #[test]
@@ -113,10 +108,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "hello");
         assert_eq!(written, 5);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["hello     ", "          ", "          ",]
-        );
+        buf_assert_eq!(buf, buffer![["h", "e", "l", "l", "o", empty(5)], empty(2)]);
     }
 
     #[test]
@@ -125,7 +117,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "hello world");
         assert_eq!(written, 5);
 
-        assert_eq!(dbts(&buf), buf_str!["hello", "     ", "     ",]);
+        buf_assert_eq!(buf, buffer![["h", "e", "l", "l", "o"], empty(2)]);
     }
 
     #[test]
@@ -134,7 +126,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "abcde");
         assert_eq!(written, 5);
 
-        assert_eq!(dbts(&buf), buf_str!["abcde", "     ",]);
+        buf_assert_eq!(buf, buffer![["a", "b", "c", "d", "e"], empty(1)]);
     }
 
     #[test]
@@ -143,9 +135,9 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(4, 0), "hello");
         assert_eq!(written, 5);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["    hello ", "          ", "          ",]
+        buf_assert_eq!(
+            buf,
+            buffer![[empty(4), "h", "e", "l", "l", "o", " "], empty(2)]
         );
     }
 
@@ -155,10 +147,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(0, 2), "hello");
         assert_eq!(written, 5);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["          ", "          ", "hello     ",]
-        );
+        buf_assert_eq!(buf, buffer![empty(2), ["h", "e", "l", "l", "o", empty(5)],]);
     }
 
     #[test]
@@ -167,9 +156,13 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(3, 1), "test");
         assert_eq!(written, 4);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["          ", "   test   ", "          ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(1),
+                [" ", " ", " ", "t", "e", "s", "t", " ", " ", " "],
+                empty(1)
+            ]
         );
     }
 
@@ -179,7 +172,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(5, 0), "hello");
         assert_eq!(written, 3);
 
-        assert_eq!(dbts(&buf), buf_str!["     hel", "        ",]);
+        buf_assert_eq!(buf, buffer![[empty(5), "h", "e", "l"], empty(1),]);
     }
 
     #[test]
@@ -188,7 +181,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "hello");
         assert_eq!(written, 1);
 
-        assert_eq!(dbts(&buf), buf_str!["h"]);
+        buf_assert_eq!(buf, buffer![["h"]]);
     }
 
     #[test]
@@ -197,7 +190,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::new(2, 0), "x");
         assert_eq!(written, 1);
 
-        assert_eq!(dbts(&buf), buf_str!["  x  ", "     ",]);
+        buf_assert_eq!(buf, buffer![[empty(2), "x", empty(2)], empty(1)])
     }
 
     #[test]
@@ -206,7 +199,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "😀");
         assert_eq!(written, 2);
 
-        assert_eq!(dbts(&buf), buf_str!["😀  ", "     ",]);
+        buf_assert_eq!(buf, buffer![["😀", empty(4)], [empty(5)]]);
     }
 
     #[test]
@@ -215,16 +208,19 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "😀😎");
         assert_eq!(written, 4);
 
-        assert_eq!(dbts(&buf), buf_str!["😀😎  ", "      ",]);
+        buf_assert_eq!(
+            buf,
+            buffer![["😀", empty(1), "😎", empty(1), empty(2)], empty(1)]
+        );
     }
 
     #[test]
     fn emoji_truncated() {
         let mut buf = make_buf(Size::new(3, 2));
-        let written = draw_string(make_fc(&mut buf), Position::ZERO, "😀");
+        let written = draw_string(make_fc(&mut buf), Position::ZERO, "😀😀😀");
         assert_eq!(written, 2);
 
-        assert_eq!(dbts(&buf), buf_str!["😀 ", "   ",]);
+        buf_assert_eq!(buf, buffer![["😀", empty(2)], empty(1)]);
     }
 
     #[test]
@@ -233,7 +229,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "😀");
         assert_eq!(written, 0);
 
-        assert_eq!(dbts(&buf), buf_str![" ", " ",]);
+        buf_assert_eq!(buf, buffer![empty(1), [" "]]);
     }
 
     #[test]
@@ -242,7 +238,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "中");
         assert_eq!(written, 2);
 
-        assert_eq!(dbts(&buf), buf_str!["中  ", "     ",]);
+        buf_assert_eq!(buf, buffer![["中", empty(4)], empty(1)]);
     }
 
     #[test]
@@ -251,7 +247,13 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "中文abc");
         assert_eq!(written, 7);
 
-        assert_eq!(dbts(&buf), buf_str!["中文abc   ", "          ",]);
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["中", empty(1), "文", empty(1), "a", "b", "c", empty(3)],
+                empty(1)
+            ]
+        );
     }
 
     #[test]
@@ -260,7 +262,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "中文");
         assert_eq!(written, 2);
 
-        assert_eq!(dbts(&buf), buf_str!["中 ", "   ",]);
+        buf_assert_eq![buf, buffer![["中", empty(2)], empty(1)]];
     }
 
     #[test]
@@ -269,7 +271,7 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "x²");
         assert_eq!(written, 2);
 
-        assert_eq!(dbts(&buf), buf_str!["x²  ", "     ",]);
+        buf_assert_eq!(buf, buffer![["x", "²", empty(3)], empty(1)]);
     }
 
     #[test]
@@ -278,7 +280,10 @@ mod tests {
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "x²+y³=z⁴");
         assert_eq!(written, 8);
 
-        assert_eq!(dbts(&buf), buf_str!["x²+y³=z⁴  ", "          ",]);
+        buf_assert_eq!(
+            buf,
+            buffer![["x", "²", "+", "y", "³", "=", "z", "⁴", empty(2)], empty(1)]
+        );
     }
 
     #[test]
@@ -286,6 +291,13 @@ mod tests {
         let mut buf = make_buf(Size::new(15, 2));
         let written = draw_string(make_fc(&mut buf), Position::ZERO, "Hi中😀文");
 
-        assert_eq!(dbts(&buf), buf_str!["Hi中😀文   ", "               ",]);
+        assert_eq!(written, 8);
+        buf_assert_eq!(
+            buf,
+            buffer!(
+                ["H", "i", "中", empty(1), "😀", empty(1), "文", empty(8)],
+                [empty(15)]
+            )
+        )
     }
 }
