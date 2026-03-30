@@ -31,14 +31,26 @@ impl BuilderBuffer {
     }
 
     const fn height(items: &'static [BuilderBufferItem]) -> u16 {
-        let height = items.len();
+        let mut i = 0;
+        let mut height = 0;
+        while i < items.len() {
+            match items[i] {
+                BuilderBufferItem::Empty(n) => {
+                    height += n;
+                }
+                BuilderBufferItem::Row(_) => {
+                    height += 1;
+                }
+            }
+            i += 1;
+        }
 
         assert!(
-            (u16::MAX as usize) >= height,
+            (u16::MAX as usize) >= height as usize,
             "Unable to determine height of buffer"
         );
 
-        height as u16
+        height
     }
 
     const fn width(items: &'static [BuilderBufferItem]) -> u16 {
