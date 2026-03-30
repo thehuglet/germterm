@@ -3,8 +3,13 @@ use std::borrow::Cow;
 use crate::{
     core::{
         DisplayWidth,
-        buffer::Buffer,
-        draw::Position,
+        draw::{
+            Position, Rect,
+            gfx::{
+                normal::draw_style,
+                text::{WrittenTracker, draw_text},
+            },
+        },
         timer::NoDelta,
         widget::{FrameContext, SimpleWidget, text::LineWidth},
     },
@@ -116,34 +121,16 @@ impl<'a> Span<'a> {
         &self.content
     }
 
-    /// Fills the cells in the provided buffer as much as possible without exceeding `limit` cells.
+    /// Fills the cells in the for row of the provided buffer as much as possible without exceeding `limit` cells.
     ///
     /// This is mainly intended to be called from other [`Widget`]'s where they would account for
     /// line wrapping themselves. In other words this is a primitive text drawer in widget form.
-    pub fn fill_cells<Buf: Buffer>(&self, buf: &mut Buf, limit: u16) -> u16 {
-        // TODO: use proper cell length checks here (should get passed a `&DisplayWidth` as arg)
-        let limit = limit as u32;
-        let sz = buf.size();
-        let mut chars = self.content.chars();
-        let mut written = 0;
-        for y in 0..sz.height {
-            for x in 0..sz.width {
-                let c = buf.get_cell_mut(Position::new(x, y));
-                written = sz.width as u32 * y as u32 + x as u32;
-                // TODO: add cell merging once cell styling is stored
-                if let Some(ch) = chars.next() {
-                    c.style.merge(self.style);
-                    c.ch = ch;
-                    if written >= limit {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-
-        written as u16
+    pub fn fill_cells(
+        &self,
+        ctx: FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>,
+        limit: u16,
+    ) -> WrittenTracker {
+        draw_text(ctx, Position::ZERO, &self.content, self.style, limit)
     }
 
     /// Returns a borrowed copy of this span that references the same underlying string.
@@ -156,8 +143,22 @@ impl<'a> Span<'a> {
 }
 
 impl<'a> SimpleWidget for Span<'a> {
-    fn draw(&self, ctx: FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
-        self.fill_cells(ctx.buffer, ctx.buffer.size().width);
+    fn draw(&self, mut ctx: FrameContext<'_, impl crate::core::buffer::Buffer, NoDelta>) {
+        let sz = ctx.buffer().size();
+        let wt = self.fill_cells(
+            FrameContext {
+                total_time: ctx.total_time,
+                delta: ctx.delta,
+                buffer: ctx.buffer,
+                display_width: ctx.display_width,
+            },
+            sz.width,
+        );
+        draw_style(
+            ctx.buffer_mut(),
+            Rect::new(Position::new(wt.cells, 0), sz),
+            self.style,
+        );
     }
 }
 

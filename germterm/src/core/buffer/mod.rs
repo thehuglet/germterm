@@ -1,3 +1,4 @@
+pub mod builder;
 pub mod diffed;
 pub mod flat;
 pub mod paired;
@@ -33,14 +34,17 @@ pub trait Buffer {
     fn size(&self) -> Size;
 
     /// Sets the cell at `pos`, returning an error if `pos` is outside bounds.
-    fn set_cell_checked(&mut self, pos: Position, cell: Cell)
-    -> Result<(), ErrorOutOfBoundsAxises>;
+    fn set_cell_checked(
+        &mut self,
+        pos: Position,
+        cell: &Cell,
+    ) -> Result<(), ErrorOutOfBoundsAxises>;
     /// Sets the cell at `pos` without bounds checking.
     ///
     /// # Panics
     ///
     /// Panics if `pos` is out of bounds.
-    fn set_cell(&mut self, pos: Position, cell: Cell) {
+    fn set_cell(&mut self, pos: Position, cell: &Cell) {
         self.set_cell_checked(pos, cell)
             .expect("out of bounds set_cell")
     }
@@ -77,18 +81,18 @@ pub trait Buffer {
     }
 
     /// Fills the entire buffer with `cell`.
-    fn fill(&mut self, cell: Cell) {
+    fn fill(&mut self, cell: &Cell) {
         let size = self.size();
         for y in 0..size.height {
             for x in 0..size.width {
-                self.set_cell(Position { x, y }, cell);
+                self.get_cell_mut(Position { x, y }).clone_from(cell);
             }
         }
     }
 
     /// Clears the buffer by filling it with [`Cell::EMPTY`].
     fn clear(&mut self) {
-        self.fill(Cell::EMPTY);
+        self.fill(&Cell::EMPTY);
     }
 
     /// Called at the beginning of a frame. Implementations may use this to

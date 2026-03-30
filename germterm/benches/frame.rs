@@ -6,18 +6,19 @@ use germterm::{
         buffer::{Buffer, Drawer, paired::PairedBuffer},
         draw::{Position, Size},
     },
+    style::{Attributes, Style},
 };
 
 fn full_cell() -> Cell {
-    let mut cell = Cell::EMPTY;
-    cell.ch = 'X';
-    cell.fg = Color::WHITE;
-    cell.bg = Color::BLACK;
-    cell
+    Cell::new(
+        "X",
+        Style::new(Color::WHITE, Color::BLACK, Attributes::empty()),
+    )
 }
 
 fn bench_frame_diff(c: &mut Criterion) {
     let mut group = c.benchmark_group("Frame Diff");
+    let fc = full_cell();
 
     // Dimensions to test
     let dimensions = vec![
@@ -48,7 +49,7 @@ fn bench_frame_diff(c: &mut Criterion) {
 
                 for y in 0..sz.height {
                     for x in 0..sz.width {
-                        buf.set_cell(Position::new(x, y), full_cell());
+                        buf.set_cell(Position::new(x, y), &fc);
                     }
                 }
 
@@ -70,7 +71,7 @@ fn bench_frame_diff(c: &mut Criterion) {
                 for y in 0..sz.height {
                     for x in 0..sz.width {
                         if x * y % 2 == 0 {
-                            buf.set_cell(Position::new(x, y), full_cell());
+                            buf.set_cell(Position::new(x, y), &fc);
                         }
                     }
                 }

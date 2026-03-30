@@ -12,7 +12,9 @@ authors.workspace = true
 bitflags = "2.10.0"
 crossterm = "0.29.0"
 rand = "0.9.2"
+sinstr = "0.4.0"
 termbg = "0.6.2"
+unicode-segmentation = "1.13.1"
 unicode-width = "0.2.2"
 
 [dev-dependencies]
@@ -20,4 +22,8 @@ criterion = "0.5"
 
 [[bench]]
 name = "frame"
+harness = false
+
+[[bench]]
+name = "gfx"
 harness = false

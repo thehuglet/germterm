@@ -42,13 +42,13 @@ impl Buffer for FlatBuffer {
     fn set_cell_checked(
         &mut self,
         pos: Position,
-        cell: Cell,
+        cell: &Cell,
     ) -> Result<(), ErrorOutOfBoundsAxises> {
         if let err @ Err(_) = self.size.contains(pos) {
             cold();
             return err;
         }
-        self.cells[pos.to_index(self.size.width)] = cell;
+        self.cells[pos.to_index(self.size.width)].clone_from(cell);
         Ok(())
     }
 
@@ -68,8 +68,8 @@ impl Buffer for FlatBuffer {
         Ok(&mut self.cells[pos.to_index(self.size.width)])
     }
 
-    fn fill(&mut self, cell: Cell) {
-        self.cells.fill(cell);
+    fn fill(&mut self, cell: &Cell) {
+        self.cells.iter_mut().for_each(|c| c.clone_from(cell));
     }
 
     fn start_frame(&mut self) {
@@ -116,8 +116,8 @@ impl ResizableBuffer for FlatBuffer {
         // NOTE: I have no idea why Cell would be unpin but if it somehow does this gives a compile error
         // rather than UB.
         #[allow(unused)]
-        fn is_copy<T: Unpin>(arg: &T) {
-            let _ = || is_copy::<Cell>(&Cell::EMPTY);
+        fn is_unpin<T: Unpin>(arg: &T) {
+            let _ = || is_unpin::<Cell>(&Cell::EMPTY);
         }
         let new_temp_len = (self.size.height as usize) * (size.width as usize);
 
@@ -140,29 +140,46 @@ impl ResizableBuffer for FlatBuffer {
                         let src = base.add(y * old_w);
                         let dst = base.add(y * new_w);
                         ptr::copy(src, dst, old_w);
-
-                        // Fill the new columns at the end of this row.
-                        std::slice::from_raw_parts_mut(dst.add(old_w), grow_by).fill(Cell::EMPTY);
+                        for i in 0..grow_by {
+                            dst.add(old_w + i).write(Cell::EMPTY);
+                        }
                     }
 
                     // Row 0: fill trailing gap last, after all rows have been
                     // scattered, so that row 1's old data is not overwritten.
                     if old_h > 0 {
-                        std::slice::from_raw_parts_mut(base.add(old_w), grow_by).fill(Cell::EMPTY);
+                        for i in 0..grow_by {
+                            base.add(old_w + i).write(Cell::EMPTY);
+                        }
                     }
 
                     self.cells.set_len(new_temp_len);
                 }
             }
             // Shrink case
-            Ordering::Greater => unsafe {
-                let base = self.cells.as_mut_ptr();
-                for y in 1..old_h {
-                    ptr::copy(base.add(y * old_w), base.add(y * new_w), new_w);
+            Ordering::Greater => {
+                let dif = old_w - new_w;
+
+                // Drop extra columns for each row, starting from the last row
+                // to avoid overwriting data we still need.
+                for y in (0..old_h).rev() {
+                    let extra_start = y * old_w + new_w;
+                    unsafe {
+                        ptr::slice_from_raw_parts_mut(self.cells.as_mut_ptr().add(extra_start), dif)
+                            .drop_in_place()
+                    };
                 }
 
-                self.cells.set_len(new_temp_len);
-            },
+                // Compact rows
+                for y in 1..old_h {
+                    unsafe {
+                        let base = self.cells.as_mut_ptr();
+                        ptr::copy(base.add(y * old_w), base.add(y * new_w), new_w);
+                    }
+                }
+
+                self.cells.truncate(new_temp_len);
+            }
             Ordering::Equal => {}
         }
 

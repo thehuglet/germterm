@@ -16,7 +16,7 @@ use crate::{
 /// # Returns
 ///
 /// The number of cells written.
-pub fn draw_vline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: Cell) -> u16 {
+pub fn draw_vline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: &Cell) -> u16 {
     let sz = buf.size();
     if !sz.is_within(start) {
         return 0;
@@ -41,7 +41,7 @@ pub fn draw_vline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: C
 /// # Returns
 ///
 /// The number of cells written.
-pub fn draw_hline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: Cell) -> u16 {
+pub fn draw_hline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: &Cell) -> u16 {
     let sz = buf.size();
     if !sz.is_within(start) {
         return 0;
@@ -74,7 +74,7 @@ pub fn draw_hline<Buf: Buffer>(buf: &mut Buf, start: Position, len: u16, cell: C
 /// # Returns
 ///
 /// The number of cells written.
-pub fn draw_line<Buf: Buffer>(buf: &mut Buf, start: Position, end: Position, cell: Cell) -> u32 {
+pub fn draw_line<Buf: Buffer>(buf: &mut Buf, start: Position, end: Position, cell: &Cell) -> u32 {
     let sz = buf.size();
     if sz.area() == 0 {
         return 0;
@@ -172,7 +172,7 @@ pub fn draw_style<Buf: Buffer>(buf: &mut Buf, area: Rect, style: Style) -> u32 {
 
     for y in 0..sz.height {
         for x in 0..sz.width {
-            sub.get_cell_mut(Position { x, y }).style.merge(style);
+            sub.get_cell_mut(Position { x, y }).style_mut().merge(style);
         }
     }
 
@@ -183,18 +183,12 @@ pub fn draw_style<Buf: Buffer>(buf: &mut Buf, area: Rect, style: Style) -> u32 {
 mod tests {
     use super::*;
     use crate::{
-        buf_str,
-        core::{
-            buffer::{flat::FlatBuffer, utils::dump_buffer_to_string as dbts},
-            draw::Size,
-        },
+        buf_assert_eq, buffer,
+        core::{buffer::flat::FlatBuffer, draw::Size},
     };
 
     fn test_cell() -> Cell {
-        Cell {
-            ch: '#',
-            ..Cell::EMPTY
-        }
+        Cell::new("#", Style::EMPTY)
     }
 
     fn make_buf(sz: Size) -> FlatBuffer {
@@ -205,22 +199,22 @@ mod tests {
     fn vertical_line() {
         let mut buf = make_buf(Size::new(10, 10));
         let len = 10;
-        let written = draw_vline(&mut buf, Position::ZERO, len, test_cell());
+        let written = draw_vline(&mut buf, Position::ZERO, len, &test_cell());
         assert_eq!(written, len);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
-                "#         ",
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
+                ["#", empty(9)],
             ]
         );
     }
@@ -230,22 +224,19 @@ mod tests {
         let mut buf = make_buf(Size::new(10, 10));
         let len = 6;
         let start = Position::new(4, 4);
-        let written = draw_vline(&mut buf, start, len, test_cell());
+        let written = draw_vline(&mut buf, start, len, &test_cell());
         assert_eq!(written, len);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "    #     ",
-                "    #     ",
-                "    #     ",
-                "    #     ",
-                "    #     ",
-                "    #     ",
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(4),
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
             ]
         );
     }
@@ -253,46 +244,33 @@ mod tests {
     #[test]
     fn vertical_line_truncated_bottom() {
         let mut buf = make_buf(Size::new(10, 10));
-        let written = draw_vline(&mut buf, Position::new(4, 7), 10, test_cell());
+        let written = draw_vline(&mut buf, Position::new(4, 7), 10, &test_cell());
         assert_eq!(written, 3);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "    #     ",
-                "    #     ",
-                "    #     ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(7),
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+            ]
         );
     }
 
     #[test]
     fn vertical_line_truncated_top() {
         let mut buf = make_buf(Size::new(10, 10));
-        let written = draw_vline(&mut buf, Position::new(4, 8), 5, test_cell());
+        let written = draw_vline(&mut buf, Position::new(4, 8), 5, &test_cell());
         assert_eq!(written, 2);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "    #     ",
-                "    #     ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(8),
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+            ]
         );
     }
 
@@ -300,23 +278,12 @@ mod tests {
     fn horizontal_line() {
         let mut buf = make_buf(Size::new(10, 10));
         let len = 10;
-        let written = draw_hline(&mut buf, Position::ZERO, len, test_cell());
+        let written = draw_hline(&mut buf, Position::ZERO, len, &test_cell());
         assert_eq!(written, len);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "##########",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![["#", "#", "#", "#", "#", "#", "#", "#", "#", "#"], empty(9),]
         );
     }
 
@@ -324,70 +291,31 @@ mod tests {
     fn horizontal_line_partial() {
         let mut buf = make_buf(Size::new(10, 10));
         let len = 4;
-        let written = draw_hline(&mut buf, Position::new(2, 2), len, test_cell());
+        let written = draw_hline(&mut buf, Position::new(2, 2), len, &test_cell());
         assert_eq!(written, len);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "  ####    ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![empty(2), [empty(2), "#", "#", "#", "#", empty(4)], empty(7),]
         );
     }
 
     #[test]
     fn horizontal_line_truncated_right() {
         let mut buf = make_buf(Size::new(10, 10));
-        let written = draw_hline(&mut buf, Position::new(7, 4), 10, test_cell());
+        let written = draw_hline(&mut buf, Position::new(7, 4), 10, &test_cell());
         assert_eq!(written, 3);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "       ###",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-            ],
-        );
+        buf_assert_eq!(buf, buffer![empty(4), [empty(7), "#", "#", "#"], empty(5),]);
     }
 
     #[test]
     fn horizontal_line_truncated_left() {
         let mut buf = make_buf(Size::new(10, 10));
-        let written = draw_hline(&mut buf, Position::new(15, 4), 5, test_cell());
+        let written = draw_hline(&mut buf, Position::new(15, 4), 5, &test_cell());
         assert_eq!(written, 0);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-            ],
-        );
+        buf_assert_eq!(buf, buffer![[empty(10)], empty(9)]);
     }
 
     #[test]
@@ -397,25 +325,25 @@ mod tests {
             &mut buf,
             Position::new(0, 0),
             Position::new(9, 9),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 10);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "#         ",
-                " #        ",
-                "  #       ",
-                "   #      ",
-                "    #     ",
-                "     #    ",
-                "      #   ",
-                "       #  ",
-                "        # ",
-                "         #",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["#", empty(9)],
+                [empty(1), "#", empty(8)],
+                [empty(2), "#", empty(7)],
+                [empty(3), "#", empty(6)],
+                [empty(4), "#", empty(5)],
+                [empty(5), "#", empty(4)],
+                [empty(6), "#", empty(3)],
+                [empty(7), "#", empty(2)],
+                [empty(8), "#", empty(1)],
+                [empty(9), "#"],
+            ]
         );
     }
 
@@ -426,25 +354,25 @@ mod tests {
             &mut buf,
             Position::new(2, 1),
             Position::new(5, 7),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 7);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "  #       ",
-                "   #      ",
-                "   #      ",
-                "    #     ",
-                "    #     ",
-                "     #    ",
-                "     #    ",
-                "          ",
-                "          ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(10)],
+                [empty(2), "#", empty(7)],
+                [empty(3), "#", empty(6)],
+                [empty(3), "#", empty(6)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(5), "#", empty(4)],
+                [empty(5), "#", empty(4)],
+                [empty(10)],
+                [empty(10)],
+            ]
         );
     }
 
@@ -455,25 +383,25 @@ mod tests {
             &mut buf,
             Position::new(5, 7),
             Position::new(2, 1),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 7);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "  #       ",
-                "   #      ",
-                "   #      ",
-                "    #     ",
-                "    #     ",
-                "     #    ",
-                "     #    ",
-                "          ",
-                "          ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(10)],
+                [empty(2), "#", empty(7)],
+                [empty(3), "#", empty(6)],
+                [empty(3), "#", empty(6)],
+                [empty(4), "#", empty(5)],
+                [empty(4), "#", empty(5)],
+                [empty(5), "#", empty(4)],
+                [empty(5), "#", empty(4)],
+                [empty(10)],
+                [empty(10)],
+            ]
         );
     }
 
@@ -484,25 +412,23 @@ mod tests {
             &mut buf,
             Position::new(1, 3),
             Position::new(6, 15),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 7);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                " #        ",
-                " #        ",
-                "  #       ",
-                "  #       ",
-                "   #      ",
-                "   #      ",
-                "    #     ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(3),
+                [empty(1), "#", empty(8)],
+                [empty(1), "#", empty(8)],
+                [empty(2), "#", empty(7)],
+                [empty(2), "#", empty(7)],
+                [empty(3), "#", empty(6)],
+                [empty(3), "#", empty(6)],
+                [empty(4), "#", empty(5)],
+            ]
         );
     }
 
@@ -513,25 +439,19 @@ mod tests {
             &mut buf,
             Position::new(5, 2),
             Position::new(20, 5),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 5);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "     #### ",
-                "         #",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-                "          ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(2),
+                [empty(5), "#", "#", "#", "#", empty(1)],
+                [empty(9), "#"],
+                empty(6),
+            ]
         );
     }
 
@@ -542,25 +462,23 @@ mod tests {
             &mut buf,
             Position::new(8, 3),
             Position::new(2, 15),
-            test_cell(),
+            &test_cell(),
         );
 
         assert_eq!(drawn, 7);
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str![
-                "          ",
-                "          ",
-                "          ",
-                "        # ",
-                "       #  ",
-                "       #  ",
-                "      #   ",
-                "      #   ",
-                "     #    ",
-                "     #    ",
-            ],
+        buf_assert_eq!(
+            buf,
+            buffer![
+                empty(3),
+                [empty(8), "#", empty(1)],
+                [empty(7), "#", empty(2)],
+                [empty(7), "#", empty(2)],
+                [empty(6), "#", empty(3)],
+                [empty(6), "#", empty(3)],
+                [empty(5), "#", empty(4)],
+                [empty(5), "#", empty(4)],
+            ]
         );
     }
 }

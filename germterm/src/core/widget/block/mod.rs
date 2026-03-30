@@ -176,24 +176,15 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             && size.width > 0
         {
             let cur = ctx.buffer_mut().get_cell_mut(Position::ZERO);
-            cur.ch = self
-                .set
-                .top_left(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+            cur.set_str(self.set.top_left(cur.as_str()));
         }
 
         // top side
         if self.sides.contains(BorderSides::TOP) && size.width > horizontal_offset {
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y: 0 });
-                cur.ch = self
-                    .set
-                    .top(&cur.ch.to_string())
-                    .chars()
-                    .next()
-                    .unwrap_or_default();
+
+                cur.set_str(self.set.top(cur.as_str()));
             }
 
             // Draw the top titles
@@ -214,12 +205,7 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 x: size.width.saturating_sub(1),
                 y: 0,
             });
-            cur.ch = self
-                .set
-                .top_right(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+            cur.set_str(self.set.top_right(cur.as_str()));
         }
 
         // LR sides
@@ -229,12 +215,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             if self.sides.contains(BorderSides::LEFT) {
                 for y in top_offset..h_end {
                     let cur = ctx.buffer_mut().get_cell_mut(Position::new(0, y));
-                    cur.ch = self
-                        .set
-                        .left(&cur.ch.to_string())
-                        .chars()
-                        .next()
-                        .unwrap_or_default();
+
+                    cur.set_str(self.set.left(cur.as_str()));
                 }
             }
 
@@ -245,12 +227,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                         x: size.width.saturating_sub(right_offset),
                         y,
                     });
-                    cur.ch = self
-                        .set
-                        .right(&cur.ch.to_string())
-                        .chars()
-                        .next()
-                        .unwrap_or_default();
+
+                    cur.set_str(self.set.right(cur.as_str()));
                 }
             }
         }
@@ -260,12 +238,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             let cur = ctx
                 .buffer_mut()
                 .get_cell_mut(Position::new(0, size.height.saturating_sub(1)));
-            cur.ch = self
-                .set
-                .bottom_left(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+
+            cur.set_str(self.set.bottom_left(cur.as_str()));
         }
 
         // bottom
@@ -273,12 +247,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
             let y = size.height.saturating_sub(1);
             for x in left_offset..x_end {
                 let cur = ctx.buffer_mut().get_cell_mut(Position { x, y });
-                cur.ch = self
-                    .set
-                    .bottom(&cur.ch.to_string())
-                    .chars()
-                    .next()
-                    .unwrap_or_default();
+
+                cur.set_str(self.set.bottom(cur.as_str()));
             }
 
             let bottom_titles = self
@@ -296,12 +266,8 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
                 x: size.width.saturating_sub(1),
                 y: size.height.saturating_sub(1),
             });
-            cur.ch = self
-                .set
-                .bottom_right(&cur.ch.to_string())
-                .chars()
-                .next()
-                .unwrap_or_default();
+
+            cur.set_str(self.set.bottom_right(cur.as_str()));
         }
     }
 }
@@ -310,10 +276,10 @@ impl<'a, D: TimerDelta, B: BlockSet, T: Widget<D> + LineWidth> Widget<D> for Blo
 mod tests {
     use super::*;
     use crate::{
-        buf_str,
+        buf_assert_eq, buffer,
         core::{
             DisplayWidth,
-            buffer::{paired::PairedBuffer, utils::dump_buffer_to_string as dbts},
+            buffer::paired::PairedBuffer,
             draw::Size,
             timer::NoDelta,
             widget::block::{
@@ -344,9 +310,15 @@ mod tests {
     fn all_sides() {
         let buf = draw_block(Block::new(SimpleBorderSet::ASCII), Size::new(5, 5));
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+---+", "|   |", "|   |", "|   |", "+---+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "+"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["+", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -357,9 +329,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["-----", "     ", "     ", "     ", "     ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["-", "-", "-", "-", "-"],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+            ]
         );
     }
 
@@ -370,9 +348,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["     ", "     ", "     ", "     ", "-----",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                ["-", "-", "-", "-", "-"],
+            ]
         );
     }
 
@@ -383,9 +367,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["|    ", "|    ", "|    ", "|    ", "|    ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+            ]
         );
     }
 
@@ -396,9 +386,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["    |", "    |", "    |", "    |", "    |",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+                [empty(4), "|"],
+            ]
         );
     }
 
@@ -409,9 +405,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+----", "|    ", "|    ", "|    ", "|    ",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-"],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+                ["|", empty(4)],
+            ]
         );
     }
 
@@ -422,9 +424,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["-----", "     ", "     ", "     ", "-----",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["-", "-", "-", "-", "-"],
+                [empty(5)],
+                [empty(5)],
+                [empty(5)],
+                ["-", "-", "-", "-", "-"],
+            ]
         );
     }
 
@@ -435,9 +443,15 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["|   |", "|   |", "|   |", "|   |", "|   |",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+                ["|", empty(3), "|"],
+            ]
         );
     }
 
@@ -448,9 +462,9 @@ mod tests {
             Size::new(5, 5),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["     ", "     ", "     ", "     ", "     ",]
+        buf_assert_eq!(
+            buf,
+            buffer![[empty(5)], [empty(5)], [empty(5)], [empty(5)], [empty(5)],]
         );
     }
 
@@ -465,9 +479,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+Hi------+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "H", "i", "-", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -481,9 +499,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+---Hi---+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "H", "i", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -496,9 +518,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+------Hi+", "|        |", "+--------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-", "-", "-", "H", "i", "+"],
+                ["|", empty(8), "|"],
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -511,9 +537,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+--------+", "|        |", "+Hi------+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "-", "-", "-", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "H", "i", "-", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 
@@ -530,9 +560,13 @@ mod tests {
             Size::new(10, 3),
         );
 
-        assert_eq!(
-            dbts(&buf),
-            buf_str!["+top-----+", "|        |", "+bot-----+",]
+        buf_assert_eq!(
+            buf,
+            buffer![
+                ["+", "t", "o", "p", "-", "-", "-", "-", "-", "+"],
+                ["|", empty(8), "|"],
+                ["+", "b", "o", "t", "-", "-", "-", "-", "-", "+"],
+            ]
         );
     }
 }

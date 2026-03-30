@@ -4,7 +4,7 @@ use crate::{
     core::{
         DisplayWidth,
         buffer::slice::SubBuffer,
-        draw::{Position, Rect, Size},
+        draw::{Position, Rect, gfx::text::WrittenTracker},
         widget::{
             FrameContext, SimpleWidget,
             text::{LineWidth, span::Span},
@@ -55,15 +55,60 @@ where
             __p: PhantomData,
         }
     }
+
+    pub fn fill_cells(
+        &self,
+        ctx: FrameContext<'_, impl crate::core::buffer::Buffer>,
+    ) -> WrittenTracker {
+        let sz = ctx.buffer.size();
+
+        if sz.area() == 0 {
+            return WrittenTracker::default();
+        }
+
+        let mut wt = WrittenTracker::default();
+        for span in self.spans.as_ref().iter() {
+            // Cannot underflow as its checked at the end of the iteration and we break if it does
+            let allowed_width = sz.width - wt.cells;
+
+            let swt = span
+                .as_borrowed()
+                .with_style(self.style.merged(span.style()))
+                .fill_cells(
+                    FrameContext::new(
+                        ctx.total_time,
+                        ctx.delta,
+                        &mut SubBuffer::new(ctx.buffer, Rect::new(Position::new(wt.cells, 0), sz)),
+                        ctx.display_width,
+                    ),
+                    allowed_width,
+                );
+            wt.cells += swt.cells;
+            wt.bytes += swt.bytes;
+
+            if wt.cells >= sz.width {
+                break;
+            }
+        }
+
+        // Set the style for the cells that are untouched in our `Line`
+        for x in wt.cells..sz.width {
+            ctx.buffer
+                .get_cell_mut(Position::new(x, 0))
+                .style_mut()
+                .merge(self.style);
+        }
+
+        wt
+    }
 }
 
 impl<'a, Spans> SimpleWidget for Line<'a, Spans>
 where
     Spans: AsRef<[Span<'a>]>,
 {
-    fn draw(&self, mut ctx: FrameContext<'_, impl crate::core::buffer::Buffer>) {
-        let buf = ctx.buffer_mut();
-        let sz = buf.size();
+    fn draw(&self, ctx: FrameContext<'_, impl crate::core::buffer::Buffer>) {
+        let sz = ctx.buffer.size();
 
         if sz.area() == 0 {
             return;
@@ -77,12 +122,15 @@ where
                 .as_borrowed()
                 .with_style(self.style.merged(span.style()))
                 .fill_cells(
-                    &mut SubBuffer::new(
-                        buf,
-                        Rect::new(Position::new(offset, 0), Size::new(allowed_width, 1)),
+                    FrameContext::new(
+                        ctx.total_time,
+                        ctx.delta,
+                        &mut SubBuffer::new(ctx.buffer, Rect::new(Position::new(offset, 0), sz)),
+                        ctx.display_width,
                     ),
                     allowed_width,
                 )
+                .cells
                 .saturating_add(offset);
             if offset >= sz.width {
                 break;
@@ -91,8 +139,9 @@ where
 
         // Set the style for the cells that are untouched in our `Line`
         for x in offset..sz.width {
-            buf.get_cell_mut(Position::new(x, 0))
-                .style
+            ctx.buffer
+                .get_cell_mut(Position::new(x, 0))
+                .style_mut()
                 .merge(self.style);
         }
     }
