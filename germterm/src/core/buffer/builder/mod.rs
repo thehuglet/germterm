@@ -121,24 +121,7 @@ macro_rules! builder_buffer_internal  {
     }};
 }
 
-/// Creates a compile-time buffer layout from rows of cells.
-///
-/// # Syntax
-///
-/// Rows are comma-separated, with each row containing items:
-/// - `"text"` or `cell("text")` - cell with default style
-/// - `cell("text", style)` - cell with custom style
-/// - `empty(n)` - skip n columns
-///
-/// # Examples
-///
-/// ```
-/// const BUF: BuilderBuffer = builder_buffer!(
-///     ["Header", empty(5), "Value"],
-///     empty(1),
-///     [cell("A", Style::EMPTY), "B", "C"],
-/// );
-/// ```
+#[doc(hidden)]
 #[macro_export]
 macro_rules! builder_buffer{
     ($($tokens:tt)+) => {{
@@ -223,6 +206,31 @@ pub fn build(bb: &BuilderBuffer, buf: &mut dyn Buffer) {
             cursor.x = 0;
         }
     });
+}
+
+/// Creates a compile-time buffer layout from rows of cells.
+///
+/// # Syntax
+///
+/// Rows are comma-separated, with each row containing items:
+/// - `"text"` or `cell("text")` - cell with default style
+/// - `cell("text", style)` - cell with custom style
+/// - `empty(n)` - skip n columns
+///
+/// # Examples
+///
+/// ```
+/// const BUF: BuilderBuffer = builder_buffer!(
+///     ["Header", empty(5), "Value"],
+///     empty(1),
+///     [cell("A", Style::EMPTY), "B", "C"],
+/// );
+/// ```
+#[macro_export]
+macro_rules! buffer {
+    ($($buffer_contents:tt)*) => {
+        $crate::builder_buffer!{$($buffer_contents)*}
+    };
 }
 
 #[cfg(test)]
